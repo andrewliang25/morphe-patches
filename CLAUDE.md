@@ -47,6 +47,17 @@ The patching model is: **fingerprint → locate method → inject smali → opti
 
 `util/PatchListGenerator.kt` (`main()`, run by the `generatePatchesList` task) loads the built `.mpp` via `loadPatchesFromJar`, reads the bundle version from the JAR manifest, and serializes every patch's metadata (name, description, deps, compatibility, options) to `patches-list.json`. Third-party tools consume this file — do not hand-edit it.
 
+## Target app integrity (LINE) — what patching must respect
+
+From decompiling LINE 26.11.0 (full detail in `work/decompiled-line-<ver>/NOTES-integrity-checks.md`, gitignored):
+
+- The **core messenger has no enforcing** signature/integrity check — a re-signed patched APK runs fine for login/chat/general features.
+- Every root/debugger/emulator/signature check in the general app is **telemetry only** (Firebase Crashlytics, obfuscated `es` package; Sentry `io.sentry.android.core`) — no `exit`/`finish`/`throw`.
+- **No Play Integrity / SafetyNet** is bundled. The `attest` code is LINE's own *server-side* WebAuthn/FIDO2 and a fire-and-forget "DeviceAttestation" WorkManager job (always returns success).
+- **Enforcement is confined to LINE Pay**, via the bundled native **VKey V-OS / V-Guard** engine (`libvosWrapperEx.so`; `VosWrapperBase.getAppSignerHash()` → native SHA-256 signer compare). It initializes only when entering Pay flows. The Block/Warn/Bypass decision per threat is **server-driven** (`TamperSettingsGetResDto`); on block, `VGuardDetectionActivity` ends the Pay flow — it does not kill the whole app.
+
+**Implication for patches:** messaging patches are safe on a re-signed build. Defeating LINE Pay's protection would require neutralizing the VKey native library (out of scope). Prefer fingerprints anchored on **string literals / non-obfuscated class names** — LINE obfuscates class and method names (even `org.apache.thrift`'s), and they drift between versions.
+
 ## Release pipeline — do not fight it
 
 Releases are fully automated by **semantic-release** (`.releaserc`, `.github/workflows/release.yml`). This drives several rules:
