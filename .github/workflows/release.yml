@@ -42,12 +42,41 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # semantic-release creates the release as a DRAFT (draftRelease in .releaserc) with no
+      # assets. Immutable releases lock on *publish* and reject post-publish asset uploads, so
+      # we must upload while still a draft, then publish: draft -> attach -> publish.
+      - name: Upload patch bundle to draft release
+        if: steps.release.outputs.new_release_published == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.release.outputs.new_release_git_tag }}
+        run: |
+          set -euo pipefail
+          # The main bundle only — exclude the -sources/-javadoc .mpp variants.
+          mpp=$(ls patches/build/libs/patches-*.mpp | grep -Ev '(sources|javadoc)')
+          echo "Uploading: $mpp"
+          gh release upload "$TAG" $mpp --clobber
+
       - name: Attest
         if: steps.release.outputs.new_release_published == 'true'
         uses: actions/attest-build-provenance@v4
         with:
           subject-name: 'Morphe Patches ${{ steps.release.outputs.new_release_git_tag }}'
-          subject-path: patches/build/libs/patches-*.mpp
+          subject-path: |
+            patches/build/libs/patches-*.mpp
+            !patches/build/libs/patches-*-sources.mpp
+            !patches/build/libs/patches-*-javadoc.mpp
+
+      # Publishing the draft is what makes the release immutable (once the repo/org setting is
+      # enabled) and triggers GitHub's automatic release attestation.
+      - name: Publish release
+        if: steps.release.outputs.new_release_published == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.release.outputs.new_release_git_tag }}
+        # No --latest: preserve semantic-release's prerelease flag (dev = prerelease) and let
+        # GitHub's default "latest" logic apply, so dev pre-releases aren't marked latest.
+        run: gh release edit "$TAG" --draft=false
 
       # Always verify compilation when semantic-release did not publish a release.
       # This covers non-main/dev branches, chore commits, docs commits, etc.
