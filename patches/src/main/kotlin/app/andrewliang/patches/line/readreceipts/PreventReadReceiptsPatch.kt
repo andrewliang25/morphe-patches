@@ -9,7 +9,7 @@ val preventReadReceiptsPatch = bytecodePatch(
     name = "Prevent read receipts",
     description = "Stops LINE from telling senders when you have read their messages " +
         "(neutralizes the sendChatChecked request).",
-    default = false, // opt-in; flip to true to enable by default in Morphe Manager.
+    default = true, // applied by default in Morphe Manager; users can deselect it.
 ) {
     compatibleWith(COMPATIBILITY_LINE)
 
