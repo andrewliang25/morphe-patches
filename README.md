@@ -14,7 +14,7 @@ Morphe Manager to build a modified APK.
 ## 🩹 Patches list
 
 <!-- PATCHES_START EXPANDED -->
-> **[v1.0.0-dev.1](https://github.com/andrewliang25/morphe-patches/releases/tag/v1.0.0-dev.1)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;8 patches total
+> **[v1.0.0-dev.2](https://github.com/andrewliang25/morphe-patches/releases/tag/v1.0.0-dev.2)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;8 patches total
 <details open>
 <summary>📦 LINE&nbsp;&nbsp;•&nbsp;&nbsp;8 patches</summary>
 <br>
@@ -32,7 +32,7 @@ Morphe Manager to build a modified APK.
 | [Hide Wallet tab](#hide-wallet-tab) | Removes the Wallet (LINE Pay) tab from the main bottom navigation, in both the normal and mini-tab layouts. |  |
 | [Hide ad views](#hide-ad-views) | Hides LINE display ad views — the LINE Ads SDK containers across the app, the chat-list Smart Channel banner, and Google AdManager ads. |  |
 | [Open links in external browser](#open-links-in-external-browser) | Opens tapped web links (http/https) in your default browser instead of LINE's in-app browser. LIFF mini-apps and LINE deep links are unaffected. |  |
-| [Prevent read receipts](#prevent-read-receipts) | Stops LINE from telling senders when you have read their messages (neutralizes the sendChatChecked request). |  |
+| [Prevent read receipts](#prevent-read-receipts) | Stops LINE from telling senders when you have read their messages, across 1:1, group, and OpenChat rooms. |  |
 | [Remove banner ads](#remove-banner-ads) | Stops LINE from loading Smart Channel banner ads (neutralizes the getBanners and getPrefetchableBanners responses). |  |
 
 </details>

@@ -1,3 +1,9 @@
+## [1.0.0-dev.2](https://github.com/andrewliang25/morphe-patches/compare/v1.0.0-dev.1...v1.0.0-dev.2) (2026-07-24)
+
+### 🐛 Bug Fixes
+
+* Fix read-receipts, hide-ad-views, and external-browser on device ([1009baa](https://github.com/andrewliang25/morphe-patches/commit/1009baa382484082cfda1346b5fa1d0f3b7b978a))
+
 ## 1.0.0-dev.1 (2026-07-24)
 
 ### ✨ New Features
