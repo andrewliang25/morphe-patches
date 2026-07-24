@@ -1,3 +1,10 @@
+## [1.0.0-dev.3](https://github.com/andrewliang25/morphe-patches/compare/v1.0.0-dev.2...v1.0.0-dev.3) (2026-07-24)
+
+### ✨ New Features
+
+* Add experimental Hide Home modules patch ([02a84ea](https://github.com/andrewliang25/morphe-patches/commit/02a84ea212bc5b2f1c60f54698b9a11b24d4872b))
+* Add LINE hide-line-today-tab patch ([92255fd](https://github.com/andrewliang25/morphe-patches/commit/92255fdfa7bb1cf5de4651bf71816394715c986e))
+
 ## [1.0.0-dev.2](https://github.com/andrewliang25/morphe-patches/compare/v1.0.0-dev.1...v1.0.0-dev.2) (2026-07-24)
 
 ### 🐛 Bug Fixes
