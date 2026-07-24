@@ -1,25 +1,21 @@
 package app.andrewliang.patches.line.readreceipts
 
 import app.morphe.patcher.Fingerprint
-import app.morphe.patcher.string
-import com.android.tools.smali.dexlib2.AccessFlags
 
 /**
- * Matches `LegacyTalkServiceClientImpl$e.b(Lorg/apache/thrift/o;)Ljava/lang/Object;` — the
- * method that issues the "sendChatChecked" (mark-as-read) Thrift request in LINE.
+ * The generic Thrift client dispatch `org.apache.thrift.o.b(String methodName, e args)` —
+ * the universal SEND chokepoint every LINE Thrift RPC funnels through (both the TalkService
+ * client and the Square/OpenChat client extend `org.apache.thrift.o`).
  *
- * Anchored on the stable `"sendChatChecked"` string literal; the obfuscated class and
- * method names are intentionally not pinned since they drift between app versions. The
- * string plus an `Object` return type and a single object parameter excludes the
- * `sendChatChecked_args`/`_result` structs (their `toString` carries the same string but
- * returns `String` and takes no parameter).
+ * The `org/apache/thrift/` package survives obfuscation; the class (`o`) and method (`b`)
+ * names are obfuscated, so we anchor on the distinctive signature: a `void` method taking
+ * `(String, org.apache.thrift.e)`. Its sibling `a` (recv) has the same parameter shape, so
+ * this could in principle match either — but only `b` is the send half; the read-receipt
+ * rewrite is a no-op on the recv half anyway, so matching order is not safety-critical here.
  */
-internal object SendChatCheckedFingerprint : Fingerprint(
-    accessFlags = listOf(AccessFlags.PUBLIC, AccessFlags.FINAL),
-    returnType = "Ljava/lang/Object;",
-    // Obfuscated parameter class (org.apache.thrift.o) -> match any object type ("L").
-    parameters = listOf("L"),
-    filters = listOf(
-        string("sendChatChecked"),
-    ),
+internal object ThriftSendFingerprint : Fingerprint(
+    definingClass = "Lorg/apache/thrift/o;",
+    name = "b",
+    returnType = "V",
+    parameters = listOf("Ljava/lang/String;", "Lorg/apache/thrift/e;"),
 )

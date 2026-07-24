@@ -13,28 +13,15 @@ val forceExternalBrowserPatch = bytecodePatch(
 ) {
     compatibleWith(COMPATIBILITY_LINE)
 
-    extendWith("extensions/extension.mpe")
-
-    // OpenUriActivity.h5 :cond_d (the non-internal branch, after LIFF/line:// are routed away)
-    // opens with `OpenUriActivity$b.b(v3)` -> `move-result v0`, where v0 = "is http/https" and
-    // v3 = the resolved Uri, v1 = the Activity. We inject right AFTER that move-result — a
-    // fall-through point (so our code is always reached, unlike the :cond_d branch target
-    // itself) — reusing v0. If it's a web link, open it externally and return; otherwise fall
-    // through (v0 untouched) to LINE's original handling. `:notweb` is an internal label, so
-    // plain addInstructions suffices.
+    // Overwrite the OpenUriActivity$a mode parameter (p3) with EXTERNAL_WITHOUT_CUSTOMTABS at
+    // method entry, so the web-URL branch routes into LINE's own native external-browser path.
+    // p3 is only read afterward by a null-check (our constant is non-null) and the mode
+    // switch; non-web URLs skip the switch, so they're unaffected. No coroutine, no extension.
     execute {
-        // instructionMatches: [0] = the v98/c.k gate, [1] = the OpenUriActivity$b.b http test.
-        val httpTestIndex = OpenUriHandlerFingerprint.instructionMatches[1].index
-        OpenUriHandlerFingerprint.method.addInstructions(
-            httpTestIndex + 2, // after the $b.b invoke (+1 = its move-result v0).
-            """
-                if-eqz v0, :notweb
-                invoke-static {v1, v3}, Lapp/andrewliang/extension/BrowserRedirect;->openExternalIfWeb(Landroid/app/Activity;Landroid/net/Uri;)Z
-                sget-object v0, Lkotlin/Unit;->INSTANCE:Lkotlin/Unit;
-                return-object v0
-                :notweb
-                nop
-            """,
+        OpenUriIntentBuilderFingerprint.method.addInstructions(
+            0,
+            "sget-object p3, Lcom/linecorp/browser/OpenUriActivity\$a;->" +
+                "EXTERNAL_WITHOUT_CUSTOMTABS:Lcom/linecorp/browser/OpenUriActivity\$a;",
         )
     }
 }

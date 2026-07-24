@@ -7,22 +7,25 @@ import app.morphe.patcher.patch.bytecodePatch
 @Suppress("unused")
 val preventReadReceiptsPatch = bytecodePatch(
     name = "Prevent read receipts",
-    description = "Stops LINE from telling senders when you have read their messages " +
-        "(neutralizes the sendChatChecked request).",
-    default = true, // applied by default in Morphe Manager; users can deselect it.
+    description = "Stops LINE from telling senders when you have read their messages, " +
+        "across 1:1, group, and OpenChat rooms.",
+    default = true,
 ) {
     compatibleWith(COMPATIBILITY_LINE)
 
-    // The target method's return value is discarded by its caller
-    // (LegacyTalkServiceClientImpl.j1 is fire-and-forget), so returning null immediately
-    // makes the read-receipt op a no-op: no network send, no paired recv, no exception.
-    // The method declares `.locals 5`, so v0 is free to use.
+    extendWith("extensions/extension.mpe")
+
+    // At the top of the generic Thrift send `o.b(methodName, args)`, rewrite the method name
+    // to "noop" for the read-receipt ops (sendChatChecked / markAsRead / markChatsAsRead /
+    // markThreadsAsRead). The send still happens (seq/transport stay balanced, so no stream
+    // desync — unlike an early return); the server rejects the unknown op and the caller
+    // swallows the resulting exception. p1 = methodName; .locals 3 leaves room to reuse p1.
     execute {
-        SendChatCheckedFingerprint.method.addInstructions(
+        ThriftSendFingerprint.method.addInstructions(
             0,
             """
-                const/4 v0, 0x0
-                return-object v0
+                invoke-static {p1}, Lapp/andrewliang/extension/ReadReceipts;->rewrite(Ljava/lang/String;)Ljava/lang/String;
+                move-result-object p1
             """,
         )
     }
