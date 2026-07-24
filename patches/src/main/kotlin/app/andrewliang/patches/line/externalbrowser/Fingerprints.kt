@@ -4,25 +4,31 @@ import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.methodCall
 
 /**
- * Matches `com.linecorp.browser.OpenUriActivity.h5(OpenUriActivity, Intent, Continuation)` —
- * the coroutine body that decides Custom Tab vs in-app WebView vs external for a tapped link.
+ * `com.linecorp.browser.OpenUriActivity$b.a(...)` — the single Intent builder for opening a
+ * URL. For http/https URLs it switches on the `OpenUriActivity$a` browser-mode parameter to
+ * decide Custom Tab vs in-app WebView vs external. By overwriting that mode parameter with
+ * `EXTERNAL_WITHOUT_CUSTOMTABS`, every web-URL open is routed into LINE's own native
+ * external-browser path (which has its own ActivityNotFoundException fallback). Non-web
+ * schemes skip the mode switch entirely, so LIFF / line:// / tel: are unaffected.
  *
- * The obfuscated method name (`h5`) and the `Continuation` param are not pinned. The two
- * method-call filters — the internal/LIFF gate `v98/c.k(String)` followed by the http/https
- * test `OpenUriActivity$b.b(Uri)` — uniquely identify the method, and `instructionMatches[1]`
- * (the `$b.b` call right after the gate) is the `:cond_d` injection point (the non-internal
- * branch, i.e. after LIFF/line:// links have already been routed away).
+ * Non-obfuscated class + a distinctive signature (returns Intent, takes the OpenUriActivity$a
+ * mode); the `$b.b(Uri)` web-gate call is used as an extra anchor.
  */
-internal object OpenUriHandlerFingerprint : Fingerprint(
-    definingClass = "Lcom/linecorp/browser/OpenUriActivity;",
-    returnType = "Ljava/lang/Object;",
+internal object OpenUriIntentBuilderFingerprint : Fingerprint(
+    definingClass = "Lcom/linecorp/browser/OpenUriActivity\$b;",
+    name = "a",
+    returnType = "Landroid/content/Intent;",
     parameters = listOf(
-        "Lcom/linecorp/browser/OpenUriActivity;",
-        "Landroid/content/Intent;",
-        "L", // Continuation (obfuscated) -> match any object.
+        "Lcom/linecorp/browser/OpenUriActivity\$b;",
+        "Landroid/content/Context;",
+        "Landroid/net/Uri;",
+        "Lcom/linecorp/browser/OpenUriActivity\$a;",
+        "Lv98/k;",
+        "Z",
+        "Ljava/lang/String;",
+        "I",
     ),
     filters = listOf(
-        methodCall(definingClass = "Lv98/c;", name = "k"),
         methodCall(definingClass = "Lcom/linecorp/browser/OpenUriActivity\$b;", name = "b"),
     ),
 )

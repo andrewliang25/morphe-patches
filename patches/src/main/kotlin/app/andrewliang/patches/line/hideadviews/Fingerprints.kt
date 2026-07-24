@@ -3,13 +3,26 @@ package app.andrewliang.patches.line.hideadviews
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.methodCall
 
-// --- Robust targets: non-obfuscated LINE ad View classes + framework override methods. ---
+// --- Robust targets: non-obfuscated LINE ad View classes. ---
 
-internal object SmartChannelViewLayoutFingerprint : Fingerprint(
-    definingClass = "Lcom/linecorp/line/admolin/smartch/v2/view/SmartChannelViewLayout;",
-    name = "dispatchDraw",
+/**
+ * The Smart Channel controller `rb0/e.<init>(FrameLayout host, ...)` — it inflates the chat-
+ * list banner view and addViews it into the host FrameLayout (p1). Hiding that host once at
+ * construction collapses the empty banner strip regardless of the banner's visibility state
+ * (the previous `dispatchDraw` hook never fired while the strip was an empty placeholder).
+ * `rb0/e` is obfuscated; anchored on the class + the non-obfuscated FrameLayout/`u0` params.
+ */
+internal object SmartChannelControllerFingerprint : Fingerprint(
+    definingClass = "Lrb0/e;",
+    name = "<init>",
     returnType = "V",
-    parameters = listOf("Landroid/graphics/Canvas;"),
+    parameters = listOf(
+        "Landroid/widget/FrameLayout;",
+        "L",
+        "Landroidx/lifecycle/u0;",
+        "L",
+        "L",
+    ),
 )
 
 internal object LadAdViewFingerprint : Fingerprint(
