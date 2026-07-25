@@ -1,3 +1,9 @@
+## [1.0.0-dev.5](https://github.com/andrewliang25/morphe-patches/compare/v1.0.0-dev.4...v1.0.0-dev.5) (2026-07-25)
+
+### 🚀 Updated App Support
+
+* Cut pre-release for Home modules diagnostics ([5b54f94](https://github.com/andrewliang25/morphe-patches/commit/5b54f94f7b4e4cebb54d94101bc00ca048bf0a24)), closes [#11](https://github.com/andrewliang25/morphe-patches/issues/11)
+
 ## [1.0.0-dev.4](https://github.com/andrewliang25/morphe-patches/compare/v1.0.0-dev.3...v1.0.0-dev.4) (2026-07-25)
 
 ### 🐛 Bug Fixes
