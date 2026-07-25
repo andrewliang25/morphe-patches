@@ -1,3 +1,13 @@
+## [1.0.0-dev.9](https://github.com/andrewliang25/morphe-patches/compare/v1.0.0-dev.8...v1.0.0-dev.9) (2026-07-25)
+
+### 🐛 Bug Fixes
+
+* Drop the rename-package patch ([6b53b86](https://github.com/andrewliang25/morphe-patches/commit/6b53b86e30125af795a1f964c9bf8511bb612b08))
+
+### ✨ New Features
+
+* Replace prevent-read-receipts with keep-chats-unread ([1a8d9af](https://github.com/andrewliang25/morphe-patches/commit/1a8d9aff3a2585efc82a1f7dd350e4a6d2005f1f))
+
 ## [1.0.0-dev.8](https://github.com/andrewliang25/morphe-patches/compare/v1.0.0-dev.7...v1.0.0-dev.8) (2026-07-25)
 
 ### ✨ New Features

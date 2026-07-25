@@ -14,9 +14,9 @@ Morphe Manager to build a modified APK.
 ## 🩹 Patches list
 
 <!-- PATCHES_START EXPANDED -->
-> **[v1.0.0-dev.8](https://github.com/andrewliang25/morphe-patches/releases/tag/v1.0.0-dev.8)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;13 patches total
+> **[v1.0.0-dev.9](https://github.com/andrewliang25/morphe-patches/releases/tag/v1.0.0-dev.9)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;12 patches total
 <details open>
-<summary>📦 LINE&nbsp;&nbsp;•&nbsp;&nbsp;13 patches</summary>
+<summary>📦 LINE&nbsp;&nbsp;•&nbsp;&nbsp;12 patches</summary>
 <br>
 
 **🎯 Supported versions:**
@@ -35,10 +35,9 @@ Morphe Manager to build a modified APK.
 | [Hide ad views](#hide-ad-views) | Hides LINE display ad views — the LINE Ads SDK containers across the app, the chat-list Smart Channel banner, and Google AdManager ads. |  |
 | [Hide calendar button](#hide-calendar-button) | Removes the calendar button from the top of the Chats tab header. |  |
 | [Hide community button](#hide-community-button) | Removes the community (OpenChat) button from the top of the Chats tab header. |  |
+| [Keep chats unread](#keep-chats-unread) | Opening a 1:1 or group chat no longer marks it read — it stays unread and no read receipt is sent. Manually using "Mark as read" / "Mark all as read" still marks the chat read and sends the receipt as normal. |  |
 | [Open links in external browser](#open-links-in-external-browser) | Opens tapped web links (http/https) in your default browser instead of LINE's in-app browser. LIFF mini-apps and LINE deep links are unaffected. |  |
-| [Prevent read receipts](#prevent-read-receipts) | Stops LINE from telling senders when you have read their messages, across 1:1, group, and OpenChat rooms. |  |
 | [Remove banner ads](#remove-banner-ads) | Stops LINE from loading Smart Channel banner ads (neutralizes the getBanners and getPrefetchableBanners responses). |  |
-| [Rename package](#rename-package) | Renames the app package to app.andrewliang.line.android so a patched, re-signed build is a distinct app the Play Store never auto-updates. WARNING: because LINE's identity is tied to its package name, this will likely break push notifications and may break login. It cannot be installed alongside the stock LINE (uninstall that first). Opt-in. |  |
 
 </details>
 
