@@ -1,22 +1,28 @@
 package app.andrewliang.patches.line.hidehomemodules
 
 import app.morphe.patcher.Fingerprint
-import app.morphe.patcher.methodCall
 
 /**
- * `i52.c.e(f0, c): i0` — builds the Home UI state `m52.i0`, whose module list (`List<m52.z>`,
- * each `z.e` a typed `m52.a0` module) is assembled into a register and passed as the 3rd
- * constructor arg. We inject a filter right before that `m52.i0.<init>` call.
+ * `x72.h$a.<init>(List<m52.z>, ...)` — the constructor of the Home Compose UI state that holds
+ * the rendered module list (stored into field `a`, the first ctor arg). Every feed build path
+ * (the v52.g / v52.j assemblers, and state copies) funnels through this constructor, so
+ * filtering the list argument here covers the whole rendered feed in one place.
  *
- * `i52.c` is obfuscated (version-brittle); anchored on the return type `Lm52/i0;`, the
- * `(f0, c)` params, and the `m52.i0.<init>` call the injection is placed before.
+ * (The earlier target `i52.c.e` built only the Friends sub-tab list — a single
+ * `FriendsSubTabFriendsList` module — not the feed with the ad / recommendation sections;
+ * confirmed via on-device logging.)
  */
-internal object HomeStateBuilderFingerprint : Fingerprint(
-    definingClass = "Li52/c;",
-    name = "e",
-    returnType = "Lm52/i0;",
-    parameters = listOf("Lm52/f0;", "Lm52/c;"),
-    filters = listOf(
-        methodCall(definingClass = "Lm52/i0;", name = "<init>"),
+internal object HomeStateCtorFingerprint : Fingerprint(
+    definingClass = "Lx72/h\$a;",
+    name = "<init>",
+    returnType = "V",
+    parameters = listOf(
+        "Ljava/util/List;",
+        "Z", "Z", "Z", "Z", "Z",
+        "Ljava/lang/String;",
+        "Ljava/lang/Long;",
+        "Ljava/lang/Long;",
+        "I",
+        "Z",
     ),
 )

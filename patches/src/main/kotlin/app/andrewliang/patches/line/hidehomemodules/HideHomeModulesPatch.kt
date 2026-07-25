@@ -9,7 +9,7 @@ import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter
 
-private const val I52_C = "Li52/c;"
+private const val HOME_STATE = "Lx72/h\$a;"
 private const val FILTER_NAME = "filterHomeModules"
 private const val FILTER_DESC = "(Ljava/util/List;)Ljava/util/List;"
 
@@ -24,21 +24,20 @@ val hideHomeModulesPatch = bytecodePatch(
 
     extendWith("extensions/extension.mpe")
 
-    // The Home module list (List<m52.z>, each z.e a typed m52.a0 module) is assembled in
-    // i52.c.e and passed as arg3 (register v6) to m52.i0.<init>. We drop modules whose
-    // z.e.getType() is blocklisted.
+    // The rendered Home feed is a List<m52.z> (each z.e a typed m52.a0 module) stored as the
+    // first ctor arg (field `a`) of the Compose state x72.h$a. Filter that list to drop
+    // modules whose z.e.getType() is blocklisted.
     //
-    // The filtering loop lives in its OWN new method (i52.c.filterHomeModules) rather than
-    // being injected inline. Injecting a backward-branching loop into the existing
-    // 126-instruction e() corrupted its branch layout -> runtime VerifyError "target dex pc
-    // not at instruction start". A freshly built method's branches assemble cleanly, and the
-    // call injected into e() is branchless (invoke + move-result), so it can't misalign e().
+    // The filtering loop is a new method x72.h$a.filterHomeModules (backward-branching loops
+    // corrupt an existing method's layout when injected inline -> VerifyError). We then inject
+    // a branchless call at the top of x72.h$a.<init> to replace p1 (the list) with its
+    // filtered copy before it's stored. One constructor covers every feed build path + copies.
     execute {
-        // 1. Add the static filter helper method to i52.c.
-        val cls = mutableClassDefBy(I52_C)
+        // 1. Add the static filter helper method to x72.h$a.
+        val cls = mutableClassDefBy(HOME_STATE)
         val filter = MutableMethod(
             ImmutableMethod(
-                I52_C,
+                HOME_STATE,
                 FILTER_NAME,
                 listOf(ImmutableMethodParameter("Ljava/util/List;", null, null)),
                 "Ljava/util/List;",
@@ -79,14 +78,13 @@ val hideHomeModulesPatch = bytecodePatch(
             """,
         )
 
-        // 2. In e(), replace the module list (v6) with the filtered list right before the
-        //    m52.i0.<init> call. Branchless: just invoke + move-result.
-        val ctorIndex = HomeStateBuilderFingerprint.instructionMatches.first().index
-        HomeStateBuilderFingerprint.method.addInstructions(
-            ctorIndex,
+        // 2. At the top of x72.h$a.<init>, replace the list param (p1) with its filtered copy
+        //    before it is stored. Branchless (invoke + move-result), reuses p1 (`.locals 0`).
+        HomeStateCtorFingerprint.method.addInstructions(
+            0,
             """
-                invoke-static {v6}, $I52_C->$FILTER_NAME$FILTER_DESC
-                move-result-object v6
+                invoke-static {p1}, $HOME_STATE->$FILTER_NAME$FILTER_DESC
+                move-result-object p1
             """,
         )
     }
