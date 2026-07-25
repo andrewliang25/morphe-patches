@@ -1,3 +1,9 @@
+## [1.0.0-dev.10](https://github.com/andrewliang25/morphe-patches/compare/v1.0.0-dev.9...v1.0.0-dev.10) (2026-07-25)
+
+### 🐛 Bug Fixes
+
+* Disambiguate chat-header button fingerprints ([1b13686](https://github.com/andrewliang25/morphe-patches/commit/1b13686b30fbc6019e6debc9d87fcc19cccdb97d))
+
 ## [1.0.0-dev.9](https://github.com/andrewliang25/morphe-patches/compare/v1.0.0-dev.8...v1.0.0-dev.9) (2026-07-25)
 
 ### 🐛 Bug Fixes

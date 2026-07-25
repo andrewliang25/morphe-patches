@@ -1,7 +1,7 @@
 {
-  "created_at": "2026-07-25T09:35:28",
-  "description": "## [1.0.0-dev.9](https://github.com/andrewliang25/morphe-patches/compare/v1.0.0-dev.8...v1.0.0-dev.9) (2026-07-25)\n\n### 🐛 Bug Fixes\n\n* Drop the rename-package patch ([6b53b86](https://github.com/andrewliang25/morphe-patches/commit/6b53b86e30125af795a1f964c9bf8511bb612b08))\n\n### ✨ New Features\n\n* Replace prevent-read-receipts with keep-chats-unread ([1a8d9af](https://github.com/andrewliang25/morphe-patches/commit/1a8d9aff3a2585efc82a1f7dd350e4a6d2005f1f))",
-  "download_url": "https://github.com/andrewliang25/morphe-patches/releases/download/v1.0.0-dev.9/patches-1.0.0-dev.9.mpp",
+  "created_at": "2026-07-25T10:00:19",
+  "description": "## [1.0.0-dev.10](https://github.com/andrewliang25/morphe-patches/compare/v1.0.0-dev.9...v1.0.0-dev.10) (2026-07-25)\n\n### 🐛 Bug Fixes\n\n* Disambiguate chat-header button fingerprints ([1b13686](https://github.com/andrewliang25/morphe-patches/commit/1b13686b30fbc6019e6debc9d87fcc19cccdb97d))",
+  "download_url": "https://github.com/andrewliang25/morphe-patches/releases/download/v1.0.0-dev.10/patches-1.0.0-dev.10.mpp",
   "signature_download_url": "",
-  "version": "1.0.0-dev.9"
+  "version": "1.0.0-dev.10"
 }
