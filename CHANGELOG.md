@@ -1,3 +1,9 @@
+## [1.0.0-dev.4](https://github.com/andrewliang25/morphe-patches/compare/v1.0.0-dev.3...v1.0.0-dev.4) (2026-07-25)
+
+### 🐛 Bug Fixes
+
+* Hide Home modules crashed on open (VerifyError) ([4bf52ff](https://github.com/andrewliang25/morphe-patches/commit/4bf52ff438ebc5b9b608dd1e10a3273d4d5a859f))
+
 ## [1.0.0-dev.3](https://github.com/andrewliang25/morphe-patches/compare/v1.0.0-dev.2...v1.0.0-dev.3) (2026-07-24)
 
 ### ✨ New Features
