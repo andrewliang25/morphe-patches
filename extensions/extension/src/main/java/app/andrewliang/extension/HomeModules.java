@@ -30,12 +30,13 @@ public final class HomeModules {
     private static final Set<String> HIDDEN = new HashSet<>();
 
     static {
-        // Candidate blocklist (unconfirmed) — bottom ad + recommended content.
-        HIDDEN.add("HomePerformanceAd");
-        HIDDEN.add("AdModel");
-        HIDDEN.add("HomeContentsRecommendation");
-        HIDDEN.add("HomeFeedMatomeCarousel");
-        HIDDEN.add("HomeFeedMatomeSingle");
+        // Confirmed on device:
+        HIDDEN.add("HomeContentsRecommendation"); // recommended stickers (confirmed gone)
+        HIDDEN.add("HomePerformanceAd");          // a performance ad module
+        // Testing this round: 即時夯話題 is most likely FLEX. NOTE there are 2 FLEX modules in
+        // the feed, so this hides BOTH — confirm on device whether it removes 即時夯話題 (and
+        // possibly the bottom ad) without taking any wanted content.
+        HIDDEN.add("FLEX");
     }
 
     /** DIAGNOSTIC: called once at filter entry so "ran but empty/unmatched" is distinguishable
