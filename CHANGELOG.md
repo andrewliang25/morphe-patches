@@ -1,3 +1,9 @@
+## [1.0.0-dev.7](https://github.com/andrewliang25/morphe-patches/compare/v1.0.0-dev.6...v1.0.0-dev.7) (2026-07-25)
+
+### 🐛 Bug Fixes
+
+* Home modules blocklist — add FLEX for 即時夯話題 (test round) ([e3177fe](https://github.com/andrewliang25/morphe-patches/commit/e3177fe9ac49cc3355720e5773fb6471205d1981))
+
 ## [1.0.0-dev.6](https://github.com/andrewliang25/morphe-patches/compare/v1.0.0-dev.5...v1.0.0-dev.6) (2026-07-25)
 
 ### 🐛 Bug Fixes
