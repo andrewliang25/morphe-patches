@@ -1,6 +1,6 @@
 {
   "NOTE": "Do NOT manually edit this file. This file is automatically updated when semantic release (release.yml) runs. Manually editing this file can break your releases and break third party tools that use this file.",
-  "version": "1.0.0-dev.7",
+  "version": "1.0.0-dev.8",
   "patches": [
     {
       "name": "Disable LINE Pay",
@@ -56,8 +56,8 @@
     },
     {
       "name": "Hide Home modules",
-      "description": "Hides selected Home-tab modules (bottom ad, recommended content sections). EXPERIMENTAL — blocklist being tuned.",
-      "default": false,
+      "description": "Hides Home-tab clutter modules: the recommended stickers/content section, the real-time hot-topics (即時夯話題) block, and Home feed ads.",
+      "default": true,
       "dependencies": [],
       "compatiblePackages": [
         {
@@ -185,6 +185,58 @@
       "options": []
     },
     {
+      "name": "Hide calendar button",
+      "description": "Removes the calendar button from the top of the Chats tab header.",
+      "default": true,
+      "dependencies": [],
+      "compatiblePackages": [
+        {
+          "packageName": "jp.naver.line.android",
+          "name": "LINE",
+          "description": null,
+          "apkFileType": "APKM",
+          "appIconColor": "#06C755",
+          "signatures": null,
+          "targets": [
+            {
+              "version": "26.11.0",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "Hide community button",
+      "description": "Removes the community (OpenChat) button from the top of the Chats tab header.",
+      "default": true,
+      "dependencies": [],
+      "compatiblePackages": [
+        {
+          "packageName": "jp.naver.line.android",
+          "name": "LINE",
+          "description": null,
+          "apkFileType": "APKM",
+          "appIconColor": "#06C755",
+          "signatures": null,
+          "targets": [
+            {
+              "version": "26.11.0",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
       "name": "Open links in external browser",
       "description": "Opens tapped web links (http/https) in your default browser instead of LINE's in-app browser. LIFF mini-apps and LINE deep links are unaffected.",
       "default": true,
@@ -240,6 +292,32 @@
       "name": "Remove banner ads",
       "description": "Stops LINE from loading Smart Channel banner ads (neutralizes the getBanners and getPrefetchableBanners responses).",
       "default": true,
+      "dependencies": [],
+      "compatiblePackages": [
+        {
+          "packageName": "jp.naver.line.android",
+          "name": "LINE",
+          "description": null,
+          "apkFileType": "APKM",
+          "appIconColor": "#06C755",
+          "signatures": null,
+          "targets": [
+            {
+              "version": "26.11.0",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "Rename package",
+      "description": "Renames the app package to app.andrewliang.line.android so a patched, re-signed build is a distinct app the Play Store never auto-updates. WARNING: because LINE's identity is tied to its package name, this will likely break push notifications and may break login. It cannot be installed alongside the stock LINE (uninstall that first). Opt-in.",
+      "default": false,
       "dependencies": [],
       "compatiblePackages": [
         {

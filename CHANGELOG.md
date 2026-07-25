@@ -1,3 +1,11 @@
+## [1.0.0-dev.8](https://github.com/andrewliang25/morphe-patches/compare/v1.0.0-dev.7...v1.0.0-dev.8) (2026-07-25)
+
+### ✨ New Features
+
+* Add hide-calendar-button and hide-community-button patches ([a073efc](https://github.com/andrewliang25/morphe-patches/commit/a073efc7eb86db0c235ecba1bbd349a1ad0ad845))
+* Add LINE rename-package patch (opt-in) ([096193f](https://github.com/andrewliang25/morphe-patches/commit/096193f354b6b21cf72163311cefb99a4bb287dd))
+* Finalize Hide Home modules (confirmed blocklist, default on) ([0176f5a](https://github.com/andrewliang25/morphe-patches/commit/0176f5af582313f59951fb94efe2286b4cc8ef8f))
+
 ## [1.0.0-dev.7](https://github.com/andrewliang25/morphe-patches/compare/v1.0.0-dev.6...v1.0.0-dev.7) (2026-07-25)
 
 ### 🐛 Bug Fixes
