@@ -18,16 +18,23 @@ private const val BUTTON_ENUM = "Laz0/q;"
  * each button independently means the two patches don't depend on each other and work in
  * either order when both are enabled.
  */
+// The header button list is a `fb8/b` (the `add` calls target `Lfb8/b;`). The `add`'s
+// definingClass is pinned to disambiguate from the green-dot icon set (ChatTabHeaderStateImpl
+// $greenDotVisibleIconSet), which references the same OPEN_CHAT constant but adds to a
+// different list class (`fb8/j`) — without this, OPEN_CHAT + add could silently match the
+// green-dot method instead of the header builder.
+private const val HEADER_LIST_ADD = "Lfb8/b;"
+
 internal object CalendarButtonFingerprint : Fingerprint(
     filters = listOf(
         fieldAccess(definingClass = BUTTON_ENUM, name = "CALENDAR"),
-        methodCall(name = "add"),
+        methodCall(definingClass = HEADER_LIST_ADD, name = "add"),
     ),
 )
 
 internal object CommunityButtonFingerprint : Fingerprint(
     filters = listOf(
         fieldAccess(definingClass = BUTTON_ENUM, name = "OPEN_CHAT"),
-        methodCall(name = "add"),
+        methodCall(definingClass = HEADER_LIST_ADD, name = "add"),
     ),
 )
