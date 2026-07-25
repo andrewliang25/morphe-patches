@@ -16,9 +16,9 @@ private const val FILTER_DESC = "(Ljava/util/List;)Ljava/util/List;"
 @Suppress("unused")
 val hideHomeModulesPatch = bytecodePatch(
     name = "Hide Home modules",
-    description = "Hides selected Home-tab modules (bottom ad, recommended content sections). " +
-        "EXPERIMENTAL — blocklist being tuned.",
-    default = false, // opt-in until the type blocklist is confirmed on device.
+    description = "Hides Home-tab clutter modules: the recommended stickers/content section, " +
+        "the real-time hot-topics (即時夯話題) block, and Home feed ads.",
+    default = true,
 ) {
     compatibleWith(COMPATIBILITY_LINE)
 
@@ -52,8 +52,6 @@ val hideHomeModulesPatch = bytecodePatch(
         filter.addInstructions(
             0,
             """
-                invoke-static {p0}, Lapp/andrewliang/extension/HomeModules;->onEnter(Ljava/util/List;)Ljava/util/List;
-                move-result-object p0
                 new-instance v0, Ljava/util/ArrayList;
                 invoke-direct {v0}, Ljava/util/ArrayList;-><init>()V
                 invoke-interface {p0}, Ljava/util/List;->iterator()Ljava/util/Iterator;
