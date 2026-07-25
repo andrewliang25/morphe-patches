@@ -1,7 +1,7 @@
 {
-  "created_at": "2026-07-25T03:03:06",
-  "description": "## [1.0.0-dev.5](https://github.com/andrewliang25/morphe-patches/compare/v1.0.0-dev.4...v1.0.0-dev.5) (2026-07-25)\n\n### 🚀 Updated App Support\n\n* Cut pre-release for Home modules diagnostics ([5b54f94](https://github.com/andrewliang25/morphe-patches/commit/5b54f94f7b4e4cebb54d94101bc00ca048bf0a24)), closes [#11](https://github.com/andrewliang25/morphe-patches/issues/11)",
-  "download_url": "https://github.com/andrewliang25/morphe-patches/releases/download/v1.0.0-dev.5/patches-1.0.0-dev.5.mpp",
+  "created_at": "2026-07-25T04:02:12",
+  "description": "## [1.0.0-dev.6](https://github.com/andrewliang25/morphe-patches/compare/v1.0.0-dev.5...v1.0.0-dev.6) (2026-07-25)\n\n### 🐛 Bug Fixes\n\n* Retarget Hide Home modules to the feed state (x72.h$a) ([c3fe14a](https://github.com/andrewliang25/morphe-patches/commit/c3fe14a8765b3c3a5a0633a301fcdf5c56991f7d))",
+  "download_url": "https://github.com/andrewliang25/morphe-patches/releases/download/v1.0.0-dev.6/patches-1.0.0-dev.6.mpp",
   "signature_download_url": "",
-  "version": "1.0.0-dev.5"
+  "version": "1.0.0-dev.6"
 }

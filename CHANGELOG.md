@@ -1,3 +1,9 @@
+## [1.0.0-dev.6](https://github.com/andrewliang25/morphe-patches/compare/v1.0.0-dev.5...v1.0.0-dev.6) (2026-07-25)
+
+### 🐛 Bug Fixes
+
+* Retarget Hide Home modules to the feed state (x72.h$a) ([c3fe14a](https://github.com/andrewliang25/morphe-patches/commit/c3fe14a8765b3c3a5a0633a301fcdf5c56991f7d))
+
 ## [1.0.0-dev.5](https://github.com/andrewliang25/morphe-patches/compare/v1.0.0-dev.4...v1.0.0-dev.5) (2026-07-25)
 
 ### 🚀 Updated App Support
