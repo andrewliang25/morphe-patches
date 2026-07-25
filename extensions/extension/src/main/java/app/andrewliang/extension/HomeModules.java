@@ -1,5 +1,7 @@
 package app.andrewliang.extension;
 
+import android.util.Log;
+
 import java.util.HashSet;
 import java.util.Set;
 
@@ -11,28 +13,42 @@ import java.util.Set;
  * type this helper flags — the extension only makes the String decision (it cannot reference
  * the obfuscated LINE module classes).
  *
- * EXPERIMENTAL blocklist for the test-build loop: hides the strong candidate types for the
- * bottom-of-Home ad, 即時夯話題 (real-time hot topics), and recommended stickers. Narrow this
- * to the confirmed types once device testing maps each section to its type.
+ * DIAGNOSTIC BUILD: every module type encountered is logged to logcat under tag
+ * "MorpheHomeModules", so the real type strings of the visible Home sections can be captured
+ * on device (the type -> visible-section mapping can't be determined statically). Also logs a
+ * one-time marker when the filter runs, so we can tell "filter ran but nothing matched" apart
+ * from "filter never ran (wrong injection point)". Capture with:
+ *   adb logcat -s MorpheHomeModules
+ * Once the real types are known, set the blocklist to them and remove the logging.
  */
 public final class HomeModules {
 
     private HomeModules() {}
 
+    private static final String TAG = "MorpheHomeModules";
+
     private static final Set<String> HIDDEN = new HashSet<>();
 
     static {
-        // Ad modules (bottom-of-Home ad candidates).
+        // Candidate blocklist (unconfirmed) — bottom ad + recommended content.
         HIDDEN.add("HomePerformanceAd");
         HIDDEN.add("AdModel");
-        // Content-recommendation candidates (即時夯話題 / recommended stickers).
         HIDDEN.add("HomeContentsRecommendation");
         HIDDEN.add("HomeFeedMatomeCarousel");
         HIDDEN.add("HomeFeedMatomeSingle");
     }
 
+    /** DIAGNOSTIC: called once at filter entry so "ran but empty/unmatched" is distinguishable
+     *  from "never ran". Returns the list unchanged. */
+    public static java.util.List onEnter(java.util.List modules) {
+        Log.i(TAG, "filterHomeModules ENTER size=" + (modules == null ? "null" : modules.size()));
+        return modules;
+    }
+
     /** @return true if a Home module of this type should be hidden. */
     public static boolean shouldHide(String type) {
-        return type != null && HIDDEN.contains(type);
+        boolean hide = type != null && HIDDEN.contains(type);
+        Log.i(TAG, "module type=" + type + " hide=" + hide);
+        return hide;
     }
 }

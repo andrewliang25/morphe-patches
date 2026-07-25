@@ -53,6 +53,8 @@ val hideHomeModulesPatch = bytecodePatch(
         filter.addInstructions(
             0,
             """
+                invoke-static {p0}, Lapp/andrewliang/extension/HomeModules;->onEnter(Ljava/util/List;)Ljava/util/List;
+                move-result-object p0
                 new-instance v0, Ljava/util/ArrayList;
                 invoke-direct {v0}, Ljava/util/ArrayList;-><init>()V
                 invoke-interface {p0}, Ljava/util/List;->iterator()Ljava/util/Iterator;
