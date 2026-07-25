@@ -1,6 +1,6 @@
 /*
  * Copyright 2025 Morphe.
- * https://github.com/MorpheApp/morphe-patches-template
+ * https://github.com/MorpheApp/morphe-patches
  */
 
 package util

@@ -1,3 +1,9 @@
+# macOS
+.DS_Store
+
+# Local decompilation / scratch workspace (large, non-source, reference only)
+work/
+
 ### Java template
 # Compiled class file
 *.class
