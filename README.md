@@ -54,6 +54,10 @@ Or manually add this repository url as a patch source in Morphe: https://github.
 To build Andrew's Patches,
 you can follow the [Morphe documentation](https://github.com/MorpheApp/morphe-documentation).
 
+## 🙏 Special thanks
+
+- [@f870103](https://github.com/f870103) — for lending a LINE account for testing.
+
 ## 📜 License
 
 Andrew's Patches are licensed under the [GNU General Public License v3.0](LICENSE)
