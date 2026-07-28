@@ -92,4 +92,3 @@ Fingerprint authoring relies on inspecting LINE's bytecode.
 These live outside the repo / are gitignored:
 
 - **`work/decompiled-line-<version>/`** (gitignored) — decompiled LINE. `apktool/` has smali (what fingerprints match against) + resources; `jadx/` has readable Java for understanding logic. Regenerate with `apktool d` / `jadx` from `work/apkm-extract/base.apk`. Anchor grep across `apktool/smali*` for strings/classes.
-- **LIME-Reborn** (`../LIME-Reborn`) — a runtime **Xposed/LSPatch** module that hooks the same LINE app. Great prior art for *what* to patch: `app/src/.../hooks/*.java` (RemoveAds, PreventMarkAsRead, KeepUnread, …) and `hooks/Constants.java` (obfuscated target class/method names). Caveat: it hooks at runtime, so hooks that touch framework classes (e.g. `Notification.Builder`) or build runtime UI do **not** port to Morphe's ahead-of-time bytecode approach.
