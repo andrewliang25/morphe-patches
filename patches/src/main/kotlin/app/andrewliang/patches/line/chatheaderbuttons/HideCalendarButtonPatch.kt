@@ -2,15 +2,17 @@ package app.andrewliang.patches.line.chatheaderbuttons
 
 import app.andrewliang.patches.shared.Constants.COMPATIBILITY_LINE
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.extensions.InstructionExtensions.removeInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.removeInstructions
 import app.morphe.patcher.patch.bytecodePatch
+import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
 
 @Suppress("unused")
 val hideCalendarButtonPatch = bytecodePatch(
     name = "Hide calendar button",
     description = "Removes every LINE Calendar button: the one in the Chats-tab header, and the " +
         "four inside a chat room — the top toolbar, the + attach menu, the slide-out chat menu, " +
-        "and the message long-press menu.",
+        "and the message long-press menu. Also hides the related \"Events\" row in the chat menu.",
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_LINE)
@@ -65,5 +67,17 @@ val hideCalendarButtonPatch = bytecodePatch(
                 return-object v0
             """,
         )
+
+        // 6. Chat-menu "Events" row (a separate feature folded in by request): the row is a shared
+        //    d00.z item built in ChatHistoryMenuFragment, gated by the boolean it loads from
+        //    Lyz/s4;->l:Z right before the Events label. Replace that `iget-boolean` (matched
+        //    filter [0]) with a const 0 into the same destination register, so only the Events row
+        //    is dropped. The loaded value flows straight into the row's isVisible ctor arg.
+        val eventsFlagMatch = EventsMenuRowFingerprint.instructionMatches.first()
+        val eventsFlagReg = (eventsFlagMatch.instruction as TwoRegisterInstruction).registerA
+        EventsMenuRowFingerprint.method.apply {
+            removeInstruction(eventsFlagMatch.index)
+            addInstructions(eventsFlagMatch.index, "const/16 v$eventsFlagReg, 0x0")
+        }
     }
 }
