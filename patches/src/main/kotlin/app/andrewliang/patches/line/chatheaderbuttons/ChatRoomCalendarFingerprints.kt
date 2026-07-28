@@ -71,20 +71,3 @@ internal object ContextMenuCalendarProviderFingerprint : Fingerprint(
         fieldAccess(definingClass = "Lj51/c;", name = "CALENDAR"),
     ),
 )
-
-/**
- * The slide-out chat menu's **"Events"** row (a separate LINE feature from Calendar — it opens a
- * server-configured web page, not the native calendar; folded into this patch by request). The
- * row is a generic `d00.z` item built inside `ChatHistoryMenuFragment`, so it has no dedicated row
- * class to neuter; instead its visibility is decided at the build site by the boolean field
- * `Lyz/s4;->l:Z` (the only read of that field in the whole app), which is loaded and then passed as
- * the row's isVisible arg immediately before the Events label `chatmenu_mainlist_button_events`
- * (0x7f150dfa). We match that `iget-boolean` (in program order, right before the Events label) and
- * force the loaded value false, dropping only the Events row.
- */
-internal object EventsMenuRowFingerprint : Fingerprint(
-    filters = listOf(
-        fieldAccess(definingClass = "Lyz/s4;", name = "l"),
-        literal(0x7f150dfa),
-    ),
-)
