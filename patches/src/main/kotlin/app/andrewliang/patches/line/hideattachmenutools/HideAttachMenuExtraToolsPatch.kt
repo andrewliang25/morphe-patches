@@ -1,0 +1,31 @@
+package app.andrewliang.patches.line.hideattachmenutools
+
+import app.andrewliang.patches.shared.Constants.COMPATIBILITY_LINE
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.patch.bytecodePatch
+
+@Suppress("unused")
+val hideAttachMenuExtraToolsPatch = bytecodePatch(
+    name = "Hide attach menu extra tools",
+    description = "Removes all the server-provided extra tools from a chat room's + attach menu " +
+        "(Poll, Reservation, Schedule, Ladder shuffle, and any others). The built-in tiles " +
+        "(camera, gallery, files, contact, etc.) are unaffected.",
+    default = true,
+) {
+    compatibleWith(COMPATIBILITY_LINE)
+
+    // Every server-driven attach service is rendered by the shared class hg1.d, shown only when its
+    // per-item gate f(...) returns true. hg1.d is the sole renderer of these services, so forcing
+    // its f() to unconditionally return false drops the entire set — with no dependency on any
+    // server channel id (the reason a single-service patch can't be stable). p0 is `this`;
+    // clobbering it is fine since we return immediately.
+    execute {
+        AttachMenuServiceGateFingerprint.method.addInstructions(
+            0,
+            """
+                const/4 p0, 0x0
+                return p0
+            """,
+        )
+    }
+}
