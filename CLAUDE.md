@@ -23,6 +23,8 @@ There is no test suite. Correctness is validated by applying the built `.mpp` wi
 
 `settings.gradle.kts` pulls the `app.morphe.patches` Gradle plugin and patcher libraries from GitHub Packages (`maven.pkg.github.com/MorpheApp/registry`). Building requires `gpr.user`/`gpr.key` Gradle properties **or** `GITHUB_ACTOR`/`GITHUB_TOKEN` env vars with a PAT that can read those packages.
 
+**Local build/verify without a PAT:** if the patcher/plugin artifacts are already in the Gradle cache, build fully offline with *dummy* credential values — `./gradlew :patches:buildAndroid --offline --no-daemon -Pgpr.user=dummy -Pgpr.key=dummy` (the settings plugin only needs the credentials to be non-null when nothing is fetched). Then apply with the bundled Morphe CLI (`java -jar work/morphe-desktop-*.jar patch --exclusive -e "<name>" -o work/out.apk … work/apkm-extract/base.apk`) and inspect the patched dex with **dexlib2** (no `baksmali` CLI ships — STRIP_FAST writes modified classes into a small fresh `classes.dex`). Full recipe + the LINE class/anchor map live in **`docs/line-patch-map.md`**.
+
 ## Architecture
 
 Two Gradle modules (`settings.gradle.kts`):
@@ -46,6 +48,9 @@ The patching model is: **fingerprint → locate method → inject smali → opti
 ### Patcher API notes (hard-won)
 
 - **Finding instruction indices:** there is no `indexOfFirstInstructionOrThrow` (that's ReVanced). Use `fingerprint.instructionMatches[i].index` — one match per instruction `filter`, in program order — or `instructionMatchesOrNull` for best-effort. `.method` and `.instructionMatches` are context-receiver accessors usable inside `execute { }`.
+- **Instruction filter builders** (imported from `app.morphe.patcher`): `fieldAccess`, `methodCall`, `string`, `literal`, `opcode`, `checkCast`, `instanceOf`, `newInstance`. Two *identical* filters match the first two occurrences in program order — use this to grab both sites of a repeated `sget`+`add` pair in one method (see `hidewallettab`). `fieldAccess` matches both reads and writes, so pin the ctor (parameters) when a field is also `sput` in an enum `<clinit>`.
+- **Reading a matched instruction's operands:** `fingerprint.instructionMatches[i].instruction` returns the dexlib2 `Instruction`; cast it (e.g. `as TwoRegisterInstruction`) to read `.registerA`. Lets you "replace this `iget` with a `const 0` into its *own* destination register" without hardcoding the register (see `hideevents`: `removeInstruction(idx)` + `addInstructions(idx, "const/16 v$reg, 0x0")`).
+- **Hiding a UI list item:** LINE lists (attach-menu tiles, chat-menu rows, context-menu actions) render each entry through a per-item availability predicate; force *that* predicate false rather than editing the (often shared or looping) list builder. To hide a **whole server-driven category**, neuter the shared renderer's gate — stable, no ids (see `hideattachmenutools` → `hg1.d.f()`); to hide **one** server item you must match an id/type that can drift server-side — fragile, avoid. Details/anchors in `docs/line-patch-map.md`.
 - **Register operand limits:** `invoke-*` (format 35c) and `iget/iput` (22c) take **4-bit register operands — only v0–v15**. Referencing v16+ there is silently dropped/mis-assembled (the filter/injection appears to apply but does nothing). Use a low free register, or the `/range` instruction variants.
 - **Don't inject a backward-branching loop into an existing method** — it can corrupt that method's branch layout and throw a runtime `VerifyError` ("target dex pc … not at instruction start"). Instead extract the loop into a **new** method (`mutableClassDefBy(desc).methods.add(MutableMethod(ImmutableMethod(...)))`, then `addInstructions`) and inject only a branchless `invoke-static` + `move-result` at the call site (see `hidehomemodules`).
 - **Targeting a method in an obfuscated class:** fingerprint a *sibling* on a stable anchor (a non-obfuscated framework/API call or string literal), then `mutableClassDefBy(fp.method.definingClass)` and select the target method by descriptor (`returnType` + `parameterTypes`) — see `keepunread` anchoring on `TalkServiceClient.j1`.
@@ -80,7 +85,10 @@ Releases are fully automated by **semantic-release** (`.releaserc`, `.github/wor
 
 ## Decompiled reference & prior art
 
-Fingerprint authoring relies on inspecting LINE's bytecode. These live outside the repo / are gitignored:
+Fingerprint authoring relies on inspecting LINE's bytecode.
+
+- **`docs/line-patch-map.md`** (tracked) — the LINE `+` attach menu architecture (static `hg1.r` tiles vs server-driven `hg1.d` services), the Calendar vs Events vs Message-scheduler feature map, per-surface class/anchor references for the shipped patches, and the offline build + dexlib2 disassembly recipe. Update it when bumping the pinned LINE version (the obfuscated descriptors drift).
+
+These live outside the repo / are gitignored:
 
 - **`work/decompiled-line-<version>/`** (gitignored) — decompiled LINE. `apktool/` has smali (what fingerprints match against) + resources; `jadx/` has readable Java for understanding logic. Regenerate with `apktool d` / `jadx` from `work/apkm-extract/base.apk`. Anchor grep across `apktool/smali*` for strings/classes.
-- **LIME-Reborn** (`../LIME-Reborn`) — a runtime **Xposed/LSPatch** module that hooks the same LINE app. Great prior art for *what* to patch: `app/src/.../hooks/*.java` (RemoveAds, PreventMarkAsRead, KeepUnread, …) and `hooks/Constants.java` (obfuscated target class/method names). Caveat: it hooks at runtime, so hooks that touch framework classes (e.g. `Notification.Builder`) or build runtime UI do **not** port to Morphe's ahead-of-time bytecode approach.
