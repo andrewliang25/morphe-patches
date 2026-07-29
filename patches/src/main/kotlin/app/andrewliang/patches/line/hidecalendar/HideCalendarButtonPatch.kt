@@ -1,4 +1,4 @@
-package app.andrewliang.patches.line.chatheaderbuttons
+package app.andrewliang.patches.line.hidecalendar
 
 import app.andrewliang.patches.shared.Constants.COMPATIBILITY_LINE
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
@@ -7,7 +7,7 @@ import app.morphe.patcher.patch.bytecodePatch
 
 @Suppress("unused")
 val hideCalendarButtonPatch = bytecodePatch(
-    name = "Hide LINE Calendar",
+    name = "Hide calendar buttons",
     description = "Removes every LINE Calendar button inside the messenger: the one in the " +
         "Chats-tab header, and the four inside a chat room — the top toolbar, the + attach menu, " +
         "the slide-out chat menu, and the message long-press menu.",

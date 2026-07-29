@@ -1,15 +1,42 @@
-package app.andrewliang.patches.line.chatheaderbuttons
+package app.andrewliang.patches.line.hidecalendar
 
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.fieldAccess
 import app.morphe.patcher.literal
+import app.morphe.patcher.methodCall
 
 /**
- * Fingerprints for the four calendar buttons that live INSIDE a chat room (as opposed to the
- * Chats-tab header button handled by [CalendarButtonFingerprint]). Each anchors on a token that
- * survives LINE's obfuscation — a Kotlin enum-constant name (`CALENDAR` / `CALENDAR_BUTTON`) or a
- * resource id — so the fingerprint names itself in a stack trace if it ever stops matching.
+ * Fingerprints for every LINE Calendar button inside the messenger. One lives in the Chats-tab
+ * header ([CalendarButtonFingerprint]); the other four live INSIDE a chat room (the top toolbar,
+ * the "+" attach menu, the slide-out chat menu, and the message long-press menu). Each anchors on
+ * a token that survives LINE's obfuscation — a Kotlin enum-constant name (`CALENDAR` /
+ * `CALENDAR_BUTTON`) or a resource id — so the fingerprint names itself in a stack trace if it
+ * ever stops matching.
  */
+
+// The Chats-tab header button enum (`az0.q`); the constant names survive obfuscation.
+private const val BUTTON_ENUM = "Laz0/q;"
+
+// The header button list is a `fb8/b` (the `add` calls target `Lfb8/b;`). The `add`'s
+// definingClass is pinned to disambiguate from the green-dot icon set (ChatTabHeaderStateImpl
+// $greenDotVisibleIconSet), which references the same constants but adds to a different list
+// class (`fb8/j`) — without this the pair could silently match the green-dot method instead of
+// the header builder.
+private const val HEADER_LIST_ADD = "Lfb8/b;"
+
+/**
+ * The Chats-tab header calendar button is added in the ChatTabHeaderStateImpl constructor
+ * (obfuscated) as `sget-object <az0.q.CALENDAR>` + `add(...)` to the header button list. That
+ * pair uniquely lands in the constructor (the enum's WhenMappings table accesses the same
+ * constant but follows it with `ordinal()`, not `add`). See [CommunityButtonFingerprint] in the
+ * `chatheaderbuttons` package for the sibling OPEN_CHAT button anchored the same way.
+ */
+internal object CalendarButtonFingerprint : Fingerprint(
+    filters = listOf(
+        fieldAccess(definingClass = BUTTON_ENUM, name = "CALENDAR"),
+        methodCall(definingClass = HEADER_LIST_ADD, name = "add"),
+    ),
+)
 
 /**
  * The "+" attach-menu calendar tile is `hg1.b` (CalendarButtonType). We match its constructor —
