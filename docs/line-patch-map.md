@@ -122,7 +122,7 @@ icons and destinations all come from the server payload, **not** from local reso
 Easy to conflate; they are separate features with separate entry points, gates, and destinations.
 
 **Calendar** (native LINE Calendar; strings `line_calendar_*`; feature gate interface `jp0.d`, impl
-`pp0.g`). Five in-messenger entry points, all removed by **"Hide LINE Calendar"**:
+`pp0.g`). Five in-messenger entry points, all removed by **"Hide calendar buttons"**:
 
 | Surface | Class / anchor | Hide technique |
 |---|---|---|
@@ -150,7 +150,7 @@ The header button row (Chats tab, `com.linecorp.line.chattab.header.ChatTabHeade
 `gw1.f`) is built from the Kotlin enum **`az0.q`** (constants `AI_FRIEND, ALBUM, CALENDAR, OPEN_CHAT,
 PLUS_MENU` — names survive obfuscation). Buttons are `sget-object <az0.q const>` + `add(...)` into a
 `ListBuilder` `fb8.b`. A separate green-dot icon `Set` uses `fb8.j` and does **not** include
-`CALENDAR`. To hide a header button, remove its `sget`+`add` pair (see "Hide LINE Calendar" header
+`CALENDAR`. To hide a header button, remove its `sget`+`add` pair (see "Hide calendar buttons" header
 row, and the sibling "Hide community button" which targets `OPEN_CHAT`).
 
 ---
@@ -159,7 +159,7 @@ row, and the sibling "Hide community button" which targets `OPEN_CHAT`).
 
 | Patch (name) | Package | Targets |
 |---|---|---|
-| Hide LINE Calendar | `line.chatheaderbuttons` | the 5 Calendar surfaces above |
+| Hide calendar buttons | `line.hidecalendar` | the 5 Calendar surfaces above |
 | Hide Events button | `line.hideevents` | the `d00.z` Events chat-menu row |
 | Hide Transfer button | `line.hidetransfer` | `hg1.k` (`+` Transfer/LINE Pay tile) |
 | Hide LINE GIFT button | `line.hidegift` | `hg1.h` (`+` LINE GIFT tile) |
