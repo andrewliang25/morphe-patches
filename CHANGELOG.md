@@ -1,3 +1,13 @@
+## [1.1.0-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v1.0.0...v1.1.0-dev.1) (2026-07-29)
+
+### ✨ New Features
+
+* also hide the chat-menu "Events" row ([a7e592f](https://github.com/andrewliang25/morphe-patches/commit/a7e592fb61301b5e0bbc701713f9e8672eb62940))
+* hide all server-driven extra tools in the + attach menu ([b8dc6a0](https://github.com/andrewliang25/morphe-patches/commit/b8dc6a0f917e55c1838fe624b310a0b9f417842c))
+* hide in-chat-room calendar buttons ([bf7b46e](https://github.com/andrewliang25/morphe-patches/commit/bf7b46e2f8b3dac840d12486b030b7f453da57eb))
+* hide the Transfer and LINE GIFT buttons in the + attach menu ([af8b4df](https://github.com/andrewliang25/morphe-patches/commit/af8b4df3419361738a5f5314d4d3dd3347d991d1))
+* split Events into its own patch; rename calendar patch to "Hide LINE Calendar" ([9370397](https://github.com/andrewliang25/morphe-patches/commit/93703972b1e0fe0a641cafc2fb2ee3a4b194d09e))
+
 ## 1.0.0 (2026-07-25)
 
 ### 🐛 Bug Fixes
