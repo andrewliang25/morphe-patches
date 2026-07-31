@@ -172,3 +172,19 @@ its 2nd call's `MethodReference` to resolve `e13.a.d()` at apply time. Verified 
 (album promo, app-icon seasonal) independently of `e13.a.d()`. If any premium surface survives on
 device, neuter that bit too and record it here. Re-verify all descriptors when bumping the pinned
 LINE version.
+
+### Known survivors: premium unsend upsells (patch `Hide premium unsend upsells`)
+
+Two premium-unsend surfaces bypass `e13.a.d()` (they read config directly), so the master lever
+doesn't hide them — a separate supplementary patch does:
+
+- **"Unsend discreetly" icon + label** in `UnsendMessageLdsDialog.onViewCreated`. Shown only in the
+  `instance-of …$a$c` (UnsendSilently) branch (the dialog gates on the *variant type*, not on LYP
+  availability — it calls `l()` only to pick the icon). Anchored on the unique string id
+  `0x7f150bff`; the guarding `instance-of` is forced false so the icon/label take the hide branch.
+  The dialog's real action buttons (`m3()`/`r3()` "Unsend", `close`) are separate views and remain.
+- **"How to unsend discreetly" promo link** built in the `wi1.j4` constructor, gated on
+  `ne1.k2.a(i1.W() && i1.X(), …) == SUPPORTED_CHAT`. `i1.W()` is the shared bit `e13.a.d()` wraps,
+  read here directly (one of the 7 non-`e13.a` `i1.W()` readers). Anchored via the unique promo
+  string id `0x7f150bf8` → class `wi1.j4`; the `k2.a` first argument is forced false so the link
+  handler stays null. Obfuscated `Lne1/k2;` drifts — re-verify on version bump.
