@@ -18,8 +18,8 @@ val hidePremiumUnsendPatch = bytecodePatch(
         "Premium\" (they read config directly instead of the market-availability flag): the " +
         "\"Unsend discreetly\" button in the unsend-message confirmation dialog, and the " +
         "\"How to unsend discreetly\" promotion link shown after unsending. The dialog keeps its " +
-        "ordinary \"Unsend\" and \"Close\" buttons. Off by default.",
-    default = false,
+        "ordinary \"Unsend\" and \"Close\" buttons.",
+    default = true,
 ) {
     compatibleWith(COMPATIBILITY_LINE)
 
