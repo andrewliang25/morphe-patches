@@ -57,16 +57,15 @@ current `LypUserStatus` **is** `Subscribed` (`instance-of Lt13/i$b;`) **AND** pr
 
 `u()` internally = `subscribed(above) && !s(feature).a()`. Note `s/u/A` share the erased bytecode
 descriptor `(Lt13/b;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;` — only `u()` boxes a
-`Boolean` (the sole `Ljava/lang/Boolean;->valueOf` call in the class), which is how the unlock patch
-disambiguates it.
+`Boolean` (the sole `Ljava/lang/Boolean;->valueOf` call in the class).
 
 ### Feature enum `t13.b`
 
 Values (matched by `.name()` — string anchors): `AI_TALK_SUGGESTION, ALBUM, APP_ICON, CALL_STT,
 FONT, FRIENDS_MANAGEMENT, LINE_AI, MANGA, MESSAGE_BACKUP, MESSAGE_EDIT, MESSAGE_SCHEDULING, NETFLIX,
 PREMIUM_BLOCK, PREMIUM_MUTE_MESSAGE, PREMIUM_UNSEND, RING_TONE, STICKER_PREMIUM_BASIC, SUBPROFILE,
-YJ_SERVICES`. Which accessor a feature reads is what determines whether the client `u()` patch can
-touch it: `SUBPROFILE`/`MESSAGE_EDIT` → `u()`; `APP_ICON`/`FONT`/`RING_TONE` → mostly `s()`/`A()`.
+YJ_SERVICES`. Which accessor a feature reads varies: `SUBPROFILE`/`MESSAGE_EDIT` → `u()`;
+`APP_ICON`/`FONT`/`RING_TONE` → mostly `s()`/`A()`.
 
 ### `LypUserStatus` (`t13.i`, `com.linecorp.line.lyppremium.model.LypUserStatus`)
 
@@ -114,27 +113,19 @@ non-obfuscated class refs inside `b13.l` (`LypPremiumSubscriptionActivity`,
 
 ---
 
-## What patching can / can't do
+## Unlocking is not viable (tested)
 
-- **Can (client-only):** the `Unlock premium features (experimental)` patch forces
-  `b13.l.u(Feature) -> Boolean` to `true`, which flips the client per-feature availability gate for
-  features whose consumers read `u()`. This is UI/behavior-only.
-- **Not covered by the boolean patch:** features gated through the object-returning `s()`/`A()`
-  accessors (e.g. `APP_ICON`, `FONT`), or read directly off raw status via `o()`/`a()`. Forcing
-  `s()`/`A()` to a boolean would `ClassCastException` their callers — they must be handled
-  per-feature, not with a blanket flip.
-- **Can't (server-enforced):** anything the server delivers or authorizes — premium stickers/themes
-  download, purchases, cloud-backup retention windows, message scheduling — stays enforced
-  regardless of the client flag.
+Forcing the client gate `b13.l.u(Feature) -> Boolean` to `true` was built and **tested on device —
+it does not unlock anything**, confirming the analysis: the gate is a read-model, and every premium
+*action* is server-enforced. That experimental patch has been **dropped**. Why it can't work:
 
-### Empirical results (fill in after apply-and-test)
+- Features gated through the object-returning `s()`/`A()` accessors (e.g. `APP_ICON`, `FONT`) or read
+  directly off raw status via `o()`/`a()` are not even reached by a `u()` flip; forcing `s()`/`A()`
+  to a boolean would `ClassCastException` their callers.
+- Anything the server delivers or authorizes — premium stickers/themes download, purchases,
+  cloud-backup retention windows, message scheduling — stays enforced regardless of any client flag.
 
-Record here which `u()`-gated features actually unlocked on a non-premium account vs. stayed
-server-denied, once the experimental patch has been applied and installed. If the compelling
-features (`APP_ICON`/`FONT`) turn out to route through `s()`/`A()` rather than `u()` — meaning the
-patch does little visible — that is itself the finding, and a per-feature approach (fabricating the
-"available" `t13.k` returned by `s()`) would be the follow-up. Update this section and re-verify the
-descriptors whenever the pinned LINE version is bumped.
+The practical direction is therefore **hiding** premium, not unlocking it (below).
 
 ---
 
