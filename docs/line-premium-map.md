@@ -135,3 +135,40 @@ features (`APP_ICON`/`FONT`) turn out to route through `s()`/`A()` rather than `
 patch does little visible — that is itself the finding, and a per-feature approach (fabricating the
 "available" `t13.k` returned by `s()`) would be the follow-up. Update this section and re-verify the
 descriptors whenever the pinned LINE version is bumped.
+
+---
+
+## Disabling premium (this bundle: `Disable LINE Premium`)
+
+The inverse of unlocking: since premium can't be unlocked, the `Disable LINE Premium` patch **hides
+every premium surface** — upsell popups/banners, badges/locks, the "LINE Premium" settings page and
+its entry rows, and the subscribe/manage flows — by forcing LINE's own market-availability flag off.
+
+**Master lever:** `e13.a.d()Z` (`return a().W()`, i.e. `jw4.i1.W()`) — the config bit meaning "LYP
+premium is available in this market". The facade reads it three ways that **all cascade from `d()`**:
+
+| Facade read | Derivation | Effect when `d()` = false | Consumers |
+|---|---|---|---|
+| `z()` | `return H().d()` | `false` ("premium enabled" off) | 35 entry-point gates hide |
+| `l()` | `return H().b()`; `e13.a.b()` returns `UNAVAILABLE` when `!d()` | provider = `UNAVAILABLE` | 53 region switches take the handled UNAVAILABLE/hide branch |
+| `o()`/`a()` | status mapper `j13.m`: `if (!d()) return i$d` | status = `Unavailable` | 10 `instanceof i$d` sites hide |
+
+So one edit — force `e13.a.d()` to `return false` — reproduces the exact state the app already ships
+to non-premium markets. **Crash-safe** because that state is the app's own default: `UNAVAILABLE` /
+`Unavailable` are explicitly-handled hide branches everywhere; no entry-point path has an unguarded
+`check-cast` to `i$b`/`i$a`, and there's no retry-until-available loop.
+
+**Premium-scoped:** `e13.a.d()` has only 4 direct callers, all in the premium module. The shared
+underlying `jw4.i1.W()` is read directly by 6 non-premium features (profile, etc.) — those are
+**not** touched (the patch neuters `e13.a.d()`, not `i1.W()`).
+
+**Anchoring (no hardcoded obfuscated names):** locate facade `b13.l` via the unique `"LITE_ENJOY"`
+string, then read its `z()` accessor — uniquely the parameterless `()Z` method with exactly two
+`invoke-virtual` instructions (`return H().d()`; siblings `h()`/`y()`/`B()` have four) — and take
+its 2nd call's `MethodReference` to resolve `e13.a.d()` at apply time. Verified on 26.11.0: only
+`e13.a.d()` is rewritten (to `const/4 v0,0x0` / `return v0`); the facade is left unchanged.
+
+**Not covered / follow-up:** a secondary market bit `jw4.m2…a().U().O()` gates a couple of surfaces
+(album promo, app-icon seasonal) independently of `e13.a.d()`. If any premium surface survives on
+device, neuter that bit too and record it here. Re-verify all descriptors when bumping the pinned
+LINE version.
