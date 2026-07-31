@@ -169,11 +169,14 @@ LINE version.
 Two premium-unsend surfaces bypass `e13.a.d()` (they read config directly), so the master lever
 doesn't hide them — a separate supplementary patch does:
 
-- **"Unsend discreetly" icon + label** in `UnsendMessageLdsDialog.onViewCreated`. Shown only in the
-  `instance-of …$a$c` (UnsendSilently) branch (the dialog gates on the *variant type*, not on LYP
-  availability — it calls `l()` only to pick the icon). Anchored on the unique string id
-  `0x7f150bff`; the guarding `instance-of` is forced false so the icon/label take the hide branch.
-  The dialog's real action buttons (`m3()`/`r3()` "Unsend", `close`) are separate views and remain.
+- **"Unsend discreetly" button** in `UnsendMessageLdsDialog.onViewCreated` (shown only for the
+  `…$a$c` UnsendSilently variant; the dialog gates on the *variant type*, not on LYP availability).
+  It is three views: the green button `r3()` plus the icon `n3()` + label `o3()`. Two edits, anchored
+  on the unique string id `0x7f150bff`: (a) force the guarding `instance-of` false so `n3()`/`o3()`
+  take the hide branch; (b) `setVisibility(GONE)` on the green button `r3()` inside its
+  `if (r3() != null)` guard. `r3()` exists only in the silent dialog —
+  `NormalUnsendMessageLdsDialog.r3()` returns `null` — so this can't affect the ordinary dialog, and
+  the silent dialog keeps its working "Unsend" (`p3()`) and "Close" (`m3()`) buttons.
 - **"How to unsend discreetly" promo link** built in the `wi1.j4` constructor, gated on
   `ne1.k2.a(i1.W() && i1.X(), …) == SUPPORTED_CHAT`. `i1.W()` is the shared bit `e13.a.d()` wraps,
   read here directly (one of the 7 non-`e13.a` `i1.W()` readers). Anchored via the unique promo

@@ -4,7 +4,9 @@ import app.andrewliang.patches.shared.Constants.COMPATIBILITY_LINE
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.bytecodePatch
+import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
@@ -14,24 +16,49 @@ val hidePremiumUnsendPatch = bytecodePatch(
     name = "Hide premium unsend upsells",
     description = "Removes the two LYP premium-unsend upsells that survive \"Disable LINE " +
         "Premium\" (they read config directly instead of the market-availability flag): the " +
-        "\"Unsend discreetly\" button/label in the unsend-message confirmation dialog, and the " +
-        "\"How to unsend discreetly\" promotion link shown after unsending. The ordinary unsend " +
-        "dialog and its buttons are unaffected. Off by default.",
+        "\"Unsend discreetly\" button in the unsend-message confirmation dialog, and the " +
+        "\"How to unsend discreetly\" promotion link shown after unsending. The dialog keeps its " +
+        "ordinary \"Unsend\" and \"Close\" buttons. Off by default.",
     default = false,
 ) {
     compatibleWith(COMPATIBILITY_LINE)
 
     execute {
-        // --- 1) "Unsend discreetly" icon + label in UnsendMessageLdsDialog.onViewCreated ---
-        // The discreet icon (n3) + label (o3) are shown only in the `instance-of …$a$c`
-        // (UnsendSilently) branch, then hidden in the else. Force the instance-of result to 0 so
-        // the else (hide) branch always runs; the dialog's real action buttons are separate views.
+        // --- 1) The premium "Unsend discreetly" affordance in UnsendMessageLdsDialog.onViewCreated.
+        // The affordance is three views shown only for the UnsendSilently variant: the green button
+        // r3(), plus the icon n3() and label o3() inside/beside it. We (a) force the guarding
+        // `instance-of …$a$c` false so n3()/o3() take the hide branch, and (b) hide the green button
+        // r3() itself. r3() exists ONLY in the silent dialog — NormalUnsendMessageLdsDialog.r3()
+        // returns null and onViewCreated wires r3() under an `if (r3() != null)` guard — so hiding it
+        // can't affect the ordinary dialog, which keeps its Unsend/Close buttons (p3()/m3()).
+        val dialogMethod = UnsendDiscreetlyButtonFingerprint.method
+        val instructions = dialogMethod.implementation!!.instructions.toList()
+
+        // (b) first (higher index than the instance-of, so it doesn't shift that match's index):
+        // r3() is the Button-returning no-arg call whose result is null-checked (invoke ->
+        // move-result-object -> if-eqz). m3()/p3() are used without a null check. Hide it inside the
+        // non-null branch. v0 is a safe scratch: the next original instruction overwrites it.
+        val r3CallIndex = instructions.indices.firstOrNull { index ->
+            val insn = instructions[index]
+            val ref = (insn as? ReferenceInstruction)?.reference as? MethodReference
+            insn.opcode == Opcode.INVOKE_VIRTUAL &&
+                ref?.returnType == "Landroid/widget/Button;" &&
+                ref.parameterTypes.isEmpty() &&
+                instructions.getOrNull(index + 2)?.opcode == Opcode.IF_EQZ
+        } ?: throw PatchException("UnsendMessageLdsDialog.onViewCreated: r3() null-check not found")
+        val buttonReg = (instructions[r3CallIndex + 1] as OneRegisterInstruction).registerA
+        dialogMethod.addInstructions(
+            r3CallIndex + 3,
+            """
+                const/16 v0, 0x8
+                invoke-virtual {v$buttonReg, v0}, Landroid/view/View;->setVisibility(I)V
+            """,
+        )
+
+        // (a) force the discreet-variant `instance-of` false -> hides icon n3() + label o3().
         UnsendDiscreetlyButtonFingerprint.instructionMatches.first().let { instanceOfMatch ->
             val reg = (instanceOfMatch.instruction as TwoRegisterInstruction).registerA
-            UnsendDiscreetlyButtonFingerprint.method.addInstructions(
-                instanceOfMatch.index + 1,
-                "const/16 v$reg, 0x0",
-            )
+            dialogMethod.addInstructions(instanceOfMatch.index + 1, "const/16 v$reg, 0x0")
         }
 
         // --- 2) "How to unsend discreetly" promo link (wi1.j4 constructor) ---
@@ -42,13 +69,13 @@ val hidePremiumUnsendPatch = bytecodePatch(
         val promoClass = mutableClassDefBy(UnsendPromoLinkFingerprint.method.definingClass)
         var promoPatched = false
         promoClass.methods.forEach forEachMethod@{ method ->
-            val instructions = method.implementation?.instructions?.toList() ?: return@forEachMethod
-            val callIndex = instructions.indexOfFirst { instruction ->
+            val methodInstructions = method.implementation?.instructions?.toList() ?: return@forEachMethod
+            val callIndex = methodInstructions.indexOfFirst { instruction ->
                 val ref = (instruction as? ReferenceInstruction)?.reference as? MethodReference
                 ref?.definingClass == "Lne1/k2;" && ref.name == "a"
             }
             if (callIndex < 0) return@forEachMethod
-            val firstArgReg = (instructions[callIndex] as FiveRegisterInstruction).registerC
+            val firstArgReg = (methodInstructions[callIndex] as FiveRegisterInstruction).registerC
             method.addInstructions(callIndex, "const/16 v$firstArgReg, 0x0")
             promoPatched = true
         }
