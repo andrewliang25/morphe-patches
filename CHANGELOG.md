@@ -1,3 +1,21 @@
+## [1.2.0-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v1.1.0...v1.2.0-dev.1) (2026-07-31)
+
+### ⚠ BREAKING CHANGES
+
+* drop non-functional unlock patch; enable Disable LINE Premium by default
+
+### 🐛 Bug Fixes
+
+* also hide the green "Unsend discreetly" button, not just its label ([dbfdb5b](https://github.com/andrewliang25/morphe-patches/commit/dbfdb5b63b2e900c8e33be89ac1a0c1fbaccfab9))
+
+### ✨ New Features
+
+* add Disable LINE Premium patch (hide all LYP upsells & entry points) ([c0244b4](https://github.com/andrewliang25/morphe-patches/commit/c0244b40fa040fa6f768ac2c5551028be4c06758))
+* add experimental LYP premium unlock patch + premium gating doc ([b7dcfca](https://github.com/andrewliang25/morphe-patches/commit/b7dcfca0291da09ad1c407364bcb1d73c699749a))
+* add Hide premium unsend upsells patch ([e5ce130](https://github.com/andrewliang25/morphe-patches/commit/e5ce130575e8772ba350680c83ce19bcb2af0ca8))
+* drop non-functional unlock patch; enable Disable LINE Premium by default ([38cea29](https://github.com/andrewliang25/morphe-patches/commit/38cea2951f07e35a429a8260f4a2359e050399e9))
+* enable Hide premium unsend upsells by default ([9d12e7b](https://github.com/andrewliang25/morphe-patches/commit/9d12e7bd6d84f6ac54d90ad836b7823f73bb3fe1))
+
 ## [1.1.0](https://github.com/andrewliang25/morphe-patches/compare/v1.0.0...v1.1.0) (2026-07-29)
 
 ### ✨ New Features
