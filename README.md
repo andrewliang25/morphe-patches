@@ -8,6 +8,9 @@ A collection of [Morphe](https://github.com/MorpheApp) patches, currently focuse
 [LINE](https://line.me) (`jp.naver.line.android`). Apply them with the Morphe CLI or
 Morphe Manager to build a modified APK.
 
+> 💡 **Don't want to build it yourself?** Grab ready-made patched apps from
+> [andrewliang25/patched-apps](https://github.com/andrewliang25/patched-apps/releases).
+
 > This is an independent project and is not affiliated with, endorsed by, or authored by
 > the Morphe open source project, LINE, or LY Corporation.
 
