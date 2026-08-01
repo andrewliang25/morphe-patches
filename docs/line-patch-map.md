@@ -164,7 +164,75 @@ row, and the sibling "Hide community button" which targets `OPEN_CHAT`).
 | Hide Transfer button | `line.hidetransfer` | `hg1.k` (`+` Transfer/LINE Pay tile) |
 | Hide LINE GIFT button | `line.hidegift` | `hg1.h` (`+` LINE GIFT tile) |
 | Hide attach menu extra tools | `line.hideattachmenutools` | all server-driven `hg1.d` services |
+| Redirect LINE Pay | `line.disablepay` | `PayLaunchActivity` / `PayLiffActivity` onCreate (see below) |
 
 Each is an independent, `default = true`, user-facing `bytecodePatch` — one feature (or one feature's
 full set of entry points) per patch, matching the bundle's convention (cf. *Hide Wallet tab*,
-*Disable VOOM*). None needs an extension (all are fixed-value / instruction-level edits).
+*Disable VOOM*). All but *Redirect LINE Pay* are fixed-value / instruction-level edits with no
+extension.
+
+## LINE Pay intake & the "Redirect LINE Pay" patch
+
+**Why redirect instead of disable:** the messenger can't run its own Pay flow on a re-signed build
+(the bundled VKey/V-Guard integrity check fails — see the integrity notes in `CLAUDE.md`). The
+patch (still packaged under `line.disablepay`, object `disablePayPatch`) forwards the payment to the
+user's **separately-installed standalone LINE Pay app** (unpatched → integrity passes) and then
+closes the in-app Pay screen. A failed hand-off degrades to the old "just close" behavior.
+
+### How an external pay URL enters LINE (decompiled 26.11.0)
+
+```
+merchant "LINE Pay" link  (line:// or https://line.me/R/…)
+  ► jp.naver.line.android.activity.schemeservice.LineSchemeServiceActivity   (EXPORTED router)
+  ► v98.d.d(...) dispatcher → pay handlers (gv3.j / on3.k / ru3.f)
+  ► iv3.a.b(ctx, ao3.b)  → Intent(PayLaunchActivity, data=line://pay/…)      [not exported]
+    iv3.a.c(...) / PayLiffActivity$a.a(...) → Intent(PayLiffActivity, extra "linepay.intent.extra.URI")
+```
+
+- **`PayLaunchActivity`** (`Lcom/linecorp/line/pay/base/PayLaunchActivity;`) — general front door; its
+  URL is `getIntent().getDataString()` (a `line://pay/…` scheme form).
+- **`PayLiffActivity`** (`Lcom/linecorp/line/pay/impl/liff/common/PayLiffActivity;`) — the LIFF/web
+  path for the `waitPreLogin` / `lpUsage=STANDALONE` web-payment flow. Reads the incoming `Uri` from
+  intent extra **`linepay.intent.extra.URI`** (field `f73569l`) and calls LINE's own resolver
+  **`l5().r7(uri)`** (obfuscated `sv3.n`) to produce the real `https://web-pay.line.me/…` URL right
+  before loading it in a WebView.
+- `web-pay.line.me` / `web-tw-pay.line.me` / `/R/iab` are **not** string literals in the APK or
+  manifest — those hosts are server-config. So an `ACTION_VIEW` for `https://web-tw-pay.line.me/R/iab?…`
+  fired from inside LINE is **not** caught by the messenger; it auto-resolves to the standalone app.
+
+### The redirect
+
+Both Pay activities are intercepted at `onCreate`, right after `super.onCreate` (same anchor the old
+disable patch used: `PayLaunchActivityOnCreateFingerprint` / `PayLiffActivityOnCreateFingerprint`,
+`methodCall("onCreate")` = the super call). Injected: `invoke-static {p0}, …LinePayRedirect;->redirect`
+then `finish(); return-void`. The extension
+(`extensions/.../app/andrewliang/extension/LinePayRedirect.java`) reads the intent (extra
+`linepay.intent.extra.URI`, else `getDataString()`) and builds the standalone url:
+
+- **`…/pay/payment/<reserveId>`** deep link (the merchant checkout case) — the last path segment IS
+  the `transactionReserveId` (**device-confirmed**: it decodes identically to the reserve id in the
+  known-good web-pay url). Rebuilds
+  `https://web-pay.line.me/web/payment/waitPreLogin?transactionReserveId=<reserveId>&locale=zh-TW_LP`.
+- an already-resolved `web-pay.line.me` url — used as-is.
+- anything else (e.g. `line://pay/main`) — no reserve id → **no redirect**, the activity just
+  `finish()`es (a loop guard: never wrap a link that would round-trip back to the messenger).
+
+then fires
+
+```
+https://web-tw-pay.line.me/R/iab?url=<urlencoded inner web-pay url>
+```
+
+with `FLAG_ACTIVITY_NEW_TASK`, swallowing all exceptions so `finish()` always runs. A token-free
+breadcrumb is logged under logtag **`AndrewLinePay`** (the single-use reserve id is deliberately not
+logged).
+
+**Device-confirmed path (LINE 26.11.0):** tapping a merchant "LINE Pay" button
+(`http://line.me/R/pay/payment/<reserveId>`) enters LINE and reaches **`PayLaunchActivity`** with
+`getDataString() == line://pay/payment/<reserveId>` (not `PayLiffActivity`; extra was null). The
+reconstruction above opened the standalone LINE Pay app on the transaction. The `PayLiffActivity`
+hook is retained as defensive coverage for the LIFF/web (`lpUsage=STANDALONE`) route — if a future
+LINE version routes there instead and the raw intent lacks a usable web url, reuse LINE's `r7()`
+resolver (anchor a fingerprint on the stable `"lpUsage"` / `"STANDALONE"` literals in
+`PayLiffActivity`, read the obfuscated `l5()`/`r7()` descriptors from the matches — don't hardcode
+`sv3.n`, which drifts).
