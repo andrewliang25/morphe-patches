@@ -63,6 +63,24 @@ Or manually add this repository url as a patch source in Morphe: https://github.
 To build Andrew's Patches,
 you can follow the [Morphe documentation](https://github.com/MorpheApp/morphe-documentation).
 
+## ⚠️ Known limitations
+
+### Google account sign-in fails (chat-history backup/restore)
+
+**What:** On a patched build, signing in with a Google account to back up or restore chat
+history fails at the account-selection step, so Drive-based chat history backup/restore is
+unavailable.
+
+**Why:** LINE stores chat history in Google Drive and gates it behind Google Sign-In with
+the `drive.appdata` scope. Google grants that access only to an OAuth client registered for
+LINE's **package name + original signing certificate**. Re-signing the APK changes the
+certificate, so Google Play Services rejects the sign-in (`DEVELOPER_ERROR`, status code 10)
+and no Drive token is issued. Unlike LINE's push (FCM) registration, this check runs inside
+Google Play Services rather than in LINE's own code, so it can't be fixed from the patch side.
+
+**Workaround:** install with **Root Mount** (which keeps LINE's original signature) instead
+of **Standard** install (which re-signs the APK).
+
 ## 🙏 Special thanks
 
 - [@f870103](https://github.com/f870103) — for lending a LINE account for testing, and for finding the LINE Pay app redirect URL.
