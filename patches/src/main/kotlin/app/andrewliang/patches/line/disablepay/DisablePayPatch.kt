@@ -4,31 +4,39 @@ import app.andrewliang.patches.shared.Constants.COMPATIBILITY_LINE
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.bytecodePatch
 
-// finish the activity and return, right after super.onCreate. p0 is the Activity.
-private const val FINISH_AND_RETURN = """
+// Best-effort hand-off to the standalone LINE Pay app, then finish the in-app Pay screen and
+// return. p0 is the Activity. The redirect swallows its own exceptions, so finish() always runs
+// -> a failed redirect degrades to the old "just close the Pay screen" behavior. Injected right
+// after super.onCreate (finishing before super would throw SuperNotCalledException).
+private const val REDIRECT_AND_FINISH = """
+    invoke-static {p0}, Lapp/andrewliang/extension/LinePayRedirect;->redirect(Landroid/app/Activity;)V
     invoke-virtual {p0}, Landroid/app/Activity;->finish()V
     return-void
 """
 
 @Suppress("unused")
 val disablePayPatch = bytecodePatch(
-    name = "Disable LINE Pay",
-    description = "Closes any LINE Pay screen immediately on open, so Pay flows (and their " +
-        "device-integrity check) never run. Messaging is unaffected.",
+    name = "Redirect LINE Pay",
+    description = "Forwards LINE Pay flows to the separately-installed standalone LINE Pay app " +
+        "instead of running them inside the messenger, so the in-app device-integrity check " +
+        "(which fails on a re-signed build) never runs. Falls back to closing the Pay screen if " +
+        "the standalone app can't be opened. Messaging is unaffected.",
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_LINE)
 
+    extendWith("extensions/extension.mpe")
+
     // Front doors into Pay: PayLaunchActivity (all cold routes) and PayLiffActivity (the
-    // independent LIFF/web path). Inject `finish(); return-void` right after their
-    // super.onCreate call (instructionMatches[0] = the super onCreate invoke).
+    // independent LIFF/web path that loads web-pay.line.me). Inject the redirect+finish right
+    // after their super.onCreate call (instructionMatches[0] = the super onCreate invoke).
     execute {
         listOf(
             PayLaunchActivityOnCreateFingerprint,
             PayLiffActivityOnCreateFingerprint,
         ).forEach { fingerprint ->
             val afterSuperIndex = fingerprint.instructionMatches.first().index + 1
-            fingerprint.method.addInstructions(afterSuperIndex, FINISH_AND_RETURN)
+            fingerprint.method.addInstructions(afterSuperIndex, REDIRECT_AND_FINISH)
         }
     }
 }
