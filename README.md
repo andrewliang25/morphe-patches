@@ -62,7 +62,7 @@ you can follow the [Morphe documentation](https://github.com/MorpheApp/morphe-do
 
 ## 🙏 Special thanks
 
-- [@f870103](https://github.com/f870103) — for lending a LINE account for testing.
+- [@f870103](https://github.com/f870103) — for lending a LINE account for testing, and for finding the LINE Pay app redirect URL.
 
 ## 📜 License
 
