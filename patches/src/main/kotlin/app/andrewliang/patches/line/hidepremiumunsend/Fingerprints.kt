@@ -1,6 +1,7 @@
 package app.andrewliang.patches.line.hidepremiumunsend
 
 import app.morphe.patcher.Fingerprint
+import app.morphe.patcher.fieldAccess
 import app.morphe.patcher.literal
 import app.morphe.patcher.opcode
 import com.android.tools.smali.dexlib2.Opcode
@@ -32,5 +33,27 @@ internal object UnsendDiscreetlyButtonFingerprint : Fingerprint(
 internal object UnsendPromoLinkFingerprint : Fingerprint(
     filters = listOf(
         literal(0x7f150bf8),
+    ),
+)
+
+/**
+ * `ne1.y0$y.a(...)` — the candidate predicate that decides whether the long-press message menu
+ * shows an "Unsend" item. Its age gate is `sentTime + window >= now`, where `window` is the PREMIUM
+ * window (`Lj51/a;->p:I`, ~7 days) for premium-eligible chats, else the FREE window
+ * (`Lj51/a;->o:I`, ~1h). Using the premium window is why the item survives for messages up to ~7
+ * days and, when tapped, triggers the "Give yourself more time" upsell in `oe1.c0.a`; past ~7 days
+ * the gate fails and the item is never added.
+ *
+ * We match the premium-window read (`fieldAccess Lj51/a;->p`) as the instruction to rewrite, and
+ * disambiguate to this method via the readable enum member `Lj51/c;->PREMIUM_UNSEND_MESSAGE` (the
+ * obfuscated class descriptors drift; the enum member name is stable). Only `y0$y.a` accesses both.
+ * All three obfuscated descriptors here (`Lj51/a;`, `Lj51/c;`, fields `p`/`o`) must be re-verified
+ * on a LINE version bump.
+ */
+internal object UnsendMenuAgeGateFingerprint : Fingerprint(
+    returnType = "Lj51/c;",
+    filters = listOf(
+        fieldAccess(definingClass = "Lj51/a;", name = "p"),
+        fieldAccess(definingClass = "Lj51/c;", name = "PREMIUM_UNSEND_MESSAGE"),
     ),
 )
