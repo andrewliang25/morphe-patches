@@ -7,10 +7,9 @@ import app.morphe.patcher.patch.bytecodePatch
 @Suppress("unused")
 val disableVoomPatch = bytecodePatch(
     name = "Disable VOOM",
-    description = "Neutralizes VOOM entry points: VOOM deep links, shares, and notifications " +
-        "(line://home/*) do nothing, and the standalone VOOM feed closes on open. Also " +
-        "disables VOOM LIVE, the birthday board, and share-to-VOOM. Messaging, friend " +
-        "profiles, and other tabs are unaffected.",
+    description = "Neutralizes VOOM entry points — deep links, shares, and notifications do " +
+        "nothing and the standalone VOOM feed closes on open. Messaging and other tabs are " +
+        "unaffected.",
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_LINE)

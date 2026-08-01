@@ -15,13 +15,9 @@ import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 @Suppress("unused")
 val hidePremiumUnsendPatch = bytecodePatch(
     name = "Hide premium unsend upsells",
-    description = "Removes the two LYP premium-unsend upsells that survive \"Disable LINE " +
-        "Premium\" (they read config directly instead of the market-availability flag): the " +
-        "\"Unsend discreetly\" button in the unsend-message confirmation dialog, and the " +
-        "\"How to unsend discreetly\" promotion link shown after unsending. The dialog keeps its " +
-        "ordinary \"Unsend\" and \"Close\" buttons. Also removes the \"Unsend\" long-press option " +
-        "for messages older than the free unsend window (~1h) so it no longer shows the \"Give " +
-        "yourself more time\" upgrade upsell — matching how messages past the premium window behave.",
+    description = "Removes the LYP premium-unsend upsells that survive \"Disable LINE " +
+        "Premium\": the \"Unsend discreetly\" button, the post-unsend promo link, and the " +
+        "expired-window unsend upsell. Ordinary unsend still works.",
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_LINE)

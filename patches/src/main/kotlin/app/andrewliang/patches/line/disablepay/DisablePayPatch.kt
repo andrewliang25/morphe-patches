@@ -17,10 +17,9 @@ private const val REDIRECT_AND_FINISH = """
 @Suppress("unused")
 val disablePayPatch = bytecodePatch(
     name = "Redirect LINE Pay",
-    description = "Forwards LINE Pay flows to the separately-installed standalone LINE Pay app " +
-        "instead of running them inside the messenger, so the in-app device-integrity check " +
-        "(which fails on a re-signed build) never runs. Falls back to closing the Pay screen if " +
-        "the standalone app can't be opened. Messaging is unaffected.",
+    description = "Forwards LINE Pay flows to the standalone LINE Pay app instead of running " +
+        "them in-app, so the device-integrity check that fails on a re-signed build never " +
+        "runs. Messaging is unaffected.",
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_LINE)
