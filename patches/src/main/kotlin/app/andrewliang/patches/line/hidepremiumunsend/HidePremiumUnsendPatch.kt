@@ -2,6 +2,7 @@ package app.andrewliang.patches.line.hidepremiumunsend
 
 import app.andrewliang.patches.shared.Constants.COMPATIBILITY_LINE
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
 import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.bytecodePatch
 import com.android.tools.smali.dexlib2.Opcode
@@ -14,11 +15,9 @@ import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 @Suppress("unused")
 val hidePremiumUnsendPatch = bytecodePatch(
     name = "Hide premium unsend upsells",
-    description = "Removes the two LYP premium-unsend upsells that survive \"Disable LINE " +
-        "Premium\" (they read config directly instead of the market-availability flag): the " +
-        "\"Unsend discreetly\" button in the unsend-message confirmation dialog, and the " +
-        "\"How to unsend discreetly\" promotion link shown after unsending. The dialog keeps its " +
-        "ordinary \"Unsend\" and \"Close\" buttons.",
+    description = "Removes the LYP premium-unsend upsells that survive \"Disable LINE " +
+        "Premium\": the \"Unsend discreetly\" button, the post-unsend promo link, and the " +
+        "expired-window unsend upsell. Ordinary unsend still works.",
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_LINE)
@@ -80,5 +79,21 @@ val hidePremiumUnsendPatch = bytecodePatch(
             promoPatched = true
         }
         if (!promoPatched) throw PatchException("unsend promo-link k2.a call not found in ${promoClass.type}")
+
+        // --- 3) Remove the "Unsend" menu item for messages past the FREE unsend window ---
+        // ne1.y0$y.a adds the long-press "Unsend" item only if `sentTime + window >= now`. For
+        // premium-eligible chats `window` is the premium window (~7d, Lj51/a;->p), so the item
+        // survives for old messages and tapping it triggers the "Give yourself more time" upsell in
+        // oe1.c0.a. Rewrite that read to the FREE window (Lj51/a;->o, ~1h) so the gate uses the free
+        // window for all chats: the item then disappears past ~1h exactly like it already does past
+        // 7d — no item, no upsell. Within ~1h, unsend still works (the item is still added and its
+        // tap path is unchanged).
+        UnsendMenuAgeGateFingerprint.instructionMatches.first().let { premiumWindowRead ->
+            val read = premiumWindowRead.instruction as TwoRegisterInstruction
+            UnsendMenuAgeGateFingerprint.method.replaceInstruction(
+                premiumWindowRead.index,
+                "iget v${read.registerA}, v${read.registerB}, Lj51/a;->o:I",
+            )
+        }
     }
 }

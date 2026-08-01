@@ -182,3 +182,15 @@ doesn't hide them — a separate supplementary patch does:
   read here directly (one of the 7 non-`e13.a` `i1.W()` readers). Anchored via the unique promo
   string id `0x7f150bf8` → class `wi1.j4`; the `k2.a` first argument is forced false so the link
   handler stays null. Obfuscated `Lne1/k2;` drifts — re-verify on version bump.
+- **"Unsend" menu item for messages past the free window** — the biggest upsell ("Give yourself more
+  time to delete messages you sent") is reached only by tapping the long-press "Unsend" item on a
+  message older than the free window (~1h) but within the premium window (~7d). That item is built by
+  the candidate predicate `ne1.y0$y.a`, whose age gate `sentTime + window >= now` uses the **premium**
+  window (`Lj51/a;->p:I`) for premium-eligible chats — which is why the item (and its upsell) survives
+  for up to ~7 days. Past 7d the gate fails and the item is simply never added (no popup; the
+  `cantunsendafterperiod` string is dead). The patch rewrites that read to the **free** window
+  (`Lj51/a;->o:I`), so the item disappears past ~1h exactly like it does past 7d — no item, no upsell;
+  unsend within ~1h is unaffected. Anchored on `fieldAccess(Lj51/a;, p)` (the target read) + the
+  readable enum `Lj51/c;->PREMIUM_UNSEND_MESSAGE` (disambiguator; obfuscated `Lj51/a;`/`Lj51/c;`/`p`/`o`
+  drift — re-verify on version bump). Note: a premium subscriber applying the bundle also loses 1h–7d
+  unsend; for a non-premium user nothing is lost (those messages were never free-unsendable anyway).

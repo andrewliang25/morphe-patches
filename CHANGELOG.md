@@ -1,3 +1,10 @@
+## [1.3.0-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v1.2.0...v1.3.0-dev.1) (2026-08-01)
+
+### ✨ New Features
+
+* hide the "Unsend" option for messages past the free unsend window ([1cce49d](https://github.com/andrewliang25/morphe-patches/commit/1cce49dd9550ac778370dc6d1359d554696abe50))
+* redirect LINE Pay to the standalone LINE Pay app ([2d9c476](https://github.com/andrewliang25/morphe-patches/commit/2d9c476d69561a9d7fb1c0fc43d97af7f7aa1e67))
+
 ## [1.2.0](https://github.com/andrewliang25/morphe-patches/compare/v1.1.0...v1.2.0) (2026-07-31)
 
 ### ⚠ BREAKING CHANGES
