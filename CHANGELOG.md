@@ -1,3 +1,9 @@
+## [1.4.0](https://github.com/andrewliang25/morphe-patches/compare/v1.3.0...v1.4.0) (2026-08-02)
+
+### ✨ New Features
+
+* add "Fix push notifications" patch ([e20ce9d](https://github.com/andrewliang25/morphe-patches/commit/e20ce9d99de2f38286710683a9fcdbeba07a05e3))
+
 ## [1.4.0-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v1.3.0...v1.4.0-dev.1) (2026-08-01)
 
 ### ✨ New Features
