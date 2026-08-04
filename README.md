@@ -66,10 +66,10 @@ you can follow the [Morphe documentation](https://github.com/MorpheApp/morphe-do
 
 ## ⚠️ Known limitations
 
-### Google account sign-in fails (chat-history backup/restore)
+### LINE: Google account sign-in fails (chat-history backup/restore)
 
-**What:** On a patched build, signing in with a Google account to back up or restore chat
-history fails at the account-selection step, so Drive-based chat history backup/restore is
+**What:** On a patched **LINE** build, signing in with a Google account to back up or restore
+chat history fails at the account-selection step, so Drive-based chat history backup/restore is
 unavailable.
 
 **Why:** LINE stores chat history in Google Drive and gates it behind Google Sign-In with
