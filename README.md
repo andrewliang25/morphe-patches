@@ -90,9 +90,9 @@ of **Standard** install (which re-signs the APK).
 
 <a href="https://www.star-history.com/?repos=andrewliang25%2Fmorphe-patches&type=date&legend=top-left">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=andrewliang25/morphe-patches&type=date&theme=dark&legend=top-left&sealed_token=wmq23aagupD99LpnPmnuBYZf96xmHbGhV8iIcXKvUVhQnTCNUVF2JpgGdwyfP6URWdMcuGaz2rvT6i8TBlXiM87iM5CdppJY49yKQ67L9OhuUvXrtitmqnJlVaqgY9K2i95l4t7KmBAePGbdfm-hNI04kIwfLLAy-fDLGUbOQVnVQUqEeSevgf7E4s7w" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=andrewliang25/morphe-patches&type=date&legend=top-left&sealed_token=wmq23aagupD99LpnPmnuBYZf96xmHbGhV8iIcXKvUVhQnTCNUVF2JpgGdwyfP6URWdMcuGaz2rvT6i8TBlXiM87iM5CdppJY49yKQ67L9OhuUvXrtitmqnJlVaqgY9K2i95l4t7KmBAePGbdfm-hNI04kIwfLLAy-fDLGUbOQVnVQUqEeSevgf7E4s7w" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=andrewliang25/morphe-patches&type=date&legend=top-left&sealed_token=wmq23aagupD99LpnPmnuBYZf96xmHbGhV8iIcXKvUVhQnTCNUVF2JpgGdwyfP6URWdMcuGaz2rvT6i8TBlXiM87iM5CdppJY49yKQ67L9OhuUvXrtitmqnJlVaqgY9K2i95l4t7KmBAePGbdfm-hNI04kIwfLLAy-fDLGUbOQVnVQUqEeSevgf7E4s7w" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=andrewliang25/morphe-patches&type=date&theme=dark&legend=top-left&sealed_token=bcBbvce_G1Ww6apQwWC74HNf7mWANZkAaRZC-jk1TFjdlCjsmb6zKtbPBByRyJB45-ZldU6RwekQ_WAKV_L62P8tuslW7Q6a39UdAaFAxan0cj5UX8WxgG3DwF68QJZq5GmmKaDE-njntBl3WJLxf6_jMvUI7Tq2ap83khC5cDb_Y12NL8p271Sk3fSN" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=andrewliang25/morphe-patches&type=date&legend=top-left&sealed_token=bcBbvce_G1Ww6apQwWC74HNf7mWANZkAaRZC-jk1TFjdlCjsmb6zKtbPBByRyJB45-ZldU6RwekQ_WAKV_L62P8tuslW7Q6a39UdAaFAxan0cj5UX8WxgG3DwF68QJZq5GmmKaDE-njntBl3WJLxf6_jMvUI7Tq2ap83khC5cDb_Y12NL8p271Sk3fSN" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=andrewliang25/morphe-patches&type=date&legend=top-left&sealed_token=bcBbvce_G1Ww6apQwWC74HNf7mWANZkAaRZC-jk1TFjdlCjsmb6zKtbPBByRyJB45-ZldU6RwekQ_WAKV_L62P8tuslW7Q6a39UdAaFAxan0cj5UX8WxgG3DwF68QJZq5GmmKaDE-njntBl3WJLxf6_jMvUI7Tq2ap83khC5cDb_Y12NL8p271Sk3fSN" />
  </picture>
 </a>
 
