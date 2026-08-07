@@ -88,12 +88,12 @@ of **Standard** install (which re-signs the APK).
 
 ## ⭐ Star history
 
-<a href="https://www.star-history.com/?repos=andrewliang25%2Fmorphe-patches&type=date">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=andrewliang25/morphe-patches&type=Date&theme=dark" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=andrewliang25/morphe-patches&type=Date" />
-    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=andrewliang25/morphe-patches&type=Date" width="600" />
-  </picture>
+<a href="https://www.star-history.com/?repos=andrewliang25%2Fmorphe-patches&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=andrewliang25/morphe-patches&type=date&theme=dark&legend=top-left&sealed_token=wmq23aagupD99LpnPmnuBYZf96xmHbGhV8iIcXKvUVhQnTCNUVF2JpgGdwyfP6URWdMcuGaz2rvT6i8TBlXiM87iM5CdppJY49yKQ67L9OhuUvXrtitmqnJlVaqgY9K2i95l4t7KmBAePGbdfm-hNI04kIwfLLAy-fDLGUbOQVnVQUqEeSevgf7E4s7w" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=andrewliang25/morphe-patches&type=date&legend=top-left&sealed_token=wmq23aagupD99LpnPmnuBYZf96xmHbGhV8iIcXKvUVhQnTCNUVF2JpgGdwyfP6URWdMcuGaz2rvT6i8TBlXiM87iM5CdppJY49yKQ67L9OhuUvXrtitmqnJlVaqgY9K2i95l4t7KmBAePGbdfm-hNI04kIwfLLAy-fDLGUbOQVnVQUqEeSevgf7E4s7w" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=andrewliang25/morphe-patches&type=date&legend=top-left&sealed_token=wmq23aagupD99LpnPmnuBYZf96xmHbGhV8iIcXKvUVhQnTCNUVF2JpgGdwyfP6URWdMcuGaz2rvT6i8TBlXiM87iM5CdppJY49yKQ67L9OhuUvXrtitmqnJlVaqgY9K2i95l4t7KmBAePGbdfm-hNI04kIwfLLAy-fDLGUbOQVnVQUqEeSevgf7E4s7w" />
+ </picture>
 </a>
 
 ## 📜 License
