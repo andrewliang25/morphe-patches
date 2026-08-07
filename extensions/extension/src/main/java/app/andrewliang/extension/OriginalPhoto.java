@@ -1,0 +1,216 @@
+package app.andrewliang.extension;
+
+import android.content.ContentResolver;
+import android.content.Context;
+import android.content.res.AssetFileDescriptor;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
+import android.media.ExifInterface;
+import android.net.Uri;
+import android.util.Log;
+
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
+
+/**
+ * Helper for the "Send original photos without the quality cliff" patch.
+ *
+ * <p>With the "Original" toggle on, stock LINE clears the per-item {@code isOriginal} flag when a
+ * photo is {@code >= 20 MB} or {@code >= 100 MP} ({@code t73.k0.b0}). The photo then falls all the
+ * way onto the ordinary standard path and is resampled to the tier's pixel budget — 4.19 MP on the
+ * High setting, 1.64 MP on the default Normal one. Just under the threshold a photo is copied byte
+ * for byte; just over it loses 6-25x its pixels. There is no tier in between, which is the whole
+ * defect.
+ *
+ * <p>The patch stops those two bail-outs, so every such photo now stays on the *original* path and
+ * reaches this class. Here it is re-encoded at native resolution — or bounded to
+ * {@link #MAX_PIXELS} when it really is enormous — instead of being resampled to a few megapixels.
+ *
+ * <p>{@link #writeBounded} deliberately re-derives the same {@code >= 20 MB || >= 100 MP} test the
+ * patch removed, and returns {@code null} for anything else. That keeps it a strict no-op for the
+ * cases that already work: notably a large-but-not-huge JPEG (say 50 MP at 10 MB) is copied byte
+ * for byte today and must keep being copied byte for byte.
+ */
+public final class OriginalPhoto {
+
+    private OriginalPhoto() {}
+
+    private static final String TAG = "AndrewOriginalPhoto";
+
+    /** {@code 20971520} — the source-size gate the patch neutralises in {@code t73.k0.b0}. */
+    private static final long SIZE_THRESHOLD = 20L * 1024 * 1024;
+
+    /** {@code 100000000} — the source-pixel gate the patch neutralises in {@code t73.k0.b0}. */
+    private static final long PIXEL_THRESHOLD = 100_000_000L;
+
+    /**
+     * Output ceiling. A 24 MP decode is ~96 MB as {@code ARGB_8888}, and baking in EXIF rotation
+     * briefly doubles that; LINE sets {@code android:largeHeap="true"}, which accommodates it.
+     * Photos at or below this keep their native resolution.
+     */
+    private static final long MAX_PIXELS = 24_000_000L;
+
+    /** Matches the quality the patch pins LINE's own original-path re-encode to. */
+    private static final int QUALITY = 80;
+
+    /**
+     * Arbitrary base for the {@code inDensity} / {@code inTargetDensity} ratio. Large enough that
+     * rounding the target density costs well under a pixel of accuracy.
+     */
+    private static final int DENSITY_BASE = 10_000;
+
+    /**
+     * Re-encodes an oversized photo into {@code destination} at native resolution, or bounded to
+     * {@link #MAX_PIXELS} if it exceeds that.
+     *
+     * @return {@code null} when this photo is not one of the oversized cases, meaning the caller
+     *         must fall through to LINE's stock handling; {@code TRUE} when {@code destination}
+     *         was written; {@code FALSE} when it should have been written but could not be.
+     */
+    public static Boolean writeBounded(Context context, Uri source, File destination) {
+        if (context == null || source == null || destination == null) return null;
+
+        try {
+            BitmapFactory.Options bounds = new BitmapFactory.Options();
+            bounds.inJustDecodeBounds = true;
+            decode(context, source, bounds);
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null;
+
+            long pixels = (long) bounds.outWidth * (long) bounds.outHeight;
+            if (pixels < PIXEL_THRESHOLD && sourceLength(context, source) < SIZE_THRESHOLD) {
+                return null;
+            }
+
+            return Boolean.valueOf(reencode(context, source, destination, pixels));
+        } catch (Throwable t) {
+            // Includes OutOfMemoryError. Reporting failure lets LINE's own error handling run
+            // rather than leaving a half-written file behind.
+            Log.w(TAG, "Could not re-encode the original photo.", t);
+            return Boolean.FALSE;
+        }
+    }
+
+    private static boolean reencode(Context context, Uri source, File destination, long pixels) {
+        Bitmap bitmap = decode(context, source, options(pixels));
+        if (bitmap == null) return false;
+
+        try {
+            // Bake the orientation into the pixels rather than writing an EXIF tag. LINE's own
+            // encoders (c1.p and the stock original-path re-encode) both rotate with a Matrix and
+            // emit a JPEG with no EXIF, so everything downstream — OBS's derived /preview and
+            // standard variants, and the recipient's renderer — assumes orientation is already
+            // applied. Costs one extra bitmap; a sideways photo would be far worse.
+            bitmap = rotate(bitmap, rotationDegrees(context, source));
+
+            try (OutputStream out = new BufferedOutputStream(new FileOutputStream(destination))) {
+                return bitmap.compress(Bitmap.CompressFormat.JPEG, QUALITY, out);
+            } catch (Throwable t) {
+                Log.w(TAG, "Could not write the re-encoded photo.", t);
+                return false;
+            }
+        } finally {
+            bitmap.recycle();
+        }
+    }
+
+    /**
+     * Decode options that land the result on {@link #MAX_PIXELS}.
+     *
+     * <p>{@code inSampleSize} alone is power-of-two, so on its own it overshoots badly — a 108 MP
+     * source would quantise to 6.75 MP, barely better than the 4.19 MP this patch exists to avoid.
+     * Instead the sample size is taken as far as it can go while staying *above* the ceiling, and
+     * the decoder's own density scaler covers the remainder. That also keeps the final bitmap the
+     * only large allocation, however big the source is.
+     */
+    private static BitmapFactory.Options options(long pixels) {
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        if (pixels <= MAX_PIXELS) return options;
+
+        int sample = 1;
+        while (pixels / ((long) sample * 2L * sample * 2L) >= MAX_PIXELS) {
+            sample *= 2;
+        }
+        options.inSampleSize = sample;
+
+        long sampled = pixels / ((long) sample * (long) sample);
+        double scale = Math.sqrt((double) MAX_PIXELS / (double) sampled);
+        if (scale < 1.0d) {
+            options.inScaled = true;
+            options.inDensity = DENSITY_BASE;
+            options.inTargetDensity = Math.max(1, (int) Math.round(DENSITY_BASE * scale));
+        }
+        return options;
+    }
+
+    private static Bitmap decode(Context context, Uri source, BitmapFactory.Options options) {
+        try (InputStream in = context.getContentResolver().openInputStream(source)) {
+            if (in == null) return null;
+            return BitmapFactory.decodeStream(in, null, options);
+        } catch (Throwable t) {
+            Log.w(TAG, "Could not read the source photo.", t);
+            return null;
+        }
+    }
+
+    private static Bitmap rotate(Bitmap bitmap, int degrees) {
+        if (degrees == 0) return bitmap;
+        try {
+            Matrix matrix = new Matrix();
+            matrix.setRotate(degrees);
+            Bitmap rotated = Bitmap.createBitmap(
+                    bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
+            if (rotated != bitmap) bitmap.recycle();
+            return rotated;
+        } catch (Throwable t) {
+            // Out of memory for the second copy. An upright photo at full resolution still beats
+            // the 4.19 MP fallback, so keep going with the unrotated one.
+            Log.w(TAG, "Could not apply orientation; sending unrotated.", t);
+            return bitmap;
+        }
+    }
+
+    private static int rotationDegrees(Context context, Uri source) {
+        try (InputStream in = context.getContentResolver().openInputStream(source)) {
+            if (in == null) return 0;
+            switch (new ExifInterface(in).getAttributeInt(
+                    ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)) {
+                case ExifInterface.ORIENTATION_ROTATE_90:
+                    return 90;
+                case ExifInterface.ORIENTATION_ROTATE_180:
+                    return 180;
+                case ExifInterface.ORIENTATION_ROTATE_270:
+                    return 270;
+                default:
+                    return 0;
+            }
+        } catch (Throwable t) {
+            return 0;
+        }
+    }
+
+    /** @return the source's length in bytes, or {@code -1} if it cannot be determined. */
+    private static long sourceLength(Context context, Uri source) {
+        String scheme = source.getScheme();
+        if (scheme == null || ContentResolver.SCHEME_FILE.equals(scheme)) {
+            String path = source.getPath();
+            if (path != null) {
+                File file = new File(path);
+                if (file.exists()) return file.length();
+            }
+            return -1L;
+        }
+
+        try (AssetFileDescriptor descriptor =
+                     context.getContentResolver().openAssetFileDescriptor(source, "r")) {
+            if (descriptor == null) return -1L;
+            long length = descriptor.getLength();
+            return length == AssetFileDescriptor.UNKNOWN_LENGTH ? -1L : length;
+        } catch (Throwable t) {
+            return -1L;
+        }
+    }
+}
