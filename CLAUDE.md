@@ -110,6 +110,8 @@ worse. Findings so far (full anchors in `docs/line-patch-map.md`):
 | Unsend time window | **server** — `unsendMessage` carries only `(seq, messageId)`; `MESSAGE_NOT_DESTRUCTIBLE(71)` comes back | not patchable |
 | Video length / file size | **server** — client checks in `c81.b.c()` mirror an OBS ceiling (`EXCEED_FILE_MAX_SIZE`) | not usefully patchable |
 | LYP premium entitlements | **server** — account state; `hidepremium` only hides the upsells | not patchable |
+| Call ringtone selection | **client** — `be7.c.a` can return an arbitrary `Uri`, played by LINE's own `MediaPlayer` in-process (`xx.c`) | **patchable** — investigated, deliberately not shipped |
+| Ringback tone friends hear | **server** — the callee's tone is delivered to the *caller's* client in their connect info | not patchable |
 
 - **Client-side config is not the same as server enforcement.** The unsend windows and photo tiers
   are *both* pushed from server settings (`function.chatroom.message.unsend.timelimit`,
@@ -122,6 +124,14 @@ worse. Findings so far (full anchors in `docs/line-patch-map.md`):
 - **A client check with no server counterpart is the opportunity.** Nothing validates the *encoded*
   output of LINE's image pipeline: `c1.o()` is a single-shot `Bitmap.compress` with no size check,
   and the picker's gates test the **source** file, never the result.
+- **Ask which process opens the resource, not just which process decides.** The call ringtone is
+  patchable because LINE's own `MediaPlayer` opens the URI inside LINE's process; the Google sign-in
+  break is not, because GmsCore reads the real signature in a *different* process. Same question,
+  opposite answers.
+- **"Patchable" is not "worth patching."** The ringtone came out patchable and still shipped nothing:
+  following the device ringtone is a feature nobody asked for, and an in-app picker needs a new
+  Activity plus a settings row injected into obfuscated declarative Kotlin. Record the finding in
+  `docs/line-patch-map.md` and stop there.
 
 ## Release pipeline — do not fight it
 
