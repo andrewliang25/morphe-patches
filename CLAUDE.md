@@ -54,6 +54,9 @@ The patching model is: **fingerprint → locate method → inject smali → opti
 - **Register operand limits:** `invoke-*` (format 35c) and `iget/iput` (22c) take **4-bit register operands — only v0–v15**. Referencing v16+ there is silently dropped/mis-assembled (the filter/injection appears to apply but does nothing). Use a low free register, or the `/range` instruction variants.
 - **Don't inject a backward-branching loop into an existing method** — it can corrupt that method's branch layout and throw a runtime `VerifyError` ("target dex pc … not at instruction start"). Instead extract the loop into a **new** method (`mutableClassDefBy(desc).methods.add(MutableMethod(ImmutableMethod(...)))`, then `addInstructions`) and inject only a branchless `invoke-static` + `move-result` at the call site (see `hidehomemodules`).
 - **Targeting a method in an obfuscated class:** fingerprint a *sibling* on a stable anchor (a non-obfuscated framework/API call or string literal), then `mutableClassDefBy(fp.method.definingClass)` and select the target method by descriptor (`returnType` + `parameterTypes`) — see `keepunread` anchoring on `TalkServiceClient.j1`.
+- **Neutralising a numeric gate:** when a check is `const-wide/32 vN, <limit>` + `cmp-long` + `if-*`, rewrite the **compared literal** (`replaceInstruction(idx, "const-wide/32 v$reg, 0x7fffffff")`) rather than the branch. Control flow stays byte-identical, it's one instruction per gate, and register allocation is untouched — far safer than deleting a branch and leaving unreachable code. Read the destination register off the matched instruction (`as OneRegisterInstruction`) instead of hardcoding it. Two gates in one method = two identical `literal(...)` filters (see `originalphoto` → `t73.k0.b0`).
+- **Resolving an obfuscated class from a framework-typed field read:** inside a matched method, the only `iget-object` whose `FieldReference.type` is a **framework** type (e.g. `Landroid/content/Context;`) hands you both the obfuscated owner's descriptor *and* the field name for free. Feed that descriptor back in to find the enclosing lambda's synthetic captures (`definingClass == method.definingClass`). Lets an injection reference obfuscated fields with nothing hardcoded but framework types — see `originalphoto` resolving `u13.c1`, its `Context`, and `u13.y0`'s `Uri` capture.
+- **A trailing label in injected smali needs an instruction after it** — end the block with a `nop` if the label is the last line, otherwise it has nothing to bind to. (Branching *forward* within an injected block is fine; see the backward-loop warning above for what isn't.)
 - **Manifest/resource edits:** `resourcePatch { … execute { document("AndroidManifest.xml").use { doc -> … } } }` — the `Document` is a standard W3C DOM.
 - **Kotlin block comments NEST:** a `/*` inside a `/** … */` KDoc (e.g. writing a `line://home/*` scheme) opens a nested comment and eats the file — use `//` or reword.
 - **Always verify by APPLYING**, not just building: fingerprints resolve at *apply* time (against the target APK), not build time, so a clean `buildAndroid` does **not** prove a fingerprint matches. Apply the `.mpp` with the Morphe CLI (`patch --exclusive -e "<name>"`) and disassemble the output to confirm the injected bytecode. Note the built `.mpp` filename carries the semantic-release version (e.g. `patches-1.0.0-dev.9.mpp`); wipe `patches/build/libs` before a verify run so a stale artifact isn't applied by mistake.
@@ -93,6 +96,43 @@ Documented as a "Known limitation" in `README.md`. Same *class* of root cause as
 - **Why it can't be patched like FCM:** the FCM fix works because LINE's own bundled SDK self-reports the cert SHA-1 in an HTTP header (`ct.c.c`'s `X-Android-Cert`), which a patch can overwrite. Here the Drive OAuth token is fetched via `GoogleAuthUtil` / `GoogleSignInClient` — binder IPC into Google Play Services (GmsCore), a *separate process* that reads the real installed signature itself. There is no cert value in LINE's APK to rewrite.
 - **No patch-side fix:** can't register the re-sign's SHA-1 in LINE's Google Cloud project, and a substitute OAuth client wouldn't reach LINE's Drive appdata backup anyway. Workaround is install-side: **Root Mount** install (keeps original signature → sign-in works) instead of **Standard** (re-signs). To device-confirm: attempt the restore and watch `adb logcat | grep -iE "GoogleSignIn|ApiException|DEVELOPER_ERROR|10:"` at the account-selection tap. Re-check the anchors when bumping the pinned LINE version (obfuscated helper class names like `l18/d`, `hx4/i` drift).
 
+## Feature limits — client-side vs server-enforced (LINE)
+
+Before patching any LINE "limit", establish **who decides**. The same test that separates the FCM
+fix from the Google sign-in limitation applies to ordinary features: a constraint LINE computes or
+self-reports **inside its own process** is patchable; one decided by a remote server, or by another
+process, is not — and removing the client-side check just moves the failure later and makes it
+worse. Findings so far (full anchors in `docs/line-patch-map.md`):
+
+| Limit | Who decides | Verdict |
+|---|---|---|
+| Outbound photo compression | **client** — `u13.c1` resamples + JPEG-encodes locally before upload; the server never sees the original | **patchable** (`originalphoto`) |
+| Unsend time window | **server** — `unsendMessage` carries only `(seq, messageId)`; `MESSAGE_NOT_DESTRUCTIBLE(71)` comes back | not patchable |
+| Video length / file size | **server** — client checks in `c81.b.c()` mirror an OBS ceiling (`EXCEED_FILE_MAX_SIZE`) | not usefully patchable |
+| LYP premium entitlements | **server** — account state; `hidepremium` only hides the upsells | not patchable |
+| Call ringtone selection | **client** — `be7.c.a` can return an arbitrary `Uri`, played by LINE's own `MediaPlayer` in-process (`xx.c`) | **patchable** — investigated, deliberately not shipped |
+| Ringback tone friends hear | **server** — the callee's tone is delivered to the *caller's* client in their connect info | not patchable |
+
+- **Client-side config is not the same as server enforcement.** The unsend windows and photo tiers
+  are *both* pushed from server settings (`function.chatroom.message.unsend.timelimit`,
+  `function.media.image_high`). But the photo tier is only ever consumed locally to decide how hard
+  to compress, whereas the unsend window is a UI pre-filter for a decision the server re-makes. A
+  server-supplied *value* is patchable; a server-made *decision* is not.
+- **Look for the error code.** A dedicated Thrift/HTTP error for the exact condition
+  (`MESSAGE_NOT_DESTRUCTIBLE`, `EXCEED_FILE_MAX_SIZE`, `EXCEED_DAILY_QUOTA`) is proof the server
+  enforces it independently — the client check is only there to fail fast.
+- **A client check with no server counterpart is the opportunity.** Nothing validates the *encoded*
+  output of LINE's image pipeline: `c1.o()` is a single-shot `Bitmap.compress` with no size check,
+  and the picker's gates test the **source** file, never the result.
+- **Ask which process opens the resource, not just which process decides.** The call ringtone is
+  patchable because LINE's own `MediaPlayer` opens the URI inside LINE's process; the Google sign-in
+  break is not, because GmsCore reads the real signature in a *different* process. Same question,
+  opposite answers.
+- **"Patchable" is not "worth patching."** The ringtone came out patchable and still shipped nothing:
+  following the device ringtone is a feature nobody asked for, and an in-app picker needs a new
+  Activity plus a settings row injected into obfuscated declarative Kotlin. Record the finding in
+  `docs/line-patch-map.md` and stop there.
+
 ## Release pipeline — do not fight it
 
 Releases are fully automated by **semantic-release** (`.releaserc`, `.github/workflows/release.yml`). This drives several rules:
@@ -107,7 +147,7 @@ Releases are fully automated by **semantic-release** (`.releaserc`, `.github/wor
 
 Fingerprint authoring relies on inspecting LINE's bytecode.
 
-- **`docs/line-patch-map.md`** (tracked) — the LINE `+` attach menu architecture (static `hg1.r` tiles vs server-driven `hg1.d` services), the Calendar vs Events vs Message-scheduler feature map, per-surface class/anchor references for the shipped patches, and the offline build + dexlib2 disassembly recipe. Update it when bumping the pinned LINE version (the obfuscated descriptors drift).
+- **`docs/line-patch-map.md`** (tracked) — the LINE `+` attach menu architecture (static `hg1.r` tiles vs server-driven `hg1.d` services), the Calendar vs Events vs Message-scheduler feature map, the outbound photo pipeline (the `IMAGE_STANDARD` vs `IMAGE_ORIGINAL` split, the Normal/High tier map, and why the pixel budget is a *total* not a per-side cap), per-surface class/anchor references for the shipped patches, the dead ends investigated so far, and the offline build + dexlib2 disassembly recipe. Update it when bumping the pinned LINE version (the obfuscated descriptors drift).
 
 These live outside the repo / are gitignored:
 

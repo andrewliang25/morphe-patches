@@ -165,11 +165,12 @@ row, and the sibling "Hide community button" which targets `OPEN_CHAT`).
 | Hide LINE GIFT button | `line.hidegift` | `hg1.h` (`+` LINE GIFT tile) |
 | Hide attach menu extra tools | `line.hideattachmenutools` | all server-driven `hg1.d` services |
 | Redirect LINE Pay | `line.disablepay` | `PayLaunchActivity` / `PayLiffActivity` onCreate (see below) |
+| Send original photos without the quality drop | `line.originalphoto` | `t73.k0.b0` + the `u13.y0` original-file writer (see below) |
 
 Each is an independent, `default = true`, user-facing `bytecodePatch` — one feature (or one feature's
 full set of entry points) per patch, matching the bundle's convention (cf. *Hide Wallet tab*,
-*Disable VOOM*). All but *Redirect LINE Pay* are fixed-value / instruction-level edits with no
-extension.
+*Disable VOOM*). Most are fixed-value / instruction-level edits; *Redirect LINE Pay* and
+*Send original photos* carry extension code.
 
 ## LINE Pay intake & the "Redirect LINE Pay" patch
 
@@ -236,3 +237,275 @@ LINE version routes there instead and the raw intent lacks a usable web url, reu
 resolver (anchor a fingerprint on the stable `"lpUsage"` / `"STANDALONE"` literals in
 `PayLiffActivity`, read the obfuscated `l5()`/`r7()` descriptors from the matches — don't hardcode
 `sv3.n`, which drifts).
+---
+
+## Outbound photo pipeline & the "Send original photos" patch
+
+### The two paths a photo can take
+
+`u13.c1.f(dVar, fVar, uri, rotation)` writes the local file that gets uploaded. Exactly two
+outcomes exist for a photo — there is no tier in between, which is the defect the patch fixes.
+
+| `cw0.f` | What `c1.f` does |
+|---|---|
+| `IMAGE_STANDARD` | `c1.p()` only — resample to the tier's **pixel budget** and JPEG re-encode |
+| `IMAGE_ORIGINAL` | `c1.p()` *and* the `u13.y0` lambda, which raw-copies or full-res re-encodes |
+
+`d98.m1` then uploads **one** of them (`IMAGE_ORIGINAL` when the message metadata carries
+`IS_SEND_ORIGINAL_IMAGE`, else `IMAGE_STANDARD`) plus a thumbnail. OBS derives the rest by URL
+path (`w78.b`): `…/r/talk/m/<id>` standard, `…/m/<id>/original`, `…/m/<id>/preview`.
+
+### The pixel budget is a *total*, not a per-side cap
+
+`c1.k(STANDARD_IMAGE)` returns `maxDimension²` **pixels**. `c1.m()` returns the bitmap untouched
+when `width*height <= budget`, so raising `maxDimension` past a photo's pixel count disables
+resampling entirely. `c1.l()` decodes to within `budget * 4` first (`mul-int/lit8 … 0x4`) and then
+scales precisely — that multiplier is what avoids coarse power-of-two subsampling, so lowering it
+costs quality for any source between 1x and 4x the budget.
+
+Values come from `jp.naver.line.android.util.f1.a()` — non-obfuscated, and the best anchor into
+this whole area:
+
+| Tier | Class | Server key | Default | Selected when |
+|---|---|---|---|---|
+| Normal | `t88.a$b$b` | `function.media.image_medium` | 1280 / q70 → **1.64 MP** | `RESIZE_IMAGE_OPTION != 2` (incl. unset) |
+| High | `t88.a$b$a` | `function.media.image_high` | 2048 / q80 → **4.19 MP** | `RESIZE_IMAGE_OPTION == 2` |
+
+`p38.a.c` is `NORMAL(0) / SMALL(1) / LARGE(2)`, but `f1` tests for exactly `2`, so `SMALL` is dead
+for uploads (it only suffixes download URLs in `r78.h`). The tiers are **separate classes**, which
+is what lets a patch touch one without the other. Four consumers: `dw0.c` (chat), `gg3.j`,
+`ch0.j`, `od7.d`.
+
+### The cliff
+
+`t73.k0.b0()` stamps `rt7.c.isOriginal` (field `B`) per item as the picker finalises. With the
+"Original" toggle on it clears the flag at `>= 20 MB` (`0x1400000`) or `>= 100 MP` (`0x5f5e100`),
+dropping the photo onto the standard path. One byte under the threshold a photo is copied
+verbatim; one byte over it loses 6–25x its pixels, with the toggle still showing on. The only hint
+is `gallery_original_guide_error` — *"Videos and some photos may be sent in standard resolution."*
+
+Nothing validates the encoded output: `c1.o()` is a single-shot `Bitmap.compress` with no size
+check, and `b0()` / `m63.n0.d()` test the **source**'s length and dimensions, never the result.
+
+The `u13.y0` lambda branches on mime (`ww0.c.a`): `image/jpeg|png|gif|bmp` (and an unresolvable
+type) → raw byte copy, then `i48.a.b` strips 38 GPS/timestamp EXIF tags (Orientation survives);
+anything else (HEIC, WEBP) → full-res decode + `Matrix` rotate + JPEG at the tier quality.
+
+### What the patch does
+
+Three sites, all confined to the original path or the fallback decision:
+
+1. `t73.k0.b0` — both gate literals → `0x7fffffff`, so `isOriginal` stays true. Rewriting the
+   compared *value* rather than the branch keeps control flow byte-identical.
+2. `u13.y0` head — call `OriginalPhoto.writeBounded`; `null` falls through to stock code.
+3. `u13.y0` — the tier-quality `iget` feeding `c1.o` → `const/16 0x50` (q80).
+
+The extension re-derives the same `>= 20 MB || >= 100 MP` test the patch removed and returns
+`null` otherwise, so every case that works today is untouched — notably a 50 MP / 10 MB JPEG,
+which must keep being copied byte for byte. Output is bounded to 24 MP via `inSampleSize` plus
+`inScaled`/`inDensity`/`inTargetDensity`; the density scaler matters because `inSampleSize` alone
+would quantise a 108 MP source to 6.75 MP. Rotation is baked into the pixels rather than written
+as an EXIF tag, matching what every other LINE encoder on this path does.
+
+Sites 2 and 3 resolve `u13.c1`, its `Context` field and the lambda's captures **from the matched
+method's own bytecode**; only the two literals and framework types are hardcoded.
+
+### Values that drift on a version bump
+
+| Thing | 26.11.0 |
+|---|---|
+| gates in `t73.k0.b0` | `0x1400000` (20 MB), `0x5f5e100` (100 MP) — also in `k0.X(Z)V` and `m63.n0.d()`, so pin the `(Ljava/util/ArrayList;)V` signature |
+| lambda anchor | `u13.y0` — the only class combining `ContentResolver.getType`, `MimeTypeMap.getMimeTypeFromExtension`, `BitmapFactory.decodeStream` and `Matrix.setRotate` |
+| encoder | `c1.o(I, Bitmap, File)Z`; quality read from `dw0.b$b.b:I` |
+| decode multiplier | `c1.l()` → `mul-int/lit8 … 0x4` (left alone; it is tier-agnostic) |
+
+---
+
+## Call ringtone pipeline (investigated, deliberately not shipped)
+
+Freeing the incoming-call ringtone from LINE's four bundled tones / paid Melody Shop tones is
+**technically patchable** — the whole decision is client-side and the playback layer already accepts
+an arbitrary `Uri`. Nothing shipped; see [Why nothing shipped](#why-nothing-shipped) for the reason,
+which is product value, not feasibility. Recorded so this doesn't get re-derived from scratch.
+
+### The choke point
+
+`be7.c.a(Landroid/content/Context;Lb97/c;)Lbe7/a$a;` — `public static`, `smali_classes3/be7/c.smali` —
+resolves the ringtone for **both** incoming call types, called from `c97/a.java:119` (free call) and
+`c97/k.java:93` (OA call). It returns one of two shapes:
+
+| Shape | Meaning |
+|---|---|
+| `be7.a$a$a(ue7.a tone, be7.q fallbackFrom)` | a bundled `res/raw` tone |
+| **`be7.a$a$b(be7.q, android.net.Uri)`** | **an arbitrary URI** |
+
+The method's own MELODY branch already builds the second from a `file://` path, so URI playback is a
+shipping path, not a theoretical one.
+
+### Playback — LINE's own MediaPlayer, in LINE's own process
+
+`hg7.j.a()` puts the resolved tone in the RING slot (`oy.d.f261846b`) → Andromeda
+`com.linecorp.andromeda.audio.s` / `t` (which unwraps the `ce7.c` wrapper back to a plain `xx.b`) →
+**`xx.c.b()`**, which switches on the URI scheme:
+
+| Scheme | How it is opened |
+|---|---|
+| `android.resource` | `setDataSource(context, uri)` |
+| `file` | `FileInputStream(uri.getPath()).getFD()` |
+| **anything else** | `setDataSource(context, uri)` — so `content://` resolves via LINE's own `ContentResolver` |
+
+then `setAudioAttributes(USAGE_NOTIFICATION_RINGTONE)`, `setLooping(true)`, `prepare()`.
+
+This is why it is patchable at all: the URI is opened **inside LINE's process** and never handed to
+the system NotificationManager, so none of the cross-process read-permission problems that make the
+Google sign-in limitation unfixable apply here. (Message *notification* sounds are a different
+system entirely — ordinary Android notification channels, already customisable from system Settings
+with no patch.)
+
+### What actually limits users today
+
+`be7.r$a.a()` picks the tone provider through **two sequential gates**. First a server-pushed config
+int, `k97.m.m()` → `vb7.c.m()` → `t().G0().l().e()`:
+
+| `m()` | Provider |
+|---|---|
+| `0`, or anything other than `1`/`2` | `DEFAULT` |
+| `1` | `EMBEDDED` |
+| `2` | fall through to the region switch below |
+
+Only when it is `2` does region matter (`s87.i.a()`), and the premium branches additionally require
+`a.b()` — all three of `k97.m.s()` / `.f()` / `.r()` non-empty, i.e. the premium-service URLs are
+configured:
+
+| Region | Provider | Ringtone setting visible? |
+|---|---|---|
+| JP | `MUSIC` | yes |
+| TH | `FRIEND_MELODY` if `b()`, else `EMBEDDED` | only for `FRIEND_MELODY` |
+| TW | `MELODY` if `b()`, else `EMBEDDED` | only for `MELODY` |
+| everywhere else | `DEFAULT` | **no** |
+
+Only MUSIC / MELODY / FRIEND_MELODY set `exposeExternalSetting = true`, which is what makes the
+"Ringtones & ringback tones" entry appear. `DEFAULT` hardcodes `ue7.a.RING_1`; `EMBEDDED` resolves
+through `ge7.c.e(m87.h.RING)`, which reads the *legacy* melody prefs and falls back to `RING_1` when
+they are empty. **So outside JP/TH/TW there is no ringtone choice in the UI at all** — not even among
+the four bundled tones, which are reachable only under JP's `MUSIC` provider (it alone reads the
+`cf7.m` prefs). The config int is a server-supplied *value* consumed locally, not a server-made
+*decision* — same shape as the photo tier.
+
+Two per-call overrides sit upstream of the local choice: the **caller's** friend-melody (`m87.e` on
+`VoIPFreeCallIncomingConnectInfo`) preempts it, and a per-call boolean
+(`VoIPFreeCallIncomingConnectInfo.t` / `VoIPOaCallIncomingConnectInfo.v`) demotes any URI-based tone
+back to `RING_1`. Head-injecting `be7.c.a` sits ahead of all of this.
+
+### Tone inventory and storage
+
+`ue7.a` is the bundled-tone enum; ids take the form `android.resource:///<id>`.
+
+| Constant | `res/raw` | Title |
+|---|---|---|
+| `RING_1` | `original` | Xylophone (`settings_ringtone_default1`) |
+| `RING_2` | `melody` | Spring |
+| `RING_3` | `voice` | LINE |
+| `RING_4` | `ring` | Telephone ring |
+| `RINGBACK_1` | `lineapp_ringback_16k` | — |
+
+Two parallel storage systems, both **encrypted** and therefore not readable from an extension:
+
+- **Current** — `jp.naver.voip.ringtone` via `cf7.m` (keys `ringToneUri`, `ringToneName`,
+  `ringToneResourceTypeId`, `ringToneDecodedUriFlag`; accessors `cf7.p.a` / `cf7.p.b`). Built by
+  `gz6.a.b`, which is `EncryptedSharedPreferences` (androidx.security `kd.b`, Android-keystore
+  backed). Read only by the `MUSIC` provider.
+- **Legacy LINE MELODY** — `com.linecorp.voip.melody` via `qe7.a` (keys `ringtone_path`,
+  `ringtone_title`, `ringtone_oid`, …), synced from the Talk server by `ge7.c.g()`
+  (`getRingToneOnTalkServer`), which **resets to default and deletes the local files** when the
+  server reports no tone.
+
+**File-playback precedent.** The LINE MUSIC path plays a plain file out of LINE's *private internal*
+dir — `cf7.k.b()` → `<applicationInfo.dataDir>/ringtone/decoded_ringtone_1|2` (`j48.h.d()` is
+`applicationInfo.dataDir`, not external storage). A file placed in LINE's private storage therefore
+plays with **zero runtime permissions**. Purchased-track entitlement is re-verified against the
+server every 14 days (`af7.g`, pref `ringToneMusicVerifyLastTime`).
+
+### If it is ever built
+
+Head-inject `be7.c.a` and return `be7.a$a$b(q, uri)` early when the extension supplies a URI, else
+fall through. Fingerprint on anchors obfuscation cannot touch:
+
+```kotlin
+accessFlags = listOf(AccessFlags.PUBLIC, AccessFlags.STATIC)
+filters = listOf(
+    instanceOf("Lcom/linecorp/voip2/access/connect/VoIPFreeCallIncomingConnectInfo;"),
+    instanceOf("Lcom/linecorp/voip2/access/connect/VoIPOaCallIncomingConnectInfo;"),
+    methodCall(definingClass = "Landroid/net/Uri;", name = "parse"),
+)
+```
+
+Uniqueness verified against 26.11.0: only three methods in the APK carry **both** `instance-of`s —
+`be7.c.a` (the target), `be7.q$d.e` (excluded by `STATIC`; it is `public final`) and
+`c97.m.a(Landroid/content/Context;Lb97/c;)Z` (excluded by `Uri.parse`). Filters are in program order:
+both `instance-of`s precede the MELODY branch's `Uri.parse`.
+
+`be7/a$a$b` and `be7/q` must be read from the matched method's **own** MELODY branch rather than
+hardcoded (the `originalphoto` idiom): find the `INVOKE_DIRECT` whose `name == "<init>"` and whose
+`parameterTypes` end in `Landroid/net/Uri;` → its `definingClass` is `a$a$b` and `parameterTypes[0]`
+is `q`; then the `SGET_OBJECT` whose field type is that `q` gives a valid enum constant. The method
+is static with `.locals 5` and two params (registers v0–v6, `p0` = v5), so `invoke-direct` /
+`new-instance` stay inside the 4-bit operand limit, and v0–v2 are dead on entry.
+
+**Any custom URI must be probed before use.** LINE declares `READ_MEDIA_IMAGES`,
+`READ_MEDIA_VIDEO`, `READ_MEDIA_VISUAL_USER_SELECTED` and legacy `READ_EXTERNAL_STORAGE`, but
+**not `READ_MEDIA_AUDIO`** — so a user-added MediaStore ringtone throws `SecurityException` on open,
+`xx.c` swallows it in its `catch` and calls `c()`, and **the call rings silently**. Probe with
+`ContentResolver.openAssetFileDescriptor(uri, "r")` and return `null` on failure so LINE keeps its
+own tone. Stock OEM ringtones (`content://media/internal/audio/…`,
+`content://settings/system/ringtone`) open with no permission.
+
+### Why nothing shipped
+
+- **Follow the device ringtone** (`RingtoneManager.getActualDefaultRingtoneUri`) is one small patch,
+  but it is a feature nobody asked for, and it silently ignores the ringtone of anyone whose phone
+  tone is a file they imported themselves — see the `READ_MEDIA_AUDIO` note above.
+- **A real in-app picker** needs a new Activity, an `AndroidManifest.xml` patch, SAF plus a copy into
+  LINE's private dir, and a settings-row injection into obfuscated declarative Kotlin (`l15.c`'s
+  `px4.b0` item list) whose natural host rows only exist in JP/TH/TW. Disproportionate to the payoff.
+
+### Values that drift on a version bump
+
+| Thing | 26.11.0 |
+|---|---|
+| resolver | `be7.c.a`; result types `be7.a$a$a` / `be7.a$a$b` |
+| provider / region gate | `be7.q` (provider), `be7.r` (+ `exposeExternalSetting`), config via `k97.m.m()` |
+| bundled tones | `ue7.a`; kinds `ue7.b` (RING / RING_BACK), sources `ue7.c` (BASIC / MUSIC) |
+| prefs & files | `cf7.m` / `cf7.p` / `cf7.k`; legacy `qe7.a`; server sync `ge7.c` |
+| player | `xx.c.b()`; sources `xx.b` / `xx.g`; call param `oy.d`; adapter `hg7.j` |
+| **stable anchors** | `com.linecorp.voip2.access.connect.VoIPFreeCallIncomingConnectInfo` / `…VoIPOaCallIncomingConnectInfo` — **not** obfuscated |
+
+---
+
+## Dead ends (investigated, not patchable)
+
+**Extend the unsend window.** The client windows (`j51.a.o` free, `.p` premium) are UX
+pre-filters fed by server config (`function.chatroom.message.unsend.timelimit`,
+`.premium.timelimit`). `unsendMessage` carries only `(seq, messageId)`; the server decides and has
+a dedicated `TalkException` code `MESSAGE_NOT_DESTRUCTIBLE(71)` (`cb8.m9`), handled at `ne1.o2` /
+`ne1.b2` → *"You can't unsend this message as too much time has passed."* Widening the client
+window only re-shows the menu item and produces that toast. (`hidepremiumunsend` deliberately
+narrows it for the same reason.)
+
+**Remove video length / size limits.** `c81.b.c()` rejects `> 301000 ms` and `> 209715200` bytes,
+and the picker sets `maxVideoDurationSec = 300` at every chat entry point. Both are trivial to
+remove, but the OBS gateway enforces its own ceiling: `rc1.b` parses the
+`x-line-obs-talk-exception` response header carrying `EXCEED_FILE_MAX_SIZE` / `EXCEED_DAILY_QUOTA`
+/ `NOT_SUPPORT_SEND_FILE`. Removing the client checks trades a clean local toast for a mid-upload
+server rejection.
+
+**Change the ringback tone your friends hear.** The *callee's* ringback is delivered to the
+**caller's** client in their connect info and played there, so no local edit can change what a friend
+hears when they call you — same class as the unsend window. (The ringback *you* hear while dialing
+out is client-side, `oy.d.f261845a` / `be7.a$b`, but changing that helps nobody.) The incoming-call
+**ringtone** is a different matter and is patchable — see
+[Call ringtone pipeline](#call-ringtone-pipeline-investigated-deliberately-not-shipped).
+
+**Note on the OBS size ceiling.** It has never been observed directly — 20 MB is inferred from
+LINE's own client-side threshold. Sub-20 MB originals are known to upload byte-identical, so that
+much is safe; record the real limit here if a device test ever surfaces `EXCEED_FILE_MAX_SIZE`.
