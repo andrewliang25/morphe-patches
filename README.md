@@ -86,6 +86,16 @@ of **Standard** install (which re-signs the APK).
 
 - [@f870103](https://github.com/f870103) — for lending a LINE account for testing, and for finding the LINE Pay app redirect URL.
 
+## ⭐ Star history
+
+<a href="https://www.star-history.com/?repos=andrewliang25%2Fmorphe-patches&type=date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=andrewliang25/morphe-patches&type=Date&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=andrewliang25/morphe-patches&type=Date" />
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=andrewliang25/morphe-patches&type=Date" width="600" />
+  </picture>
+</a>
+
 ## 📜 License
 
 Andrew's Patches are licensed under the [GNU General Public License v3.0](LICENSE)
