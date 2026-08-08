@@ -307,7 +307,18 @@ forwarding and reactions keep working on the kept message.
 
 The guard is located **by instruction shape** (no-arg `Z` call → `move-result` → `if-eqz` → `goto`),
 and the `SQLiteDatabase` field reference is read out of the method's own bytecode — `i38.c`, its
-`h()`, and `g38.f3.b` are all obfuscated and drift.
+`h()`, and `g38.f3.b` are all obfuscated and drift. The two register reads are anchored rather than
+scanned blind: the message id must be a field of the same row object the guard reads its receiver
+off, and the `SQLiteDatabase` holder register must carry a `check-cast` to the field's own owner
+before the guard (this method has a *second* `SQLiteDatabase` read, `h38.t0.a`, that reuses the same
+register `v1` for a different type). Anything unresolvable — including a register spilling past
+`v15`, where `iget`/`invoke` operands stop fitting — throws rather than applying a half-patch.
+
+The insert is skipped when the row is **already** a tombstone (`type IN (27, 28, 38)` = what
+`i38.c.h()` covers). The injection sits ahead of the branch it flips, so it also runs where LINE's
+guard would have exited early — a redelivered unsend for a message tombstoned before the patch was
+installed, or one stripped by the offline `KEY_UNSENT_MESSAGE` path, which never reaches the guard
+at all. Both would otherwise draw the notice twice.
 
 ### Values that drift on a version bump
 
@@ -316,5 +327,5 @@ and the `SQLiteDatabase` field reference is read out of the method's own bytecod
 | `chat_history` table (`a68.a`) | only `id` constrained (PK + autoincrement); all other columns nullable; `IDX_SERVER_ID` is **non-unique** |
 | sort columns | `IDX_CHAT_ID_ID_CREATED_TIME` = `chat_id` (eq) + `created_time`, `id` (sort) → ordering follows `created_time` |
 | `created_time` | `DATE_STRING` → a **TEXT** column of epoch millis, so `+1` needs a `CAST` round-trip |
-| `i38.c` db values | `MESSAGE` = 1, `UNSENT` = 27, `UNSENT_NO_MARK` = 28, `SQUARE_UNSENT_MESSAGE` = 35, `UNSENT_SILENT` = 38 |
+| `i38.c` db values | `MESSAGE` = 1, `UNSENT` = 27, `UNSENT_NO_MARK` = 28, `SQUARE_UNSENT_MESSAGE` = 35, `UNSENT_SILENT` = 38 — the extension hardcodes 27 (the type it writes) and 27/28/38 (`i38.c.h()`'s set, the rows it refuses to annotate) |
 | `cb8.q7.NONE` | 0 (`attachement_type`) |

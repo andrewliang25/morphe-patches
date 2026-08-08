@@ -28,6 +28,13 @@ public final class KeepUnsentMessages {
     /** {@code i38.c.UNSENT} db value — the "this message was unsent" chat_history.type. */
     private static final int TYPE_UNSENT = 27;
 
+    /**
+     * The tombstone types, i.e. exactly what {@code i38.c.h()} — the guard the patch skips —
+     * returns true for: {@code UNSENT}(27), {@code UNSENT_NO_MARK}(28), {@code UNSENT_SILENT}(38).
+     * A row of one of these types already <em>is</em> an "unsent a message" notice.
+     */
+    private static final String TYPES_ALREADY_UNSENT = "27, 28, 38";
+
     /** {@code cb8.q7.NONE} db value, matching what LINE's own unsend writes. */
     private static final int ATTACHMENT_NONE = 0;
 
@@ -49,6 +56,14 @@ public final class KeepUnsentMessages {
      * <p>{@code status}, {@code read_count} and {@code sent_count} are inherited so the
      * placeholder cannot skew unread counts. {@code content} is left NULL deliberately — for this
      * type the renderer ignores it and builds the text from {@code from_mid}.
+     *
+     * <p>Rows that are already tombstones are skipped. The patch injects ahead of the branch it
+     * flips, so this runs even when LINE's own guard would have exited early — a redelivered
+     * unsend for a message tombstoned before the patch was installed, or one stripped by the
+     * offline {@code KEY_UNSENT_MESSAGE} sync path, which never reaches that guard at all.
+     * Annotating either would draw the notice twice. Checking the row's type here is the same
+     * question the guard asks, answered from the database rather than from a register the
+     * injection has already overwritten.
      */
     private static final String INSERT_PLACEHOLDER =
             "INSERT INTO chat_history"
@@ -61,6 +76,7 @@ public final class KeepUnsentMessages {
                     + " WHERE (o.server_id = ? OR o.id = ?)"
                     + " AND o.server_id IS NOT NULL"
                     + " AND o.created_time IS NOT NULL"
+                    + " AND o.type NOT IN (" + TYPES_ALREADY_UNSENT + ")"
                     + " AND NOT EXISTS ("
                     + "  SELECT 1 FROM chat_history x WHERE x.server_id = o.server_id || ?)"
                     + " LIMIT 1";
