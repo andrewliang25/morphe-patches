@@ -90,22 +90,21 @@ val keepUnsentMessagesPatch = bytecodePatch(
         val (databaseField, databaseHolderRegister) = databaseRead
             ?: throw PatchException("unsend: SQLiteDatabase field read not found in ${method.definingClass}")
 
-        // v0-v15 only for iget-object (22c) and invoke-static (35c). On 26.11.0 these are v1/v6/v7,
-        // but if a future version spills them we still keep the message and just skip the notice
-        // rather than emitting instructions that silently assemble to the wrong registers.
-        val registersAddressable = maxOf(
+        // v0-v15 only for iget-object (22c) and invoke-static (35c); referencing v16+ there is
+        // silently mis-assembled. On 26.11.0 these are v1/v6/v7, but the method is `.locals 29`,
+        // so a future version could spill them. Fail loudly rather than keeping messages with no
+        // notice: an unmarked kept message is indistinguishable from one that was never unsent.
+        val highestRegister = maxOf(
             guardRegister,
             databaseHolderRegister,
             messageIdRegister + 1,
-        ) <= MAX_NIBBLE_REGISTER
-
-        val addPlaceholder = if (registersAddressable) {
-            """
-                iget-object v$guardRegister, v$databaseHolderRegister, ${databaseField.definingClass}->${databaseField.name}:${databaseField.type}
-                invoke-static {v$guardRegister, v$messageIdRegister, v${messageIdRegister + 1}}, $EXTENSION->$INSERT_PLACEHOLDER
-            """
-        } else {
-            ""
+        )
+        if (highestRegister > MAX_NIBBLE_REGISTER) {
+            throw PatchException(
+                "unsend: guard/database/message-id registers spilled past " +
+                    "v$MAX_NIBBLE_REGISTER (highest is v$highestRegister) " +
+                    "in ${method.definingClass}",
+            )
         }
 
         // The guard register is dead here (the skipped block reassigns it immediately), so it is
@@ -113,7 +112,8 @@ val keepUnsentMessagesPatch = bytecodePatch(
         method.addInstructions(
             guardIndex + 2,
             """
-                $addPlaceholder
+                iget-object v$guardRegister, v$databaseHolderRegister, ${databaseField.definingClass}->${databaseField.name}:${databaseField.type}
+                invoke-static {v$guardRegister, v$messageIdRegister, v${messageIdRegister + 1}}, $EXTENSION->$INSERT_PLACEHOLDER
                 const/16 v$guardRegister, 0x1
             """,
         )
