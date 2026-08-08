@@ -5,11 +5,13 @@ import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.bytecodePatch
 import com.android.tools.smali.dexlib2.Opcode
+import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
+import com.android.tools.smali.dexlib2.iface.reference.TypeReference
 
 private const val SQLITE_DATABASE = "Landroid/database/sqlite/SQLiteDatabase;"
 private const val EXTENSION = "Lapp/andrewliang/extension/KeepUnsentMessages;"
@@ -69,23 +71,56 @@ val keepUnsentMessagesPatch = bytecodePatch(
 
         val guardRegister = (instructions[guardIndex + 1] as OneRegisterInstruction).registerA
 
-        // The message id, loaded from the fetched row a few instructions above the guard and still
-        // live there. Which of i38.b's two long fields this is (local id vs server message id)
-        // doesn't matter — the extension's WHERE clause accepts either.
-        val messageIdRegister = (guardIndex - 1 downTo 0)
-            .firstOrNull { instructions[it].opcode == Opcode.IGET_WIDE }
+        // The fetched row (i38.b), taken from whatever the guard reads its receiver off. Anchoring
+        // on it keeps the id search below from wandering: an `iget-wide` that reads the same object
+        // the guard does is the row's id, and it sits in the same straight-line stretch, so the
+        // register it writes is live where we inject.
+        val guardReceiverRegister = (instructions[guardIndex] as FiveRegisterInstruction).registerC
+        val rowReadIndex = (guardIndex - 1 downTo 0).firstOrNull { index ->
+            instructions[index].opcode == Opcode.IGET_OBJECT &&
+                (instructions[index] as TwoRegisterInstruction).registerA == guardReceiverRegister
+        } ?: throw PatchException("unsend: guard receiver read not found in ${method.definingClass}")
+        val rowRegister = (instructions[rowReadIndex] as TwoRegisterInstruction).registerB
+
+        // The message id, read off that row between it being loaded and the guard. Which of i38.b's
+        // longs this is (local id vs server message id) doesn't matter — the extension's WHERE
+        // clause accepts either. On 26.11.0 it is `b`, the server id.
+        val messageIdRegister = ((rowReadIndex + 1) until guardIndex)
+            .firstOrNull { index ->
+                instructions[index].opcode == Opcode.IGET_WIDE &&
+                    (instructions[index] as TwoRegisterInstruction).registerB == rowRegister
+            }
             ?.let { (instructions[it] as TwoRegisterInstruction).registerA }
             ?: throw PatchException("unsend: message id read not found in ${method.definingClass}")
 
+        // Registers whose type is proven before the guard. The lambda's parameter is `check-cast`ed
+        // at the method head, and that cast dominates our injection point, so such a register still
+        // holds that type where we inject — which a field read taken from inside the skipped block
+        // does not by itself establish.
+        val castRegisters = (0 until guardIndex).mapNotNull { index ->
+            val instruction = instructions[index]
+            if (instruction.opcode != Opcode.CHECK_CAST) return@mapNotNull null
+            val type = ((instruction as ReferenceInstruction).reference as? TypeReference)?.type
+                ?: return@mapNotNull null
+            (instruction as OneRegisterInstruction).registerA to type
+        }.toMap()
+
         // The transaction's SQLiteDatabase, read off the g38.f3 receiver inside the block we skip.
         // Reuse that exact field reference and holder register rather than hardcoding g38.f3.b.
+        // The field reference travels safely (it is position-independent); the register number only
+        // does if the register provably holds the field's owner at the injection point, so require
+        // a dominating cast. That also rejects the second SQLiteDatabase read further down this
+        // method (h38.t0.a), which reuses the same register for a different type.
         val databaseRead = (guardIndex until instructions.size).firstNotNullOfOrNull { index ->
             val reference = (instructions[index] as? ReferenceInstruction)?.reference as? FieldReference
-            if (instructions[index].opcode == Opcode.IGET_OBJECT && reference?.type == SQLITE_DATABASE) {
-                reference to (instructions[index] as TwoRegisterInstruction).registerB
-            } else {
-                null
+            if (instructions[index].opcode != Opcode.IGET_OBJECT || reference?.type != SQLITE_DATABASE) {
+                return@firstNotNullOfOrNull null
             }
+            val holderRegister = (instructions[index] as TwoRegisterInstruction).registerB
+            if (castRegisters[holderRegister] != reference.definingClass) {
+                return@firstNotNullOfOrNull null
+            }
+            reference to holderRegister
         }
         val (databaseField, databaseHolderRegister) = databaseRead
             ?: throw PatchException("unsend: SQLiteDatabase field read not found in ${method.definingClass}")
