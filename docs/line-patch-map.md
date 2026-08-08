@@ -165,6 +165,7 @@ row, and the sibling "Hide community button" which targets `OPEN_CHAT`).
 | Hide LINE GIFT button | `line.hidegift` | `hg1.h` (`+` LINE GIFT tile) |
 | Hide attach menu extra tools | `line.hideattachmenutools` | all server-driven `hg1.d` services |
 | Redirect LINE Pay | `line.disablepay` | `PayLaunchActivity` / `PayLiffActivity` onCreate (see below) |
+| Keep unsent messages | `line.keepunsent` | `g38.b0.invoke` — the unsend DB write (see below) |
 
 Each is an independent, `default = true`, user-facing `bytecodePatch` — one feature (or one feature's
 full set of entry points) per patch, matching the bundle's convention (cf. *Hide Wallet tab*,
@@ -236,3 +237,96 @@ LINE version routes there instead and the raw intent lacks a usable web url, reu
 resolver (anchor a fingerprint on the stable `"lpUsage"` / `"STANDALONE"` literals in
 `PayLiffActivity`, read the obfuscated `l5()`/`r7()` descriptors from the matches — don't hardcode
 `sv3.n`, which drifts).
+
+---
+
+## Message unsend (receive side) & the "Keep unsent messages" patch
+
+### How an incoming unsend reaches the database
+
+```
+OpType NOTIFIED_DESTROY_MESSAGE(65) / DESTROY_MESSAGE(64)   (Lcb8/ce;, Operation = Lcb8/de;)
+  ► e98.c1.b(...)  (someone else unsent)   /   e98.r  (3-line subclass: your own unsend)
+  ► the g38.b0 lambda, run inside a chat_history transaction
+```
+
+Both ops funnel through the **same** lambda, so one patch site covers your own unsends too.
+
+**LINE does not delete the row for 1:1/group chats.** `Lg38/b0;->invoke(Ljava/lang/Object;)Ljava/lang/Object;`
+(`smali_classes4/g38/b0.smali`) rewrites `chat_history.type` to an `i38.c.UNSENT*` variant and NULLs
+`content`, `parameter`, `attachement_type` and the location columns via `h38.h0` →
+`Lh38/b;->g(SQLiteDatabase, Li38/k;, Lh38/h0;)I`, then drops the message from the full-text-search
+index and deletes its `reactions` / `multiple_image_message_mapping` rows. All of it sits behind one
+guard:
+
+```smali
+    :cond_0
+    iget-object v6, v10, Li38/b;->g:Li38/c;   # v10 = the fetched row
+    iget-wide  v7, v10, Li38/b;->b:J          # message id (live at the guard)
+    invoke-virtual {v6}, Li38/c;->h()Z        # already an unsend tombstone?
+    move-result v6
+    if-eqz v6, :cond_1                        # no  -> destructive block
+    goto/16 :goto_c                           # yes -> skip, return the row unchanged
+```
+
+Forcing that register non-zero makes the unsend a **local no-op**. `Lg38/f3;` (the lambda's
+parameter, `v1`) carries the transaction's `SQLiteDatabase` in field `b`.
+
+**OpenChat/Square is a different path and genuinely deletes**: `SquareEventType.NOTIFIED_DESTROY_MESSAGE(5)`
+→ `fp5.i` → `Lg38/q0;->m(Ljava/lang/String;Ljava/util/Set;)V` → `g38.f3.c(Set)` →
+`DELETE FROM chat_history WHERE id IN(...)`. Not covered by the patch.
+
+A third path exists for messages unsent while offline: full sync / message-box restore reads
+`z58.b.c.KEY_UNSENT_MESSAGE` / `KEY_SILENTLY_UNSENT` from `contentMetadata` (`g38.q0`, `g38.x2`) and
+stores the row already stripped. Nothing local to keep there.
+
+### How the placeholder is rendered
+
+`chat_history.type` → content model → text, four hops:
+
+| Hop | Descriptor |
+|---|---|
+| cursor → content model | `Lh38/t;->e(Lcb8/q7;Ljp/naver/line/android/util/j;Lz58/b;)Li38/g;` — `UNSENT` builds `Li38/g$s$h0;` from `from_mid` |
+| content → UI model | `Lm11/b;->k(Li38/g$s;)Ll11/h;` → `Ll11/h$h0;` |
+| UI model → text | `Lcl1/c;->a(Landroid/content/Context;Ll11/h;Lo21/a;)Ljava/lang/CharSequence;` |
+| bubble decoration | `Lwi1/j4;->K0(...)` — appends the "How to unsend discreetly" link on *your own* unsends (suppressed by *Hide premium unsend upsells*) |
+
+Strings: `chathistory_message_format_unsent_receiver` (`0x7f150d65`, "%1$s unsent a message.") and
+`chathistory_message_format_unsent_sender` (`0x7f150d66`, "You unsent a message.") — chosen by
+comparing `from_mid` against your own mid.
+
+`Lh38/x;` (query builder) filters `UNSENT_SILENT` out of chat history entirely
+(`type NOT IN (...)`), which is how LYP "unsend discreetly" hides a row it still stores.
+
+### What the patch does
+
+Skips the guard, then inserts its **own** `type = UNSENT` row so the notice still appears — see
+`app/andrewliang/extension/KeepUnsentMessages.java`. Keeping the original row untouched (rather than
+copying it and letting LINE tombstone the original) preserves its real `server_id`, so reply-jump,
+forwarding and reactions keep working on the kept message.
+
+The guard is located **by instruction shape** (no-arg `Z` call → `move-result` → `if-eqz` → `goto`),
+and the `SQLiteDatabase` field reference is read out of the method's own bytecode — `i38.c`, its
+`h()`, and `g38.f3.b` are all obfuscated and drift. The two register reads are anchored rather than
+scanned blind: the message id must be a field of the same row object the guard reads its receiver
+off, and the `SQLiteDatabase` holder register must carry a `check-cast` to the field's own owner
+before the guard (this method has a *second* `SQLiteDatabase` read, `h38.t0.a`, that reuses the same
+register `v1` for a different type). Anything unresolvable — including a register spilling past
+`v15`, where `iget`/`invoke` operands stop fitting — throws rather than applying a half-patch.
+
+The insert is skipped when the row is **already** a tombstone (`type IN (27, 28, 38)` = what
+`i38.c.h()` covers). The injection sits ahead of the branch it flips, so it also runs where LINE's
+guard would have exited early — a redelivered unsend for a message tombstoned before the patch was
+installed, or one stripped by the offline `KEY_UNSENT_MESSAGE` path, which never reaches the guard
+at all. Both would otherwise draw the notice twice.
+
+### Values that drift on a version bump
+
+| Thing | 26.11.0 |
+|---|---|
+| `chat_history` table (`a68.a`) | only `id` constrained (PK + autoincrement); all other columns nullable; `IDX_SERVER_ID` is **non-unique** |
+| sort columns | `IDX_CHAT_ID_ID_CREATED_TIME` = `chat_id` (eq) + `created_time`, `id` (sort) → ordering follows `created_time` |
+| `created_time` | `DATE_STRING` → a **TEXT** column of epoch millis, so `+1` needs a `CAST` round-trip |
+| `i38.c` db values | `MESSAGE` = 1, `UNSENT` = 27, `UNSENT_NO_MARK` = 28, `SQUARE_UNSENT_MESSAGE` = 35, `UNSENT_SILENT` = 38 — the extension hardcodes 27 (the type it writes) and 27/28/38 (`i38.c.h()`'s set, the rows it refuses to annotate) |
+| `cb8.q7.NONE` | 0 (`attachement_type`) |
+| chat-list unread badge | `chat.message_count - chat.read_message_count` (`c23.d` columns, read in `z13.o`) — a stored counter pair, **not** a `count(*)` over `chat_history`, so the inserted placeholder cannot move it |
