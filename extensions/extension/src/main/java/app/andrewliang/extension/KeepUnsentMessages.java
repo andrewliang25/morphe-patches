@@ -53,9 +53,19 @@ public final class KeepUnsentMessages {
      * lands under the message rather than at the end of the conversation; a one millisecond
      * offset is invisible at the minute precision the UI displays.
      *
-     * <p>{@code status}, {@code read_count} and {@code sent_count} are inherited so the
-     * placeholder cannot skew unread counts. {@code content} is left NULL deliberately — for this
-     * type the renderer ignores it and builds the text from {@code from_mid}.
+     * <p>{@code status}, {@code read_count} and {@code sent_count} are inherited so the notice
+     * carries the same read receipt as the message it annotates. These are per-message columns and
+     * are <em>not</em> what the chat list's unread badge is made of: that is
+     * {@code chat.message_count - chat.read_message_count}, two stored counters on the {@code chat}
+     * row (see {@code z13.o}), which only LINE's own insert path maintains and this patch never
+     * writes. So the badge is safe regardless of what is copied here — but it also means
+     * {@code message_count} now sits one behind the real row count per kept message. Harmless
+     * while nothing recomputes it from {@code chat_history}; {@code g38.g2.j(chatId)} is a
+     * per-chat {@code count(*)} of that shape, with no caller found that writes it back.
+     * Worth re-checking on a version bump.
+     *
+     * <p>{@code content} is left NULL deliberately — for this type the renderer ignores it and
+     * builds the text from {@code from_mid}.
      *
      * <p>Rows that are already tombstones are skipped. The patch injects ahead of the branch it
      * flips, so this runs even when LINE's own guard would have exited early — a redelivered
