@@ -12,6 +12,7 @@ import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.WideLiteralInstruction
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 
@@ -59,6 +60,51 @@ val originalPhotoPatch = bytecodePatch(
     // standard path's own decode budget are deliberately left alone, so sending with "Original"
     // off costs exactly what it costs today.
     execute {
+        // --- Site 0: let the "Original" toggle stay available at all ---------------------------
+        // m63.n0.f() answers "may this selection be sent as an original?" and returns false for
+        // anything >= 20 MB or >= 100 MP. Its answer drives m63.n0.i(Z), which writes u53.e.a --
+        // the toggle state that t73.k0.b0 reads *before* the gates Site 1 neutralises. So with the
+        // toggle forced off, b0 takes its "Original off" branch, stamps isOriginal = false, and the
+        // whole rest of this patch is unreachable: no IMAGE_ORIGINAL variant, no u13.y0 lambda, no
+        // extension call. Site 1 alone was verified in bytecode and still changed nothing on
+        // device, because this gate fires first.
+        //
+        // Only methods holding *both* literals are rewritten. In this class that is exactly f() and
+        // the guide-state builder d() -- which has to agree with f(), or the toggle gets re-cleared
+        // when the guide state is applied. onClick carries a lone 0x1400000 that is a free-disk-
+        // space multiplier (getFreeSpace() >= 20 MB * itemCount) and must not be touched.
+        val availability = OriginalToggleAvailabilityFingerprint.method
+        val toggleClass = mutableClassDefBy(availability.definingClass)
+        var rewritten = 0
+        toggleClass.methods.forEach { method ->
+            val gates = method.implementation?.instructions
+                ?.withIndex()
+                ?.filter { (_, instruction) ->
+                    (instruction as? WideLiteralInstruction)?.wideLiteral.let {
+                        it == SIZE_GATE || it == PIXEL_GATE
+                    }
+                }
+                ?.toList()
+                ?: return@forEach
+
+            val literals = gates.map { (_, instruction) ->
+                (instruction as WideLiteralInstruction).wideLiteral
+            }
+            if (!literals.contains(SIZE_GATE) || !literals.contains(PIXEL_GATE)) return@forEach
+
+            // Last index first, so an earlier rewrite can never shift a later one.
+            gates.reversed().forEach { (index, instruction) ->
+                val register = (instruction as OneRegisterInstruction).registerA
+                method.replaceInstruction(index, "const-wide/32 v$register, 0x7fffffff")
+            }
+            rewritten++
+        }
+        if (rewritten == 0) {
+            throw PatchException(
+                "original photo: no toggle-availability gates found in ${availability.definingClass}",
+            )
+        }
+
         // --- Site 1: stop the two bail-outs in t73.k0.b0 -------------------------------------
         // Both are const-wide/32 feeding a cmp-long. Rewriting the compared value rather than the
         // branch keeps the method's control flow byte-identical:
