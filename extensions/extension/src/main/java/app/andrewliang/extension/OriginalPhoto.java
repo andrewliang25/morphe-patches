@@ -48,11 +48,19 @@ public final class OriginalPhoto {
     private static final long PIXEL_THRESHOLD = 100_000_000L;
 
     /**
-     * Output ceiling. A 24 MP decode is ~96 MB as {@code ARGB_8888}, and baking in EXIF rotation
-     * briefly doubles that; LINE sets {@code android:largeHeap="true"}, which accommodates it.
-     * Photos at or below this keep their native resolution.
+     * Output ceiling. A 24 MP decode is ~96 MB as {@code ARGB_8888}, and baking in rotation
+     * briefly doubles that; LINE sets {@code android:largeHeap="true"}, which accommodates it on
+     * a roomy device. Photos at or below this keep their native resolution.
      */
     private static final long MAX_PIXELS = 24_000_000L;
+
+    /**
+     * How many times to retry with the ceiling halved when a decode fails. 24 MP needs ~192 MB
+     * across the decode and the rotation copy, which a mid-range device can refuse even with
+     * {@code largeHeap}; 12 MP and then 6 MP need ~96 MB and ~48 MB. Giving up entirely would cost
+     * far more than the halving does — see {@link #writeBounded}.
+     */
+    private static final int ATTEMPTS = 3;
 
     /** Matches the quality the patch pins LINE's own original-path re-encode to. */
     private static final int QUALITY = 80;
@@ -67,12 +75,21 @@ public final class OriginalPhoto {
      * Re-encodes an oversized photo into {@code destination} at native resolution, or bounded to
      * {@link #MAX_PIXELS} if it exceeds that.
      *
+     * <p>Failure returns {@code null}, not {@code FALSE}. {@code FALSE} propagates as "the original
+     * could not be written", and {@code c1.q} then deletes the temp file, so {@code d98.m1} finds
+     * no {@code IMAGE_ORIGINAL} file and silently ships the {@code c1.p} standard variant instead —
+     * the 1.64 MP result this patch exists to prevent. Returning {@code null} instead hands the
+     * photo back to LINE's stock raw copy, which keeps full resolution; the only cost is a large
+     * file on the wire, against an OBS ceiling that has never actually been observed. LINE's copy
+     * opens {@code FileOutputStream(File)} with no append, so it truncates whatever a failed
+     * attempt left behind.
+     *
      * @param rotation the rotation in degrees LINE's caller supplied for this send, or
      *                 {@code null} to fall back to the source's EXIF orientation — the same
      *                 precedence LINE's own encoders on this path use.
-     * @return {@code null} when this photo is not one of the oversized cases, meaning the caller
-     *         must fall through to LINE's stock handling; {@code TRUE} when {@code destination}
-     *         was written; {@code FALSE} when it should have been written but could not be.
+     * @return {@code TRUE} when {@code destination} was written; {@code null} when the caller must
+     *         fall through to LINE's stock handling, either because this photo is not one of the
+     *         oversized cases or because re-encoding it did not succeed. Never {@code FALSE}.
      */
     public static Boolean writeBounded(
             Context context, Uri source, Integer rotation, File destination) {
@@ -89,18 +106,36 @@ public final class OriginalPhoto {
                 return null;
             }
 
-            return Boolean.valueOf(reencode(context, source, rotation, destination, pixels));
+            // Halve the ceiling and retry rather than give up: the likeliest failure is the
+            // allocation, and 12 MP still beats the 1.64/4.19 MP a fall-through-to-standard costs.
+            long ceiling = MAX_PIXELS;
+            for (int attempt = 1; attempt <= ATTEMPTS; attempt++) {
+                try {
+                    if (reencode(context, source, rotation, destination, pixels, ceiling)) {
+                        Log.i(TAG, "Wrote original: " + bounds.outWidth + "x" + bounds.outHeight
+                                + " source, ceiling " + ceiling + " px, attempt " + attempt + ".");
+                        return Boolean.TRUE;
+                    }
+                    Log.w(TAG, "Re-encode attempt " + attempt + " failed at ceiling " + ceiling
+                            + " px.");
+                } catch (OutOfMemoryError e) {
+                    Log.w(TAG, "Out of memory at ceiling " + ceiling + " px (attempt " + attempt
+                            + ").");
+                }
+                ceiling /= 2L;
+            }
+
+            Log.w(TAG, "Giving up; letting LINE copy the source at full resolution instead.");
+            return null;
         } catch (Throwable t) {
-            // Includes OutOfMemoryError. Reporting failure lets LINE's own error handling run
-            // rather than leaving a half-written file behind.
             Log.w(TAG, "Could not re-encode the original photo.", t);
-            return Boolean.FALSE;
+            return null;
         }
     }
 
-    private static boolean reencode(
-            Context context, Uri source, Integer rotation, File destination, long pixels) {
-        Bitmap bitmap = decode(context, source, options(pixels));
+    private static boolean reencode(Context context, Uri source, Integer rotation, File destination,
+            long pixels, long ceiling) {
+        Bitmap bitmap = decode(context, source, options(pixels, ceiling));
         if (bitmap == null) return false;
 
         try {
@@ -123,7 +158,7 @@ public final class OriginalPhoto {
     }
 
     /**
-     * Decode options that land the result on {@link #MAX_PIXELS}.
+     * Decode options that land the result on {@code ceiling} pixels.
      *
      * <p>{@code inSampleSize} alone is power-of-two, so on its own it overshoots badly — a 108 MP
      * source would quantise to 6.75 MP, barely better than the 4.19 MP this patch exists to avoid.
@@ -131,18 +166,18 @@ public final class OriginalPhoto {
      * the decoder's own density scaler covers the remainder. That also keeps the final bitmap the
      * only large allocation, however big the source is.
      */
-    private static BitmapFactory.Options options(long pixels) {
+    private static BitmapFactory.Options options(long pixels, long ceiling) {
         BitmapFactory.Options options = new BitmapFactory.Options();
-        if (pixels <= MAX_PIXELS) return options;
+        if (pixels <= ceiling) return options;
 
         int sample = 1;
-        while (pixels / ((long) sample * 2L * sample * 2L) >= MAX_PIXELS) {
+        while (pixels / ((long) sample * 2L * sample * 2L) >= ceiling) {
             sample *= 2;
         }
         options.inSampleSize = sample;
 
         long sampled = pixels / ((long) sample * (long) sample);
-        double scale = Math.sqrt((double) MAX_PIXELS / (double) sampled);
+        double scale = Math.sqrt((double) ceiling / (double) sampled);
         if (scale < 1.0d) {
             options.inScaled = true;
             options.inDensity = DENSITY_BASE;
@@ -151,31 +186,31 @@ public final class OriginalPhoto {
         return options;
     }
 
+    /** Lets {@link OutOfMemoryError} escape so the caller can retry at a smaller ceiling. */
     private static Bitmap decode(Context context, Uri source, BitmapFactory.Options options) {
         try (InputStream in = context.getContentResolver().openInputStream(source)) {
             if (in == null) return null;
             return BitmapFactory.decodeStream(in, null, options);
+        } catch (OutOfMemoryError e) {
+            throw e;
         } catch (Throwable t) {
             Log.w(TAG, "Could not read the source photo.", t);
             return null;
         }
     }
 
+    /**
+     * Also lets {@link OutOfMemoryError} escape. Retrying smaller and staying upright beats
+     * succeeding at full size and shipping the photo sideways.
+     */
     private static Bitmap rotate(Bitmap bitmap, int degrees) {
         if (degrees == 0) return bitmap;
-        try {
-            Matrix matrix = new Matrix();
-            matrix.setRotate(degrees);
-            Bitmap rotated = Bitmap.createBitmap(
-                    bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
-            if (rotated != bitmap) bitmap.recycle();
-            return rotated;
-        } catch (Throwable t) {
-            // Out of memory for the second copy. An upright photo at full resolution still beats
-            // the 4.19 MP fallback, so keep going with the unrotated one.
-            Log.w(TAG, "Could not apply orientation; sending unrotated.", t);
-            return bitmap;
-        }
+        Matrix matrix = new Matrix();
+        matrix.setRotate(degrees);
+        Bitmap rotated = Bitmap.createBitmap(
+                bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
+        if (rotated != bitmap) bitmap.recycle();
+        return rotated;
     }
 
     /**
