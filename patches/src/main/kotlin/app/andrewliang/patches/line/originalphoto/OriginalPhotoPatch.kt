@@ -1,6 +1,7 @@
 package app.andrewliang.patches.line.originalphoto
 
 import app.andrewliang.patches.shared.Constants.COMPATIBILITY_LINE
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
@@ -31,6 +32,11 @@ private const val FILE = "Ljava/io/File;"
 private const val EXTENSION = "Lapp/andrewliang/extension/OriginalPhoto;"
 private const val WRITE_BOUNDED =
     "writeBounded($CONTEXT$URI$INTEGER$FILE)Ljava/lang/Boolean;"
+
+// Temporary diagnostics; remove with the injections that call them.
+private const val DIAG_TOGGLE = "diagToggle(Z)V"
+private const val DIAG_STAMP = "diagStamp(Z)V"
+private const val DIAG_VARIANT = "diagVariant(Ljava/lang/Object;)V"
 
 @Suppress("unused")
 val originalPhotoPatch = bytecodePatch(
@@ -105,6 +111,19 @@ val originalPhotoPatch = bytecodePatch(
             )
         }
 
+        // --- DIAGNOSTIC (temporary): log the toggle-availability decision ----------------------
+        // The method writing u53.e.a is `i(Z)V`: takes the availability boolean, stores it, then
+        // calls setSelected on the toggle view. Found by descriptor plus the iput-boolean, since
+        // the name is obfuscated.
+        toggleClass.methods.firstOrNull { method ->
+            method.returnType == "V" &&
+                method.parameterTypes.toList() == listOf("Z") &&
+                method.implementation?.instructions?.any {
+                    it.opcode == Opcode.IPUT_BOOLEAN
+                } == true
+        }?.addInstructions(0, "invoke-static { p1 }, $EXTENSION->$DIAG_TOGGLE")
+            ?: throw PatchException("original photo: toggle writer not found for diagnostics")
+
         // --- Site 1: stop the two bail-outs in t73.k0.b0 -------------------------------------
         // Both are const-wide/32 feeding a cmp-long. Rewriting the compared value rather than the
         // branch keeps the method's control flow byte-identical:
@@ -117,6 +136,29 @@ val originalPhotoPatch = bytecodePatch(
             val register = (match.instruction as OneRegisterInstruction).registerA
             gateMethod.replaceInstruction(match.index, "const-wide/32 v$register, 0x7fffffff")
         }
+
+        // --- DIAGNOSTIC (temporary): log every isOriginal the picker stamps --------------------
+        // Five iput-boolean sites in b0, one per branch. Injected ahead of each, in reverse index
+        // order so an earlier insertion cannot shift a later one. The value register is the iput's
+        // registerA (v4/v5 here, well inside the 4-bit invoke limit); invoke-static returning void
+        // clobbers nothing.
+        gateMethod.implementation!!.instructions
+            .withIndex()
+            .filter { (_, instruction) ->
+                instruction.opcode == Opcode.IPUT_BOOLEAN &&
+                    ((instruction as? ReferenceInstruction)?.reference as? FieldReference)
+                        ?.type == "Z"
+            }
+            .map { (index, instruction) ->
+                index to (instruction as TwoRegisterInstruction).registerA
+            }
+            .reversed()
+            .forEach { (index, register) ->
+                gateMethod.addInstructions(
+                    index,
+                    "invoke-static { v$register }, $EXTENSION->$DIAG_STAMP",
+                )
+            }
 
         // --- Sites 2 and 3 both live in the u13.y0 lambda ------------------------------------
         val writer = OriginalFileWriterFingerprint.method
@@ -146,6 +188,18 @@ val originalPhotoPatch = bytecodePatch(
                 null
             }
         }
+
+        // --- DIAGNOSTIC (temporary): log the variant u13.c1.f is handed ------------------------
+        // f(cw0.d, cw0.f, Uri, Integer)Z is the only method on c1 with that shape, and p2 is the
+        // cw0.f variant -- IMAGE_ORIGINAL means the original branch was chosen and this patch is
+        // live all the way to the writer; IMAGE_STANDARD means the flag died upstream.
+        mutableClassDefBy(contextRead.definingClass).methods.firstOrNull { method ->
+            method.returnType == "Z" &&
+                method.parameterTypes.toList().let {
+                    it.size == 4 && it[2] == URI && it[3] == INTEGER
+                }
+        }?.addInstructions(0, "invoke-static { p2 }, $EXTENSION->$DIAG_VARIANT")
+            ?: throw PatchException("original photo: c1.f not found for diagnostics")
 
         val outerField = capturedField(contextRead.definingClass)
             ?: throw PatchException("original photo: captured c1 not found in ${writer.definingClass}")

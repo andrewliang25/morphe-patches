@@ -65,6 +65,29 @@ public final class OriginalPhoto {
     /** Matches the quality the patch pins LINE's own original-path re-encode to. */
     private static final int QUALITY = 80;
 
+    // --- Temporary diagnostics ------------------------------------------------------------------
+    // Called from injections into LINE's own decision points, to find where the "send as original"
+    // decision is actually lost. Three device rounds showed a >= 20 MB photo still arriving
+    // compressed with writeBounded never reached, and static analysis of the decompile has not
+    // explained why. These three log lines cover the whole chain: the toggle's availability
+    // decision, the per-item flag the picker stamps, and the variant the file writer is handed.
+    // Remove once the cause is known.
+
+    /** {@code m63.n0.i(Z)} — the value being written to the {@code u53.e.a} toggle state. */
+    public static void diagToggle(boolean available) {
+        Log.i(TAG, "DIAG toggle available=" + available);
+    }
+
+    /** {@code t73.k0.b0} — each {@code rt7.c.isOriginal} the picker stamps, per selected item. */
+    public static void diagStamp(boolean isOriginal) {
+        Log.i(TAG, "DIAG stamp isOriginal=" + isOriginal);
+    }
+
+    /** {@code u13.c1.f} — the {@code cw0.f} variant the writer got: IMAGE_ORIGINAL or STANDARD. */
+    public static void diagVariant(Object variant) {
+        Log.i(TAG, "DIAG writer variant=" + variant);
+    }
+
     /**
      * Arbitrary base for the {@code inDensity} / {@code inTargetDensity} ratio. Large enough that
      * rounding the target density costs well under a pixel of accuracy.
