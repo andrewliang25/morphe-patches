@@ -65,40 +65,6 @@ public final class OriginalPhoto {
     /** Matches the quality the patch pins LINE's own original-path re-encode to. */
     private static final int QUALITY = 80;
 
-    // --- Temporary diagnostics ------------------------------------------------------------------
-    // Called from injections into LINE's own decision points, to find where the "send as original"
-    // decision is actually lost. Three device rounds showed a >= 20 MB photo still arriving
-    // compressed with writeBounded never reached, and static analysis of the decompile has not
-    // explained why. These three log lines cover the whole chain: the toggle's availability
-    // decision, the per-item flag the picker stamps, and the variant the file writer is handed.
-    // Remove once the cause is known.
-
-    /** {@code m63.n0.i(Z)} — the value being written to the {@code u53.e.a} toggle state. */
-    public static void diagToggle(boolean available) {
-        Log.i(TAG, "DIAG toggle available=" + available);
-    }
-
-    /** {@code t73.k0.b0} — each {@code rt7.c.isOriginal} the picker stamps, per selected item. */
-    public static void diagStamp(boolean isOriginal) {
-        Log.i(TAG, "DIAG stamp isOriginal=" + isOriginal);
-    }
-
-    /** {@code u13.c1.f} — the {@code cw0.f} variant the writer got: IMAGE_ORIGINAL or STANDARD. */
-    public static void diagVariant(Object variant) {
-        Log.i(TAG, "DIAG writer variant=" + variant);
-    }
-
-    /**
-     * {@code z58.b.F(z58.b$c, boolean)} — every write to the message metadata map, filtered to the
-     * original-image key. Carries a stack trace: the picker probes proved that path is not the one
-     * in use, so the point is to see *which* code sets the flag, not just what it is set to.
-     */
-    public static void diagMeta(Object key, boolean value) {
-        String name = String.valueOf(key);
-        if (name.indexOf("ORIGINAL") < 0) return;
-        Log.i(TAG, "DIAG meta " + name + "=" + value, new Throwable("set from"));
-    }
-
     /**
      * Arbitrary base for the {@code inDensity} / {@code inTargetDensity} ratio. Large enough that
      * rounding the target density costs well under a pixel of accuracy.
@@ -127,34 +93,17 @@ public final class OriginalPhoto {
      */
     public static Boolean writeBounded(
             Context context, Uri source, Integer rotation, File destination) {
-        if (context == null || source == null || destination == null) {
-            // Logged unconditionally: see the entry log below for why.
-            Log.i(TAG, "Reached with a null argument; deferring to LINE.");
-            return null;
-        }
+        if (context == null || source == null || destination == null) return null;
 
         try {
             BitmapFactory.Options bounds = new BitmapFactory.Options();
             bounds.inJustDecodeBounds = true;
             decode(context, source, bounds);
 
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null;
+
             long pixels = (long) bounds.outWidth * (long) bounds.outHeight;
-            long length = sourceLength(context, source);
-
-            // Unconditional, before any decision. Every other outcome here is a fall-through that
-            // looks identical from outside the app, so without this line "nothing was logged" is
-            // ambiguous between "the hook never ran" (wrong pipeline, or a stale install) and "the
-            // hook ran and measured the photo as small". Those need opposite fixes.
-            Log.i(TAG, "Reached: " + bounds.outWidth + "x" + bounds.outHeight + " (" + pixels
-                    + " px), " + length + " bytes, rotation=" + rotation + ", uri=" + source);
-
-            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) {
-                Log.i(TAG, "Bounds unreadable; deferring to LINE.");
-                return null;
-            }
-
-            if (pixels < PIXEL_THRESHOLD && length < SIZE_THRESHOLD) {
-                Log.i(TAG, "Under both thresholds; deferring to LINE's raw copy.");
+            if (pixels < PIXEL_THRESHOLD && sourceLength(context, source) < SIZE_THRESHOLD) {
                 return null;
             }
 

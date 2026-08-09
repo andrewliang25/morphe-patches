@@ -386,14 +386,48 @@ The `u13.y0` lambda branches on mime (`ww0.c.a`): `image/jpeg|png|gif|bmp` (and 
 type) → raw byte copy, then `i48.a.b` strips 38 GPS/timestamp EXIF tags (Orientation survives);
 anything else (HEIC, WEBP) → full-res decode + `Matrix` rotate + JPEG at the tier quality.
 
+### The `>= 20 MB / >= 100 MP` test exists in FIVE places
+
+This is the single most important fact about this area, and it cost four device rounds to learn. The
+same pair of literals (`0x1400000`, `0x5f5e100`) is duplicated across two independent send paths
+plus Album, and **any one of them alone is enough to drop the photo to the standard variant**:
+
+| Copy | Decides | On the chatroom path? |
+|---|---|---|
+| `th1.t$c$b.invoke` | `Function1<w51.c, Boolean>`; `un1.f.a` calls it per item and feeds the result into `un1.k$b$c(Uri, isOriginal)` → `IS_SEND_ORIGINAL_IMAGE` | **yes — this is the one that decides** |
+| `m63.n0.f()` / `d()` | media-picker toggle availability → `m63.n0.i(Z)` → `u53.e.a` | no |
+| `t73.k0.b0` | media-picker per-item `rt7.c.B` stamp | no |
+| `wi0.h.g` | LINE **Album**'s own compressor (`ri0.c.c`, `com.linecorp.line.album.transfer.*`) | no |
+| `th1.u.invokeSuspend` | guide text only (`ORIGINAL_IMAGE_GUIDE` vs `ERROR_GUIDE`, via `th1.c0`/`d0`) | cosmetic |
+
+Two send paths reach `u13.c1.f`, and they do **not** share the decision:
+
+- **Chatroom `+` / photo strip** — `th1.t.h(Z)` reads the toggle (`t.f()` = the toggle view's
+  `isSelected()`), launches `th1.t$c`, and passes `th1.t$c$b` to `un1.f.a`. `th1.a0` builds fresh
+  `rt7.c` items with `B = t.f()`. **The media picker is never involved.**
+- **Full gallery picker** — `m63.n0` + `t73.k0.b0`.
+
+`wi0.h.g` is deliberately left alone: Album has **no "Original" button**, so its `IMAGE_ORIGINAL`
+branch is unreachable and the only remaining lever there would be the always-compress branch, which
+would inflate every album upload. Album's config comes from `ch0.j.m()` →
+`ei0.n(maxDimension², quality, 8192|1280)` off the *same* `f1.a()` tier as chat, so if an Original
+button ever appears there, the fix is to swap that config for a bounded one rather than to neutralise
+the gate.
+
 ### What the patch does
 
-Three sites, all confined to the original path or the fallback decision:
+Five sites. Site A is the one device-confirmed to decide the outcome; Sites 0 and 1 cover the
+gallery-picker path and are **not** device-verified.
 
-1. `t73.k0.b0` — both gate literals → `0x7fffffff`, so `isOriginal` stays true. Rewriting the
-   compared *value* rather than the branch keeps control flow byte-identical.
-2. `u13.y0` head — call `OriginalPhoto.writeBounded`; `null` falls through to stock code.
-3. `u13.y0` — the tier-quality `iget` feeding `c1.o` → `const/16 0x50` (q80).
+- **A.** `th1.t$c$b` — both gate literals → `0x7fffffff`, so the per-item predicate is always true.
+- **0.** `m63.n0` — both literals in *every method holding both* (`f()` and `d()`). `onClick`'s lone
+  `0x1400000` is a free-disk-space multiplier (`getFreeSpace() >= 20 MB * itemCount`) — never touch
+  it, which is why the rule keys on "contains both" rather than on the size literal.
+- **1.** `t73.k0.b0` — both gate literals → `0x7fffffff`, so `isOriginal` stays true. Rewriting the
+  compared *value* rather than the branch keeps control flow byte-identical.
+- **2.** `u13.y0` head — call `OriginalPhoto.writeBounded`; `null` falls through to stock code. The
+  fall-through target **must** be an `ExternalLabel`, not a label written inside the injected block.
+- **3.** `u13.y0` — the tier-quality `iget` feeding `c1.o` → `const/16 0x50` (q80).
 
 The extension re-derives the same `>= 20 MB || >= 100 MP` test the patch removed and returns
 `null` otherwise, so every case that works today is untouched — notably a 50 MP / 10 MB JPEG,

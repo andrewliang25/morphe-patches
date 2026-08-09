@@ -3,7 +3,6 @@ package app.andrewliang.patches.line.originalphoto
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.literal
 import app.morphe.patcher.methodCall
-import app.morphe.patcher.string
 
 /**
  * `t73.k0.b0(ArrayList)` — the picker's per-item pass that stamps `rt7.c.isOriginal` (field `B`)
@@ -59,18 +58,6 @@ internal object ChatroomOriginalItemGateFingerprint : Fingerprint(
     filters = listOf(
         literal(SIZE_GATE),
         literal(PIXEL_GATE),
-    ),
-)
-
-/**
- * DIAGNOSTIC, temporary. `z58.b$c.<clinit>` — the message-metadata key enum, located by the
- * un-obfuscated `IS_SEND_ORIGINAL_IMAGE` constant name that the enum's initialiser passes to
- * `Enum.<init>`. Gives the nested enum's descriptor, from which the outer `z58.b` metadata map (and
- * so its `F(key, boolean)` setter) follows by stripping `$c`.
- */
-internal object MetadataOriginalKeyFingerprint : Fingerprint(
-    filters = listOf(
-        string("IS_SEND_ORIGINAL_IMAGE"),
     ),
 )
 

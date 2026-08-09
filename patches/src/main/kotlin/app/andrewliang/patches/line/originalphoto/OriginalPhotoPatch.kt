@@ -1,7 +1,6 @@
 package app.andrewliang.patches.line.originalphoto
 
 import app.andrewliang.patches.shared.Constants.COMPATIBILITY_LINE
-import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
@@ -33,12 +32,6 @@ private const val EXTENSION = "Lapp/andrewliang/extension/OriginalPhoto;"
 private const val WRITE_BOUNDED =
     "writeBounded($CONTEXT$URI$INTEGER$FILE)Ljava/lang/Boolean;"
 
-// Temporary diagnostics; remove with the injections that call them.
-private const val DIAG_TOGGLE = "diagToggle(Z)V"
-private const val DIAG_STAMP = "diagStamp(Z)V"
-private const val DIAG_VARIANT = "diagVariant(Ljava/lang/Object;)V"
-private const val DIAG_META = "diagMeta(Ljava/lang/Object;Z)V"
-
 @Suppress("unused")
 val originalPhotoPatch = bytecodePatch(
     name = "Send original photos without the quality drop",
@@ -52,16 +45,30 @@ val originalPhotoPatch = bytecodePatch(
 
     extendWith("extensions/extension.mpe")
 
-    // With "Original" on, t73.k0.b0 clears rt7.c.isOriginal for anything >= 20 MB or >= 100 MP.
-    // The photo then takes the ordinary standard path and is resampled to the tier's pixel budget
-    // -- 4.19 MP on High, 1.64 MP on Normal. One byte under the threshold it is copied verbatim;
-    // one byte over it loses 6-25x its pixels, with the toggle still showing on. LINE has no tier
-    // in between, which is the entire defect.
+    // With "Original" on, LINE still refuses to send a photo as an original when it is >= 20 MB or
+    // >= 100 MP. It falls onto the ordinary standard path and is resampled to the tier's pixel
+    // budget -- 4.19 MP on High, 1.64 MP on Normal. One byte under the threshold a photo is copied
+    // verbatim; one byte over it loses 6-25x its pixels. LINE has no tier in between, which is the
+    // entire defect.
     //
-    // Both gates are plain literals, so neutralising them keeps every such photo on the *original*
-    // path (Site 1). There the extension re-encodes it at native resolution, bounded to 24 MP,
-    // instead of raw-copying something that would sit at the upload size limit (Site 2). Site 3
-    // pins the quality LINE's own original-path re-encode uses so it matches the extension.
+    // That same >= 20 MB / >= 100 MP test is duplicated across *four* places, on two independent
+    // send paths, and each one alone is enough to drop the photo:
+    //
+    //   Site A  th1.t$c$b        the chatroom "+" / photo-strip path -- DEVICE-CONFIRMED as the one
+    //                            that actually decides, and the only site proven to execute
+    //   Site 0  m63.n0.f()/d()   the media picker's toggle availability
+    //   Site 1  t73.k0.b0        the media picker's per-item stamp
+    //   (wi0.h.g is a fifth copy, in LINE Album's own pipeline -- deliberately not touched: Album
+    //    has no "Original" button, so its IMAGE_ORIGINAL branch is unreachable.)
+    //
+    // Site 0 and Site 1 are on the media picker, which a chatroom send never touches; they are kept
+    // for the full-gallery-picker flow but are NOT device-verified. Do not assume a site is live
+    // because its bytecode is correct -- see the note in CLAUDE.md.
+    //
+    // With the flag preserved the photo reaches the original writer, where the extension re-encodes
+    // it at native resolution bounded to 24 MP (Site 2) instead of raw-copying something that would
+    // sit at the upload size limit. Site 3 pins the quality LINE's own original-path re-encode uses
+    // so it matches the extension.
     //
     // Nothing outside the original path is touched: the tier config (t88.a$b$a / dw0.c.a) and the
     // standard path's own decode budget are deliberately left alone, so sending with "Original"
@@ -128,19 +135,6 @@ val originalPhotoPatch = bytecodePatch(
             )
         }
 
-        // --- DIAGNOSTIC (temporary): log the toggle-availability decision ----------------------
-        // The method writing u53.e.a is `i(Z)V`: takes the availability boolean, stores it, then
-        // calls setSelected on the toggle view. Found by descriptor plus the iput-boolean, since
-        // the name is obfuscated.
-        toggleClass.methods.firstOrNull { method ->
-            method.returnType == "V" &&
-                method.parameterTypes.toList() == listOf("Z") &&
-                method.implementation?.instructions?.any {
-                    it.opcode == Opcode.IPUT_BOOLEAN
-                } == true
-        }?.addInstructions(0, "invoke-static { p1 }, $EXTENSION->$DIAG_TOGGLE")
-            ?: throw PatchException("original photo: toggle writer not found for diagnostics")
-
         // --- Site 1: stop the two bail-outs in t73.k0.b0 -------------------------------------
         // Both are const-wide/32 feeding a cmp-long. Rewriting the compared value rather than the
         // branch keeps the method's control flow byte-identical:
@@ -153,29 +147,6 @@ val originalPhotoPatch = bytecodePatch(
             val register = (match.instruction as OneRegisterInstruction).registerA
             gateMethod.replaceInstruction(match.index, "const-wide/32 v$register, 0x7fffffff")
         }
-
-        // --- DIAGNOSTIC (temporary): log every isOriginal the picker stamps --------------------
-        // Five iput-boolean sites in b0, one per branch. Injected ahead of each, in reverse index
-        // order so an earlier insertion cannot shift a later one. The value register is the iput's
-        // registerA (v4/v5 here, well inside the 4-bit invoke limit); invoke-static returning void
-        // clobbers nothing.
-        gateMethod.implementation!!.instructions
-            .withIndex()
-            .filter { (_, instruction) ->
-                instruction.opcode == Opcode.IPUT_BOOLEAN &&
-                    ((instruction as? ReferenceInstruction)?.reference as? FieldReference)
-                        ?.type == "Z"
-            }
-            .map { (index, instruction) ->
-                index to (instruction as TwoRegisterInstruction).registerA
-            }
-            .reversed()
-            .forEach { (index, register) ->
-                gateMethod.addInstructions(
-                    index,
-                    "invoke-static { v$register }, $EXTENSION->$DIAG_STAMP",
-                )
-            }
 
         // --- Sites 2 and 3 both live in the u13.y0 lambda ------------------------------------
         val writer = OriginalFileWriterFingerprint.method
@@ -205,30 +176,6 @@ val originalPhotoPatch = bytecodePatch(
                 null
             }
         }
-
-        // --- DIAGNOSTIC (temporary): log the variant u13.c1.f is handed ------------------------
-        // f(cw0.d, cw0.f, Uri, Integer)Z is the only method on c1 with that shape, and p2 is the
-        // cw0.f variant -- IMAGE_ORIGINAL means the original branch was chosen and this patch is
-        // live all the way to the writer; IMAGE_STANDARD means the flag died upstream.
-        mutableClassDefBy(contextRead.definingClass).methods.firstOrNull { method ->
-            method.returnType == "Z" &&
-                method.parameterTypes.toList().let {
-                    it.size == 4 && it[2] == URI && it[3] == INTEGER
-                }
-        }?.addInstructions(0, "invoke-static { p2 }, $EXTENSION->$DIAG_VARIANT")
-            ?: throw PatchException("original photo: c1.f not found for diagnostics")
-
-        // --- DIAGNOSTIC (temporary): log who sets the original-image metadata flag -------------
-        // The picker probes proved t73.k0.b0 and m63.n0.i never run for the flow under test, so the
-        // flag is written by code this patch has not found. Instrument the setter itself -- one
-        // injection catches every writer -- and log a stack trace to name the caller.
-        val keyEnum = MetadataOriginalKeyFingerprint.method.definingClass
-        val metadataMap = keyEnum.substringBefore('$') + ";"
-        mutableClassDefBy(metadataMap).methods.firstOrNull { method ->
-            method.returnType == "V" &&
-                method.parameterTypes.toList() == listOf(keyEnum, "Z")
-        }?.addInstructions(0, "invoke-static { p1, p2 }, $EXTENSION->$DIAG_META")
-            ?: throw PatchException("original photo: metadata setter not found in $metadataMap")
 
         val outerField = capturedField(contextRead.definingClass)
             ?: throw PatchException("original photo: captured c1 not found in ${writer.definingClass}")
