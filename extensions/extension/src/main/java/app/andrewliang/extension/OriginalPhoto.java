@@ -93,16 +93,34 @@ public final class OriginalPhoto {
      */
     public static Boolean writeBounded(
             Context context, Uri source, Integer rotation, File destination) {
-        if (context == null || source == null || destination == null) return null;
+        if (context == null || source == null || destination == null) {
+            // Logged unconditionally: see the entry log below for why.
+            Log.i(TAG, "Reached with a null argument; deferring to LINE.");
+            return null;
+        }
 
         try {
             BitmapFactory.Options bounds = new BitmapFactory.Options();
             bounds.inJustDecodeBounds = true;
             decode(context, source, bounds);
-            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null;
 
             long pixels = (long) bounds.outWidth * (long) bounds.outHeight;
-            if (pixels < PIXEL_THRESHOLD && sourceLength(context, source) < SIZE_THRESHOLD) {
+            long length = sourceLength(context, source);
+
+            // Unconditional, before any decision. Every other outcome here is a fall-through that
+            // looks identical from outside the app, so without this line "nothing was logged" is
+            // ambiguous between "the hook never ran" (wrong pipeline, or a stale install) and "the
+            // hook ran and measured the photo as small". Those need opposite fixes.
+            Log.i(TAG, "Reached: " + bounds.outWidth + "x" + bounds.outHeight + " (" + pixels
+                    + " px), " + length + " bytes, rotation=" + rotation + ", uri=" + source);
+
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) {
+                Log.i(TAG, "Bounds unreadable; deferring to LINE.");
+                return null;
+            }
+
+            if (pixels < PIXEL_THRESHOLD && length < SIZE_THRESHOLD) {
+                Log.i(TAG, "Under both thresholds; deferring to LINE's raw copy.");
                 return null;
             }
 
