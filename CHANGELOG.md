@@ -1,3 +1,9 @@
+## [1.5.0](https://github.com/andrewliang25/morphe-patches/compare/v1.4.0...v1.5.0) (2026-08-09)
+
+### ✨ New Features
+
+* add Keep unsent messages patch ([3cf6bd7](https://github.com/andrewliang25/morphe-patches/commit/3cf6bd7bca4923cba967919d365e58d40a9530d7))
+
 ## [1.5.0-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v1.4.0...v1.5.0-dev.1) (2026-08-09)
 
 ### ✨ New Features
