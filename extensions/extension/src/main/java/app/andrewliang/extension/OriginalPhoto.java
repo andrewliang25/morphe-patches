@@ -67,11 +67,15 @@ public final class OriginalPhoto {
      * Re-encodes an oversized photo into {@code destination} at native resolution, or bounded to
      * {@link #MAX_PIXELS} if it exceeds that.
      *
+     * @param rotation the rotation in degrees LINE's caller supplied for this send, or
+     *                 {@code null} to fall back to the source's EXIF orientation — the same
+     *                 precedence LINE's own encoders on this path use.
      * @return {@code null} when this photo is not one of the oversized cases, meaning the caller
      *         must fall through to LINE's stock handling; {@code TRUE} when {@code destination}
      *         was written; {@code FALSE} when it should have been written but could not be.
      */
-    public static Boolean writeBounded(Context context, Uri source, File destination) {
+    public static Boolean writeBounded(
+            Context context, Uri source, Integer rotation, File destination) {
         if (context == null || source == null || destination == null) return null;
 
         try {
@@ -85,7 +89,7 @@ public final class OriginalPhoto {
                 return null;
             }
 
-            return Boolean.valueOf(reencode(context, source, destination, pixels));
+            return Boolean.valueOf(reencode(context, source, rotation, destination, pixels));
         } catch (Throwable t) {
             // Includes OutOfMemoryError. Reporting failure lets LINE's own error handling run
             // rather than leaving a half-written file behind.
@@ -94,7 +98,8 @@ public final class OriginalPhoto {
         }
     }
 
-    private static boolean reencode(Context context, Uri source, File destination, long pixels) {
+    private static boolean reencode(
+            Context context, Uri source, Integer rotation, File destination, long pixels) {
         Bitmap bitmap = decode(context, source, options(pixels));
         if (bitmap == null) return false;
 
@@ -104,7 +109,7 @@ public final class OriginalPhoto {
             // emit a JPEG with no EXIF, so everything downstream — OBS's derived /preview and
             // standard variants, and the recipient's renderer — assumes orientation is already
             // applied. Costs one extra bitmap; a sideways photo would be far worse.
-            bitmap = rotate(bitmap, rotationDegrees(context, source));
+            bitmap = rotate(bitmap, degrees(context, source, rotation));
 
             try (OutputStream out = new BufferedOutputStream(new FileOutputStream(destination))) {
                 return bitmap.compress(Bitmap.CompressFormat.JPEG, QUALITY, out);
@@ -173,7 +178,23 @@ public final class OriginalPhoto {
         }
     }
 
-    private static int rotationDegrees(Context context, Uri source) {
+    /**
+     * The rotation to bake in, normalised to {@code [0, 360)}.
+     *
+     * <p>LINE hands the same {@code Integer} rotation to both encoders {@code c1.f} runs for a
+     * send: {@code c1.p}, which writes the standard variant the thumbnail and OBS's derived
+     * {@code /preview} come from, and the original-path re-encode this class replaces. Both prefer
+     * that value and only read the file's EXIF ({@code c1.d}) when it is {@code null}. Matching
+     * that precedence is what keeps the original's orientation agreeing with the standard variant
+     * — re-deriving from EXIF unconditionally would send them sideways relative to each other
+     * whenever the caller supplied a rotation the file itself does not carry.
+     */
+    private static int degrees(Context context, Uri source, Integer rotation) {
+        int value = (rotation != null ? rotation.intValue() : exifDegrees(context, source)) % 360;
+        return value < 0 ? value + 360 : value;
+    }
+
+    private static int exifDegrees(Context context, Uri source) {
         try (InputStream in = context.getContentResolver().openInputStream(source)) {
             if (in == null) return 0;
             switch (new ExifInterface(in).getAttributeInt(

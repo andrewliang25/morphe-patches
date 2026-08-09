@@ -307,8 +307,17 @@ which must keep being copied byte for byte. Output is bounded to 24 MP via `inSa
 would quantise a 108 MP source to 6.75 MP. Rotation is baked into the pixels rather than written
 as an EXIF tag, matching what every other LINE encoder on this path does.
 
-Sites 2 and 3 resolve `u13.c1`, its `Context` field and the lambda's captures **from the matched
-method's own bytecode**; only the two literals and framework types are hardcoded.
+**Rotation must come from LINE, not from EXIF.** `c1.f(dVar, fVar, uri, Integer rotation)` hands
+the *same* `Integer` to `c1.p` (the standard variant, and so the thumbnail and OBS's derived
+`/preview`) and to the `y0` lambda. Both prefer it and only fall back to the file's EXIF
+(`c1.d(uri)`, itself an `ExifInterface` "Orientation" read) when it is `null`. So the patch passes
+the lambda's `Ljava/lang/Integer;` capture (`y0.c`) into the extension and EXIF is the fallback
+only — deriving from EXIF unconditionally would leave the original sideways relative to the
+standard variant whenever the caller supplied a rotation the file itself does not carry.
+
+Sites 2 and 3 resolve `u13.c1`, its `Context` field and the lambda's captures (`c1`, `Uri`,
+`Integer` rotation) **from the matched method's own bytecode**; only the two literals and framework
+types are hardcoded.
 
 ### Values that drift on a version bump
 

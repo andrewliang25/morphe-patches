@@ -21,12 +21,13 @@ internal const val PIXEL_GATE = 0x5F5E100L
 
 private const val CONTEXT = "Landroid/content/Context;"
 private const val URI = "Landroid/net/Uri;"
+private const val INTEGER = "Ljava/lang/Integer;"
 private const val BITMAP = "Landroid/graphics/Bitmap;"
 private const val FILE = "Ljava/io/File;"
 
 private const val EXTENSION = "Lapp/andrewliang/extension/OriginalPhoto;"
 private const val WRITE_BOUNDED =
-    "writeBounded($CONTEXT$URI$FILE)Ljava/lang/Boolean;"
+    "writeBounded($CONTEXT$URI$INTEGER$FILE)Ljava/lang/Boolean;"
 
 @Suppress("unused")
 val originalPhotoPatch = bytecodePatch(
@@ -84,7 +85,8 @@ val originalPhotoPatch = bytecodePatch(
             }
         } ?: throw PatchException("original photo: Context read not found in ${writer.definingClass}")
 
-        // The lambda's own synthetic captures: the c1 it was built from, and the source Uri.
+        // The lambda's own synthetic captures: the c1 it was built from, the source Uri, and the
+        // rotation the caller supplied.
         fun capturedField(type: String) = instructions.firstNotNullOfOrNull { instruction ->
             val reference = (instruction as? ReferenceInstruction)?.reference as? FieldReference
             if (instruction.opcode == Opcode.IGET_OBJECT &&
@@ -101,6 +103,16 @@ val originalPhotoPatch = bytecodePatch(
             ?: throw PatchException("original photo: captured c1 not found in ${writer.definingClass}")
         val uriField = capturedField(URI)
             ?: throw PatchException("original photo: captured Uri not found in ${writer.definingClass}")
+
+        // c1.f hands the same rotation to c1.p -- which writes the standard variant the thumbnail
+        // and OBS's /preview derive from -- and to this lambda. Both prefer it over the file's EXIF
+        // (c1.d) and only read EXIF when it is null, so the extension has to see it: re-deriving
+        // from EXIF alone would leave the original sideways relative to the standard variant
+        // whenever the caller supplied a rotation the file itself does not carry.
+        val rotationField = capturedField(INTEGER)
+            ?: throw PatchException(
+                "original photo: captured rotation not found in ${writer.definingClass}",
+            )
 
         // --- Site 3 first: replaceInstruction keeps indices stable, addInstructions does not ---
         // `c1.o(quality, bitmap, file)` is the JPEG encoder. Its quality argument is read from the
@@ -133,17 +145,19 @@ val originalPhotoPatch = bytecodePatch(
         // so every case that works today falls through to the stock code untouched -- notably a
         // 50 MP / 10 MB JPEG, which must keep being copied byte for byte.
         //
-        // Injected after `check-cast p1, File` and LINE's null check, so p1 is already typed. v0
-        // and v1 are dead on entry: the original code's next acts are `const-string v0, "content"`
-        // and a reload of the Uri capture into v1. The trailing label needs an instruction, hence
-        // the nop.
+        // Injected after `check-cast p1, File` and LINE's null check, so p1 is already typed. v0,
+        // v1 and v2 are dead on entry: the original code's next acts are `const-string v0,
+        // "content"`, a reload of the Uri capture into v1, and `move-result-object v2` from
+        // `Uri.getScheme` -- each a write before any read. The trailing label needs an instruction,
+        // hence the nop.
         writer.addInstructions(
             2,
             """
                 iget-object v0, p0, ${outerField.definingClass}->${outerField.name}:${outerField.type}
                 iget-object v0, v0, ${contextRead.definingClass}->${contextRead.name}:${contextRead.type}
                 iget-object v1, p0, ${uriField.definingClass}->${uriField.name}:${uriField.type}
-                invoke-static { v0, v1, p1 }, $EXTENSION->$WRITE_BOUNDED
+                iget-object v2, p0, ${rotationField.definingClass}->${rotationField.name}:${rotationField.type}
+                invoke-static { v0, v1, v2, p1 }, $EXTENSION->$WRITE_BOUNDED
                 move-result-object v0
                 if-eqz v0, :originalphoto_stock
                 return-object v0
