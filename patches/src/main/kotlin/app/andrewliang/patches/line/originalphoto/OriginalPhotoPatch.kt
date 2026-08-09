@@ -1,10 +1,12 @@
 package app.andrewliang.patches.line.originalphoto
 
 import app.andrewliang.patches.shared.Constants.COMPATIBILITY_LINE
-import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
+import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
 import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.bytecodePatch
+import app.morphe.patcher.util.smali.ExternalLabel
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
@@ -148,9 +150,19 @@ val originalPhotoPatch = bytecodePatch(
         // Injected after `check-cast p1, File` and LINE's null check, so p1 is already typed. v0,
         // v1 and v2 are dead on entry: the original code's next acts are `const-string v0,
         // "content"`, a reload of the Uri capture into v1, and `move-result-object v2` from
-        // `Uri.getScheme` -- each a write before any read. The trailing label needs an instruction,
-        // hence the nop.
-        writer.addInstructions(
+        // `Uri.getScheme` -- each a write before any read.
+        //
+        // The fall-through target MUST be an ExternalLabel bound to the instruction already at the
+        // injection index, never a label written inside the block. A label declared in the block is
+        // resolved against the block's own addresses and is not rebased to where the block lands,
+        // so at any non-zero index the branch ends up pointing into the middle of an earlier
+        // instruction -- ART then refuses the whole class with
+        // `VerifyError: target dex pc <n> is not at instruction start`. (`hideadviews` gets away
+        // with an in-block label only because it injects at index 0, where the two addressings
+        // coincide.) Device-confirmed on LINE 26.11.0: the in-block form crashed every original
+        // send with `target dex pc 0xf`, 0xf being the block-relative address of its own label.
+        val fallThrough = writer.getInstruction(2)
+        writer.addInstructionsWithLabels(
             2,
             """
                 iget-object v0, p0, ${outerField.definingClass}->${outerField.name}:${outerField.type}
@@ -161,9 +173,8 @@ val originalPhotoPatch = bytecodePatch(
                 move-result-object v0
                 if-eqz v0, :originalphoto_stock
                 return-object v0
-                :originalphoto_stock
-                nop
             """,
+            ExternalLabel("originalphoto_stock", fallThrough),
         )
     }
 }
