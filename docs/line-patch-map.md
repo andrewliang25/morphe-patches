@@ -169,8 +169,8 @@ row, and the sibling "Hide community button" which targets `OPEN_CHAT`).
 
 Each is an independent, `default = true`, user-facing `bytecodePatch` — one feature (or one feature's
 full set of entry points) per patch, matching the bundle's convention (cf. *Hide Wallet tab*,
-*Disable VOOM*). All but *Redirect LINE Pay* are fixed-value / instruction-level edits with no
-extension.
+*Disable VOOM*). Most are fixed-value / instruction-level edits; *Redirect LINE Pay* and *Keep
+unsent messages* carry extension code.
 
 ## LINE Pay intake & the "Redirect LINE Pay" patch
 
@@ -330,3 +330,174 @@ at all. Both would otherwise draw the notice twice.
 | `i38.c` db values | `MESSAGE` = 1, `UNSENT` = 27, `UNSENT_NO_MARK` = 28, `SQUARE_UNSENT_MESSAGE` = 35, `UNSENT_SILENT` = 38 — the extension hardcodes 27 (the type it writes) and 27/28/38 (`i38.c.h()`'s set, the rows it refuses to annotate) |
 | `cb8.q7.NONE` | 0 (`attachement_type`) |
 | chat-list unread badge | `chat.message_count - chat.read_message_count` (`c23.d` columns, read in `z13.o`) — a stored counter pair, **not** a `count(*)` over `chat_history`, so the inserted placeholder cannot move it |
+
+---
+
+## Outbound photo pipeline (reference — no patch ships for this)
+
+> **A "Send original photos without the quality drop" patch was built, device-confirmed working, and
+> then deliberately dropped.** It is recorded here so nobody re-derives it from scratch. It reached a
+> 126.5 MP / 34 MB photo arriving at 24 MP instead of 1.64 MP, via five sites across two send paths
+> plus an extension. It was dropped because:
+>
+> - **Coverage can't match the promise.** It fixed the chatroom `+` / photo-strip flow only. Album is
+>   unfixable without inflating every album upload (no "Original" button, see below), share-to-LINE is
+>   a third path that was never traced, and a user cannot tell which entry point they used or inspect
+>   the result. A patch that silently applies to some sends and not others invites bug reports.
+> - **Maintenance is a re-investigation, not a fingerprint refresh.** Four fingerprints, one anchored
+>   on a synthetic Kotlin lambda (`th1.t$c$b`) that reshuffles whenever its enclosing method changes.
+>   Worse, four device rounds were spent on sites that resolved and disassembled perfectly while
+>   sitting on a path that never executed — so each LINE bump needs a device send with an oversized
+>   photo, not just a clean build.
+> - **The trigger is rare.** A 12 MP phone JPEG is 3–6 MB; crossing 20 MB needs a 50–200 MP high-res
+>   mode, and the 100 MP gate needs pixel-shift.
+>
+> If it is ever revived: the minimal form is **`th1.t$c$b`'s two literals alone** — one fingerprint,
+> two `replaceInstruction` calls, no extension. With the flag preserved, an oversized JPEG takes
+> LINE's stock raw byte copy at *full* resolution, losslessly, which is better output than the 24 MP
+> q80 re-encode the extension produced. The extension only existed to avoid putting ~34 MB on the
+> wire.
+
+### The two paths a photo can take
+
+`u13.c1.f(dVar, fVar, uri, rotation)` writes the local file that gets uploaded. Exactly two
+outcomes exist for a photo — there is no tier in between, which is the defect.
+
+| `cw0.f` | What `c1.f` does |
+|---|---|
+| `IMAGE_STANDARD` | `c1.p()` only — resample to the tier's **pixel budget** and JPEG re-encode |
+| `IMAGE_ORIGINAL` | `c1.p()` *and* the `u13.y0` lambda, which raw-copies or full-res re-encodes |
+
+`d98.m1` then uploads **one** of them (`IMAGE_ORIGINAL` when the message metadata carries
+`IS_SEND_ORIGINAL_IMAGE`, else `IMAGE_STANDARD`) plus a thumbnail. OBS derives the rest by URL
+path (`w78.b`): `…/r/talk/m/<id>` standard, `…/m/<id>/original`, `…/m/<id>/preview`.
+
+### The pixel budget is a *total*, not a per-side cap
+
+`c1.k(STANDARD_IMAGE)` returns `maxDimension²` **pixels**. `c1.m()` returns the bitmap untouched
+when `width*height <= budget`, so raising `maxDimension` past a photo's pixel count disables
+resampling entirely. `c1.l()` decodes to within `budget * 4` first (`mul-int/lit8 … 0x4`) and then
+scales precisely — that multiplier is what avoids coarse power-of-two subsampling, so lowering it
+costs quality for any source between 1x and 4x the budget.
+
+Values come from `jp.naver.line.android.util.f1.a()` — non-obfuscated, and the best anchor into
+this whole area:
+
+| Tier | Class | Server key | Default | Selected when |
+|---|---|---|---|---|
+| Normal | `t88.a$b$b` | `function.media.image_medium` | 1280 / q70 → **1.64 MP** | `RESIZE_IMAGE_OPTION != 2` (incl. unset) |
+| High | `t88.a$b$a` | `function.media.image_high` | 2048 / q80 → **4.19 MP** | `RESIZE_IMAGE_OPTION == 2` |
+
+`p38.a.c` is `NORMAL(0) / SMALL(1) / LARGE(2)`, but `f1` tests for exactly `2`, so `SMALL` is dead
+for uploads (it only suffixes download URLs in `r78.h`). The tiers are **separate classes**, which
+is what lets a patch touch one without the other. Four consumers: `dw0.c` (chat), `gg3.j`,
+`ch0.j`, `od7.d`.
+
+### The cliff
+
+`t73.k0.b0()` stamps `rt7.c.isOriginal` (field `B`) per item as the picker finalises. With the
+"Original" toggle on it clears the flag at `>= 20 MB` (`0x1400000`) or `>= 100 MP` (`0x5f5e100`),
+dropping the photo onto the standard path. One byte under the threshold a photo is copied
+verbatim; one byte over it loses 6–25x its pixels, with the toggle still showing on. The only hint
+is `gallery_original_guide_error` — *"Videos and some photos may be sent in standard resolution."*
+
+Nothing validates the encoded output: `c1.o()` is a single-shot `Bitmap.compress` with no size
+check, and `b0()` / `m63.n0.d()` test the **source**'s length and dimensions, never the result.
+
+The `u13.y0` lambda branches on mime (`ww0.c.a`): `image/jpeg|png|gif|bmp` (and an unresolvable
+type) → raw byte copy, then `i48.a.b` strips 38 GPS/timestamp EXIF tags (Orientation survives);
+anything else (HEIC, WEBP) → full-res decode + `Matrix` rotate + JPEG at the tier quality.
+
+### The `>= 20 MB / >= 100 MP` test exists in FIVE places
+
+This is the single most important fact about this area, and it cost four device rounds to learn. The
+same pair of literals (`0x1400000`, `0x5f5e100`) is duplicated across two independent send paths
+plus Album, and **any one of them alone is enough to drop the photo to the standard variant**:
+
+| Copy | Decides | On the chatroom path? |
+|---|---|---|
+| `th1.t$c$b.invoke` | `Function1<w51.c, Boolean>`; `un1.f.a` calls it per item and feeds the result into `un1.k$b$c(Uri, isOriginal)` → `IS_SEND_ORIGINAL_IMAGE` | **yes — this is the one that decides** |
+| `m63.n0.f()` / `d()` | media-picker toggle availability → `m63.n0.i(Z)` → `u53.e.a` | no |
+| `t73.k0.b0` | media-picker per-item `rt7.c.B` stamp | no |
+| `wi0.h.g` | LINE **Album**'s own compressor (`ri0.c.c`, `com.linecorp.line.album.transfer.*`) | no |
+| `th1.u.invokeSuspend` | guide text only (`ORIGINAL_IMAGE_GUIDE` vs `ERROR_GUIDE`, via `th1.c0`/`d0`) | cosmetic |
+
+Two send paths reach `u13.c1.f`, and they do **not** share the decision:
+
+- **Chatroom `+` / photo strip** — `th1.t.h(Z)` reads the toggle (`t.f()` = the toggle view's
+  `isSelected()`), launches `th1.t$c`, and passes `th1.t$c$b` to `un1.f.a`. `th1.a0` builds fresh
+  `rt7.c` items with `B = t.f()`. **The media picker is never involved.**
+- **Full gallery picker** — `m63.n0` + `t73.k0.b0`.
+
+`wi0.h.g` is deliberately left alone: Album has **no "Original" button**, so its `IMAGE_ORIGINAL`
+branch is unreachable and the only remaining lever there would be the always-compress branch, which
+would inflate every album upload. Album's config comes from `ch0.j.m()` →
+`ei0.n(maxDimension², quality, 8192|1280)` off the *same* `f1.a()` tier as chat, so if an Original
+button ever appears there, the fix is to swap that config for a bounded one rather than to neutralise
+the gate.
+
+### What the dropped patch did (for reference)
+
+Five sites. Site A was the one device-confirmed to decide the outcome; Sites 0 and 1 covered the
+gallery-picker path and were never device-verified.
+
+- **A.** `th1.t$c$b` — both gate literals → `0x7fffffff`, so the per-item predicate is always true.
+- **0.** `m63.n0` — both literals in *every method holding both* (`f()` and `d()`). `onClick`'s lone
+  `0x1400000` is a free-disk-space multiplier (`getFreeSpace() >= 20 MB * itemCount`) — never touch
+  it, which is why the rule keys on "contains both" rather than on the size literal.
+- **1.** `t73.k0.b0` — both gate literals → `0x7fffffff`, so `isOriginal` stays true. Rewriting the
+  compared *value* rather than the branch keeps control flow byte-identical.
+- **2.** `u13.y0` head — call an extension that re-encodes; `null` falls through to stock code. The
+  fall-through target **must** be an `ExternalLabel`, not a label written inside the injected block.
+- **3.** `u13.y0` — the tier-quality `iget` feeding `c1.o` → `const/16 0x50` (q80).
+
+The extension re-derived the same `>= 20 MB || >= 100 MP` test the sites removed and returned
+`null` otherwise, so every case that already worked stayed untouched — notably a 50 MP / 10 MB
+JPEG, which must keep being copied byte for byte. Output was bounded to 24 MP via `inSampleSize` plus
+`inScaled`/`inDensity`/`inTargetDensity`; the density scaler matters because `inSampleSize` alone
+would quantise a 126 MP source to ~7.9 MP. Rotation was baked into the pixels rather than written
+as an EXIF tag, matching what every other LINE encoder on this path does.
+
+**Rotation must come from LINE, not from EXIF.** `c1.f(dVar, fVar, uri, Integer rotation)` hands
+the *same* `Integer` to `c1.p` (the standard variant, and so the thumbnail and OBS's derived
+`/preview`) and to the `y0` lambda. Both prefer it and only fall back to the file's EXIF
+(`c1.d(uri)`, itself an `ExifInterface` "Orientation" read) when it is `null`. So the patch passed
+the lambda's `Ljava/lang/Integer;` capture (`y0.c`) into the extension with EXIF as fallback
+only — deriving from EXIF unconditionally would leave the original sideways relative to the
+standard variant whenever the caller supplied a rotation the file itself does not carry.
+
+Sites 2 and 3 resolved `u13.c1`, its `Context` field and the lambda's captures (`c1`, `Uri`,
+`Integer` rotation) **from the matched method's own bytecode**; only the two literals and framework
+types were hardcoded.
+
+### Values that drift on a version bump
+
+| Thing | 26.11.0 |
+|---|---|
+| gates in `t73.k0.b0` | `0x1400000` (20 MB), `0x5f5e100` (100 MP) — also in `k0.X(Z)V` and `m63.n0.d()`, so pin the `(Ljava/util/ArrayList;)V` signature |
+| lambda anchor | `u13.y0` — the only class combining `ContentResolver.getType`, `MimeTypeMap.getMimeTypeFromExtension`, `BitmapFactory.decodeStream` and `Matrix.setRotate` |
+| encoder | `c1.o(I, Bitmap, File)Z`; quality read from `dw0.b$b.b:I` |
+| decode multiplier | `c1.l()` → `mul-int/lit8 … 0x4` (left alone; it is tier-agnostic) |
+
+---
+
+## Dead ends (investigated, not patchable)
+
+**Extend the unsend window.** The client windows (`j51.a.o` free, `.p` premium) are UX
+pre-filters fed by server config (`function.chatroom.message.unsend.timelimit`,
+`.premium.timelimit`). `unsendMessage` carries only `(seq, messageId)`; the server decides and has
+a dedicated `TalkException` code `MESSAGE_NOT_DESTRUCTIBLE(71)` (`cb8.m9`), handled at `ne1.o2` /
+`ne1.b2` → *"You can't unsend this message as too much time has passed."* Widening the client
+window only re-shows the menu item and produces that toast. (`hidepremiumunsend` deliberately
+narrows it for the same reason.)
+
+**Remove video length / size limits.** `c81.b.c()` rejects `> 301000 ms` and `> 209715200` bytes,
+and the picker sets `maxVideoDurationSec = 300` at every chat entry point. Both are trivial to
+remove, but the OBS gateway enforces its own ceiling: `rc1.b` parses the
+`x-line-obs-talk-exception` response header carrying `EXCEED_FILE_MAX_SIZE` / `EXCEED_DAILY_QUOTA`
+/ `NOT_SUPPORT_SEND_FILE`. Removing the client checks trades a clean local toast for a mid-upload
+server rejection.
+
+**Note on the OBS size ceiling.** It has never been observed directly — 20 MB is inferred from
+LINE's own client-side threshold. Sub-20 MB originals are known to upload byte-identical, so that
+much is safe; record the real limit here if a device test ever surfaces `EXCEED_FILE_MAX_SIZE`.
