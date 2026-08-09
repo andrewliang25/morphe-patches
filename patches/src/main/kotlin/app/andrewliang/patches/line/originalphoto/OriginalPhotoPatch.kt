@@ -67,6 +67,22 @@ val originalPhotoPatch = bytecodePatch(
     // standard path's own decode budget are deliberately left alone, so sending with "Original"
     // off costs exactly what it costs today.
     execute {
+        // --- Site A: the chatroom send path's per-item gate ------------------------------------
+        // This is the one that decides the outcome for the "+" / photo-strip flow, and the only
+        // site device-proven to be on that path. th1.t$c$b is Function1<w51.c, Boolean> returning
+        // `size < 20 MB && pixels < 100 MP`; un1.f.a calls it per item and passes the result
+        // straight into un1.k$b$c(Uri, isOriginal), which becomes IS_SEND_ORIGINAL_IMAGE and so
+        // picks IMAGE_ORIGINAL vs IMAGE_STANDARD. Both literals to 0x7fffffff makes it always true.
+        //
+        // Diagnostics showed `writer variant=IMAGE_STANDARD` with the t73.k0.b0 and m63.n0.i probes
+        // never firing, which is what identified this path: Sites 0 and 1 below are on the media
+        // picker and never execute for a chatroom send.
+        val chatroomGate = ChatroomOriginalItemGateFingerprint.method
+        ChatroomOriginalItemGateFingerprint.instructionMatches.forEach { match ->
+            val register = (match.instruction as OneRegisterInstruction).registerA
+            chatroomGate.replaceInstruction(match.index, "const-wide/32 v$register, 0x7fffffff")
+        }
+
         // --- Site 0: let the "Original" toggle stay available at all ---------------------------
         // m63.n0.f() answers "may this selection be sent as an original?" and returns false for
         // anything >= 20 MB or >= 100 MP. Its answer drives m63.n0.i(Z), which writes u53.e.a --

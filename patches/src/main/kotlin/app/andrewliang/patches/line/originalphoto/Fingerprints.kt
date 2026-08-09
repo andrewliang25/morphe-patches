@@ -31,6 +31,38 @@ internal object OriginalPhotoGateFingerprint : Fingerprint(
 )
 
 /**
+ * `th1.t$c$b.invoke` — `Function1<w51.c, Boolean>`, the per-item predicate the **chatroom** send
+ * path uses, and the gate that actually decides the outcome for the `+` / photo-strip flow:
+ *
+ * ```
+ * return item.d < 0x1400000 && item.e < 0x5f5e100;   // < 20 MB && < 100 MP
+ * ```
+ *
+ * `th1.t.h(Z)` (send) reads the toggle via `t.f()`, launches `th1.t$c`, and hands this lambda to
+ * `un1.f.a(...)`, which calls it per item, takes `booleanValue()`, and passes the result straight
+ * into `un1.k$b$c(Uri, isOriginal)`. So this boolean *is* the original flag for the send request —
+ * it becomes `IS_SEND_ORIGINAL_IMAGE` and therefore selects `IMAGE_ORIGINAL` vs `IMAGE_STANDARD`.
+ *
+ * Device-confirmed that this, not the media picker, is the live path: diagnostics showed
+ * `writer variant=IMAGE_STANDARD` while the probes on `t73.k0.b0` and `m63.n0.i(Z)` never fired at
+ * all, so the picker-side gates never execute for this flow.
+ *
+ * The sibling `th1.u.invokeSuspend` holds the same pair of literals but only chooses the guide text
+ * (`ORIGINAL_IMAGE_GUIDE` vs `ERROR_GUIDE`) via `th1.c0`/`th1.d0`. Pinning the Kotlin lambda's
+ * `invoke` name separates the two — both are `(Object)Object` and both carry both literals, and
+ * `invoke` / `invokeSuspend` are interface names obfuscation cannot touch.
+ */
+internal object ChatroomOriginalItemGateFingerprint : Fingerprint(
+    name = "invoke",
+    returnType = "Ljava/lang/Object;",
+    parameters = listOf("Ljava/lang/Object;"),
+    filters = listOf(
+        literal(SIZE_GATE),
+        literal(PIXEL_GATE),
+    ),
+)
+
+/**
  * DIAGNOSTIC, temporary. `z58.b$c.<clinit>` — the message-metadata key enum, located by the
  * un-obfuscated `IS_SEND_ORIGINAL_IMAGE` constant name that the enum's initialiser passes to
  * `Enum.<init>`. Gives the nested enum's descriptor, from which the outer `z58.b` metadata map (and
