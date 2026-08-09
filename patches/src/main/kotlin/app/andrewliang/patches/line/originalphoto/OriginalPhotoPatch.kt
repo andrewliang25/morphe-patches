@@ -37,6 +37,7 @@ private const val WRITE_BOUNDED =
 private const val DIAG_TOGGLE = "diagToggle(Z)V"
 private const val DIAG_STAMP = "diagStamp(Z)V"
 private const val DIAG_VARIANT = "diagVariant(Ljava/lang/Object;)V"
+private const val DIAG_META = "diagMeta(Ljava/lang/Object;Z)V"
 
 @Suppress("unused")
 val originalPhotoPatch = bytecodePatch(
@@ -200,6 +201,18 @@ val originalPhotoPatch = bytecodePatch(
                 }
         }?.addInstructions(0, "invoke-static { p2 }, $EXTENSION->$DIAG_VARIANT")
             ?: throw PatchException("original photo: c1.f not found for diagnostics")
+
+        // --- DIAGNOSTIC (temporary): log who sets the original-image metadata flag -------------
+        // The picker probes proved t73.k0.b0 and m63.n0.i never run for the flow under test, so the
+        // flag is written by code this patch has not found. Instrument the setter itself -- one
+        // injection catches every writer -- and log a stack trace to name the caller.
+        val keyEnum = MetadataOriginalKeyFingerprint.method.definingClass
+        val metadataMap = keyEnum.substringBefore('$') + ";"
+        mutableClassDefBy(metadataMap).methods.firstOrNull { method ->
+            method.returnType == "V" &&
+                method.parameterTypes.toList() == listOf(keyEnum, "Z")
+        }?.addInstructions(0, "invoke-static { p1, p2 }, $EXTENSION->$DIAG_META")
+            ?: throw PatchException("original photo: metadata setter not found in $metadataMap")
 
         val outerField = capturedField(contextRead.definingClass)
             ?: throw PatchException("original photo: captured c1 not found in ${writer.definingClass}")

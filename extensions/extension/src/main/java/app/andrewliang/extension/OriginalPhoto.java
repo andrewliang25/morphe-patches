@@ -89,6 +89,17 @@ public final class OriginalPhoto {
     }
 
     /**
+     * {@code z58.b.F(z58.b$c, boolean)} — every write to the message metadata map, filtered to the
+     * original-image key. Carries a stack trace: the picker probes proved that path is not the one
+     * in use, so the point is to see *which* code sets the flag, not just what it is set to.
+     */
+    public static void diagMeta(Object key, boolean value) {
+        String name = String.valueOf(key);
+        if (name.indexOf("ORIGINAL") < 0) return;
+        Log.i(TAG, "DIAG meta " + name + "=" + value, new Throwable("set from"));
+    }
+
+    /**
      * Arbitrary base for the {@code inDensity} / {@code inTargetDensity} ratio. Large enough that
      * rounding the target density costs well under a pixel of accuracy.
      */
