@@ -69,19 +69,19 @@ you can follow the [Morphe documentation](https://github.com/MorpheApp/morphe-do
 
 ### LINE: Google account sign-in fails (chat-history backup/restore)
 
-**What:** On a patched **LINE** build, signing in with a Google account to back up or restore
-chat history fails at the account-selection step, so Drive-based chat history backup/restore is
-unavailable.
+**What:** On a patched **LINE** build, picking a Google account to back up or restore chat
+history fails, so Drive-based backup/restore is unavailable.
 
-**Why:** LINE stores chat history in Google Drive and gates it behind Google Sign-In with
-the `drive.appdata` scope. Google grants that access only to an OAuth client registered for
-LINE's **package name + original signing certificate**. Re-signing the APK changes the
-certificate, so Google Play Services rejects the sign-in (`DEVELOPER_ERROR`, status code 10)
-and no Drive token is issued. Unlike LINE's push (FCM) registration, this check runs inside
-Google Play Services rather than in LINE's own code, so it can't be fixed from the patch side.
+**Why:** Google issues the `drive.appdata` token only to an OAuth client registered for LINE's
+package name **and original signing certificate**; re-signing changes the certificate, so it
+refuses (`UNREGISTERED_ON_API_CONSOLE`). Unlike the FCM fix, no patch can correct this: LINE asks
+Android's **Credential Manager** for the account and the *system* routes that to Google Play
+Services, so there is nothing in the APK to change. microG doesn't help either — it isn't a
+registered credential provider, so the picker never reaches it
+([details](docs/line-patch-map.md)).
 
-**Workaround:** install with **Root Mount** (which keeps LINE's original signature) instead
-of **Standard** install (which re-signs the APK).
+**Workaround:** install with **Root Mount** (keeps LINE's original signature) instead of
+**Standard** install (which re-signs the APK).
 
 ## 🙏 Special thanks
 
