@@ -643,6 +643,109 @@ own tone. Stock OEM ringtones (`content://media/internal/audio/…`,
 
 ---
 
+## Google sign-in for chat-history backup — the GmsCore route (device-tested, dead end)
+
+Re-signing breaks Google sign-in for Drive-backed chat history because an Android OAuth client is
+keyed to **(package name, signing certificate)**. The obvious fix is to route auth through
+**GmsCore** (MicroG-RE, `app.revanced.android.gms`), which builds the token request in userspace
+and can therefore be told to report LINE's original certificate. Authorization was **proven to
+work**. The route still fails, for an unrelated reason discovered only on device: the account
+picker never goes through Play Services' binder at all.
+
+Device-tested against LINE 26.11.0 + MicroG-RE 6.1.4 on Android 16 (stock Play Services present).
+
+### What was proven (keep this — it is the expensive part)
+
+Google **will** grant `oauth2:https://www.googleapis.com/auth/drive.appdata` for
+`jp.naver.line.android` when GmsCore presents the original certificate. A standalone probe app
+(`work/gms-auth-probe/`, gitignored) declaring the spoof meta-data and calling
+`AccountManager.getAuthTokenByFeatures` against account type `app.revanced` produced a clean A/B:
+
+| `client_sig` sent | Google's response |
+|---|---|
+| Morphe re-sign cert | `IOException: Error=UNREGISTERED_ON_API_CONSOLE` |
+| LINE's original `89396dc4…` | consent flow (`AskPermissionActivity` launched) — accepted |
+
+Same account, same scope; the certificate was the only variable. So the *authorization* half of
+the idea is sound and needs no GmsCore fork.
+
+### How GmsCore resolves the certificate (order matters, and it is counter-intuitive)
+
+`PackageSpoofUtils` reads two manifest meta-data keys off the package being looked up —
+`app.revanced.android.gms.SPOOFED_PACKAGE_NAME` and `…SPOOFED_PACKAGE_SIGNATURE`. It is generic:
+no allow-list, no per-app table, so **no GmsCore fork is needed** to add an app.
+
+The trap is the order. `PackageUtils.getAndCheckPackage()` spoofs the caller's **name first** and
+returns it; `AuthManager` is then constructed with the spoofed name, and
+`getPackageSignature()` → `firstSignatureDigest(context, packageName)` looks the certificate up
+**under the spoofed name** — i.e. off whatever `jp.naver.line.android` is installed, not off the
+caller's own meta-data. Consequences:
+
+- If the target package is absent, `getPackageInfo` throws and the code falls back to
+  `KNOWN_GOOGLE_PACKAGES`, which lists only Google's own apps → `client_sig` goes out **null**.
+  This is why the ReVanced flow works for YouTube/Photos: their spoofed package is not installed
+  and the hardcoded table supplies Google's certificate.
+- Therefore a LINE patch **must keep the package name**. Only then does the lookup land on our own
+  installed package and read our `SPOOFED_PACKAGE_SIGNATURE`. The rename that the YouTube/Photos
+  GmsCore patches perform (`changePackageNamePatch` / `cloneAppPatch`) would silently defeat it.
+- GmsCore targets **SDK 29**, so package-visibility filtering does not apply to it; it sees LINE
+  either way. A `targetSdk 30+` app doing the same lookup needs a `<queries>` entry.
+
+Certificate case matters: GmsCore's own digest comes from `String.format("%02x")` and is passed to
+Google verbatim as `client_sig`, so the override must be **lowercase**
+(`89396dc419292473972813922867e6973d6f5c50`) — the opposite of `fixpushnotifications`, which needs
+the same certificate UPPERCASE because LINE's `rl.h.b` uppercases before building `X-Android-Cert`.
+
+### Why it still fails: LINE uses Credential Manager, not the GMS binder
+
+LINE's account picker calls **`androidx.credentials.CredentialManager`** (obfuscated wrapper
+`u7.*`). That goes to the **framework** service in `system_server`, which enumerates registered
+credential providers and selects Google's:
+
+```
+CredentialManager(1527): Provider session created for:
+    com.google.android.gms/…auth.api.credentials.credman.service.GoogleIdService
+Auth.Api.Credentials: [AccountReauth_flowRunner] Flow failed.
+colz: [8] Unknown error [status=UNREGISTERED_ON_API_CONSOLE].
+colz: [16] Account reauth failed.
+```
+
+LINE never names Play Services, so **there is no package, action or string for a patch to
+rewrite** — the platform picks the provider. Grep confirms no LINE-owned class references
+`com/google/android/gms/auth/api/signin` or `…/identity`; `al.g` and `SignInHubActivity` are
+reachable only from inside the bundled GMS library, so there is no legacy path to force either.
+
+MicroG-RE implements the *GMS* Credentials API (`CredentialsService`,
+`…credential.manager.service.firstparty.START`) but **not**
+`android.service.credentials.CredentialProviderService` — no `credman`, no `BeginGetCredential`.
+It cannot be offered as a system credential provider, so the framework can never route to it.
+
+To make this route viable, MicroG-RE would have to implement a credential provider and every user
+would have to enable it under Settings → Passwords, passkeys & accounts. That is a feature
+addition to someone else's project, not a patch.
+
+### Class/anchor map (LINE 26.11.0) — for whoever revisits this
+
+| What | Descriptor | Notes |
+|---|---|---|
+| GMS client base | `kl.d` | `E()` = `getStartServicePackage()`, `public` (not `final`), returns `"com.google.android.gms"`. Rewriting this literal redirects **every** GMS client (Maps, FCM, ML Kit, Pay); overriding `E()` per-class redirects one. Resolve the name by walking supers for the method returning that literal — `E` drifts. |
+| Auth service client | `com.google.android.gms.internal.auth.d` | `D()` → `com.google.android.gms.auth.service.START`; the `GoogleAuthUtil.getToken` endpoint. |
+| Sign-in service client | `al.g` | `D()` → `…auth.api.signin.service.START`; holds `GoogleSignInOptions` in field `H`. |
+| Sign-in hub | `com.google.android.gms.auth.api.signin.internal.SignInHubActivity` | **Not obfuscated.** Hands off with an *activity* intent: validates the incoming action `equals("com.google.android.gms.auth.GOOGLE_SIGN_IN")`, then hardcodes `setPackage("com.google.android.gms")`. Action, its comparison constant, and the package must move together or it hits the "Unknown action" branch and finishes. |
+| Identity / One Tap client | `gm.n` | `D()` → `…auth.api.identity.service.signin.START`. MicroG-RE publishes **no** equivalent action; redirecting it binds to nothing. |
+| Credential Manager wrapper | `u7.*` | `androidx.credentials`; the path actually used. Not interceptable by string rewriting. |
+
+`al.g.j()`'s `GOOGLE_SIGN_IN` intent is **in-app** (`setPackage(getPackageName())` +
+`setClass(SignInHubActivity)`) — it must not be redirected.
+
+If anyone ports the shared `gmsCoreSupportPatch` from morphe-patches, note two fingerprints in it
+do **not** resolve against LINE and are hard-required there: `GooglePlayUtilityFingerprint` (needs
+a `MetadataValueReader` string LINE does not ship) and `ServiceCheckFingerprint` (LINE's only
+`"Google Play Services not available"` match is a constructor in `gl.h`, not a
+`public static void (L, I)`). De-Vanced already guards the first with `methodOrNull`; the second
+is unguarded in both forks. For LINE neither is needed anyway — real Play Services is installed,
+so the "GMS missing" checks those defeat never trigger.
+
 ## Dead ends (investigated, not patchable)
 
 **Extend the unsend window.** The client windows (`j51.a.o` free, `.p` premium) are UX
@@ -666,6 +769,12 @@ hears when they call you — same class as the unsend window. (The ringback *you
 out is client-side, `oy.d.f261845a` / `be7.a$b`, but changing that helps nobody.) The incoming-call
 **ringtone** is a different matter and is patchable — see
 [Call ringtone pipeline](#call-ringtone-pipeline-investigated-deliberately-not-shipped).
+
+**Route Google sign-in through GmsCore.** Authorization works — Google grants `drive.appdata` for
+`jp.naver.line.android` once GmsCore reports the original certificate — but LINE's account picker
+goes through `androidx.credentials.CredentialManager`, which the *framework* routes to a
+registered credential provider. Nothing in LINE names Play Services, and MicroG-RE implements no
+`CredentialProviderService`. Full write-up above.
 
 **Note on the OBS size ceiling.** It has never been observed directly — 20 MB is inferred from
 LINE's own client-side threshold. Sub-20 MB originals are known to upload byte-identical, so that
