@@ -67,21 +67,28 @@ you can follow the [Morphe documentation](https://github.com/MorpheApp/morphe-do
 
 ## ⚠️ Known limitations
 
-### LINE: Google account sign-in fails (chat-history backup/restore)
+### LINE: Google account sign-in fails (re-signed builds)
 
-**What:** On a patched **LINE** build, picking a Google account to back up or restore chat
-history fails, so Drive-based backup/restore is unavailable.
+**What:** On a patched **LINE** build, picking a Google account fails — both when logging in with
+or linking a Google account, and when setting up Drive chat-history backup.
 
-**Why:** Google issues the `drive.appdata` token only to an OAuth client registered for LINE's
-package name **and original signing certificate**; re-signing changes the certificate, so it
-refuses (`UNREGISTERED_ON_API_CONSOLE`). Unlike the FCM fix, no patch can correct this: LINE asks
-Android's **Credential Manager** for the account and the *system* routes that to Google Play
-Services, so there is nothing in the APK to change. microG doesn't help either — it isn't a
-registered credential provider, so the picker never reaches it
-([details](docs/line-patch-map.md)).
+**Why:** Google accepts an account only for an OAuth client registered under LINE's package name
+**and original signing certificate**. Re-signing changes the certificate, so it refuses
+(`UNREGISTERED_ON_API_CONSOLE`). Unlike the FCM fix, LINE's own code never reports the
+certificate, so there is nothing in the APK to correct.
 
 **Workaround:** install with **Root Mount** (keeps LINE's original signature) instead of
 **Standard** install (which re-signs the APK).
+
+**Partial fix for backup:** the opt-in *Fix chat backup sign-in via GmsCore* patch routes the
+backup account picker and its Drive token through
+[MicroG-RE](https://github.com/MorpheApp/MicroG-RE), which can present LINE's original certificate.
+Install MicroG-RE, sign into it with your Google account, then pick that account in LINE's backup
+settings. Chat-history backup and restore then work on a re-signed build.
+
+**Logging in with or linking a Google account is still not fixable** — that goes through Android's
+Credential Manager, where the *system* chooses Google Play Services and no patch can intervene
+([details](docs/line-patch-map.md)).
 
 ## 🙏 Special thanks
 
