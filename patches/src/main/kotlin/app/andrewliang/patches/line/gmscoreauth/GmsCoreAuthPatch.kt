@@ -164,11 +164,10 @@ private val gmsCoreAuthManifestPatch = resourcePatch {
 @Suppress("unused")
 val gmsCoreAuthPatch = bytecodePatch(
     name = "Fix chat backup sign-in via GmsCore",
-    description = "Lets chat-history backup pick a Google account and get a Drive token through " +
-        "GmsCore, which works on re-signed builds. Requires MicroG-RE. Does NOT affect logging " +
-        "in with, or linking, a Google account — that goes through Android's Credential Manager " +
-        "and stays broken. Root Mount install does not need this patch.",
-    default = false,
+    description = "Routes chat-history backup's Google account picker and Drive token through " +
+        "GmsCore, so backup and restore work on re-signed builds. Requires MicroG-RE. Doesn't " +
+        "affect Google account login.",
+    default = true,
 ) {
     compatibleWith(COMPATIBILITY_LINE)
 
