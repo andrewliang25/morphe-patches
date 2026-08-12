@@ -68,28 +68,20 @@ you can follow the [Morphe documentation](https://github.com/MorpheApp/morphe-do
 
 ## ⚠️ Known limitations
 
-### LINE: Google account sign-in fails (re-signed builds)
+### LINE: Google account login fails (re-signed builds)
 
-**What:** On a patched **LINE** build, picking a Google account fails — both when logging in with
-or linking a Google account, and when setting up Drive chat-history backup.
+**What:** On a patched **LINE** build, logging in with — or linking — a Google account fails.
 
 **Why:** Google accepts an account only for an OAuth client registered under LINE's package name
-**and original signing certificate**. Re-signing changes the certificate, so it refuses
-(`UNREGISTERED_ON_API_CONSOLE`). Unlike the FCM fix, LINE's own code never reports the
-certificate, so there is nothing in the APK to correct.
-
-**Workaround:** install with **Root Mount** (keeps LINE's original signature) instead of
-**Standard** install (which re-signs the APK).
-
-**Partial fix for backup:** the opt-in *Fix chat backup sign-in via GmsCore* patch routes the
-backup account picker and its Drive token through
-[MicroG-RE](https://github.com/MorpheApp/MicroG-RE), which can present LINE's original certificate.
-Install MicroG-RE, sign into it with your Google account, then pick that account in LINE's backup
-settings. Chat-history backup and restore then work on a re-signed build.
-
-**Logging in with or linking a Google account is still not fixable** — that goes through Android's
-Credential Manager, where the *system* chooses Google Play Services and no patch can intervene
+**and** its original signing certificate, which re-signing changes. LINE asks Android's Credential
+Manager for the account, so the *system* picks Google Play Services and no patch can intervene
 ([details](docs/line-patch-map.md)).
+
+**Workaround:** install with **Root Mount**, which keeps LINE's original signature, instead of
+**Standard** install.
+
+Chat-history backup is *not* affected: the *Fix chat backup sign-in via GmsCore* patch restores it
+via [MicroG-RE](https://github.com/MorpheApp/MicroG-RE).
 
 ## 🙏 Special thanks
 
