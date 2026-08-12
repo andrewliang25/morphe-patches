@@ -1,3 +1,9 @@
+## [1.6.0-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v1.5.0...v1.6.0-dev.1) (2026-08-12)
+
+### ✨ New Features
+
+* fix chat-history backup sign-in via GmsCore ([a6fba22](https://github.com/andrewliang25/morphe-patches/commit/a6fba224300610ed1498900875f34980382d202b))
+
 ## [1.5.0](https://github.com/andrewliang25/morphe-patches/compare/v1.4.0...v1.5.0) (2026-08-09)
 
 ### ✨ New Features

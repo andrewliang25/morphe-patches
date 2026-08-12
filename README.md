@@ -17,9 +17,9 @@ Morphe Manager to build a modified APK.
 ## 🩹 Patches list
 
 <!-- PATCHES_START EXPANDED -->
-> **[v1.5.0](https://github.com/andrewliang25/morphe-patches/releases/tag/v1.5.0)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;20 patches total
+> **[v1.6.0-dev.1](https://github.com/andrewliang25/morphe-patches/releases/tag/v1.6.0-dev.1)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;21 patches total
 <details open>
-<summary>📦 LINE&nbsp;&nbsp;•&nbsp;&nbsp;20 patches</summary>
+<summary>📦 LINE&nbsp;&nbsp;•&nbsp;&nbsp;21 patches</summary>
 <br>
 
 **🎯 Supported versions:**
@@ -31,6 +31,7 @@ Morphe Manager to build a modified APK.
 |----------|----------------|-----------|
 | [Disable LINE Premium](#disable-line-premium) | Hides all LINE Yahoo Premium (LYP) surfaces — upsells, badges, the Premium settings page, and subscribe/manage flows. Doesn't unlock anything (premium is server-enforced). |  |
 | [Disable VOOM](#disable-voom) | Neutralizes VOOM entry points — deep links, shares, and notifications do nothing and the standalone VOOM feed closes on open. Messaging and other tabs are unaffected. |  |
+| [Fix chat backup sign-in via GmsCore](#fix-chat-backup-sign-in-via-gmscore) | Routes chat-history backup's Google account picker and Drive token through GmsCore, so backup and restore work on re-signed builds. Requires MicroG-RE. Doesn't affect Google account login. Root Mount install does not need this patch. |  |
 | [Fix push notifications](#fix-push-notifications) | Restores push notifications on re-signed builds when LINE is fully closed. Root Mount install does not need this patch. |  |
 | [Hide Events button](#hide-events-button) | Removes the "Events" row from a chat room's slide-out menu. (Events is a separate feature from LINE Calendar — it opens a server-hosted page.) |  |
 | [Hide Home modules](#hide-home-modules) | Hides Home-tab clutter modules: the recommended stickers/content section, the real-time hot-topics (即時夯話題) block, and Home feed ads. |  |
@@ -67,21 +68,20 @@ you can follow the [Morphe documentation](https://github.com/MorpheApp/morphe-do
 
 ## ⚠️ Known limitations
 
-### LINE: Google account sign-in fails (chat-history backup/restore)
+### LINE: Google account login fails (re-signed builds)
 
-**What:** On a patched **LINE** build, picking a Google account to back up or restore chat
-history fails, so Drive-based backup/restore is unavailable.
+**What:** On a patched **LINE** build, logging in with — or linking — a Google account fails.
 
-**Why:** Google issues the `drive.appdata` token only to an OAuth client registered for LINE's
-package name **and original signing certificate**; re-signing changes the certificate, so it
-refuses (`UNREGISTERED_ON_API_CONSOLE`). Unlike the FCM fix, no patch can correct this: LINE asks
-Android's **Credential Manager** for the account and the *system* routes that to Google Play
-Services, so there is nothing in the APK to change. microG doesn't help either — it isn't a
-registered credential provider, so the picker never reaches it
+**Why:** Google accepts an account only for an OAuth client registered under LINE's package name
+**and** its original signing certificate, which re-signing changes. LINE asks Android's Credential
+Manager for the account, so the *system* picks Google Play Services and no patch can intervene
 ([details](docs/line-patch-map.md)).
 
-**Workaround:** install with **Root Mount** (keeps LINE's original signature) instead of
-**Standard** install (which re-signs the APK).
+**Workaround:** install with **Root Mount**, which keeps LINE's original signature, instead of
+**Standard** install.
+
+Chat-history backup is *not* affected: the *Fix chat backup sign-in via GmsCore* patch restores it
+via [MicroG-RE](https://github.com/MorpheApp/MicroG-RE).
 
 ## 🙏 Special thanks
 
