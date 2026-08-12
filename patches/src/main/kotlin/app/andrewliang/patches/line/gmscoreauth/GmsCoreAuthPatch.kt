@@ -155,8 +155,9 @@ private val gmsCoreAuthManifestPatch = resourcePatch {
  * nothing here can redirect it. That route stays broken on re-signed builds. Only the backup
  * picker — a plain activity intent LINE aims itself — is reachable.
  *
- * Requires MicroG-RE installed and signed in, with device registration enabled. Without it the
- * redirected picker finds no activity and sign-in fails as it already does — no worse.
+ * Requires MicroG-RE installed and signed in, with device registration enabled. Device-checked
+ * with GmsCore disabled: the redirected picker resolves to nothing and the account row simply does
+ * nothing — no crash — so this is safe to ship enabled by default.
  *
  * Device-confirmed end to end (LINE 26.11.0 + MicroG-RE 6.1.4, Android 16): account picker,
  * token grant, and a completed chat-history restore.
@@ -166,7 +167,7 @@ val gmsCoreAuthPatch = bytecodePatch(
     name = "Fix chat backup sign-in via GmsCore",
     description = "Routes chat-history backup's Google account picker and Drive token through " +
         "GmsCore, so backup and restore work on re-signed builds. Requires MicroG-RE. Doesn't " +
-        "affect Google account login.",
+        "affect Google account login. Root Mount install does not need this patch.",
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_LINE)
