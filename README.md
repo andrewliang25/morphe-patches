@@ -17,9 +17,9 @@ Morphe Manager to build a modified APK.
 ## 🩹 Patches list
 
 <!-- PATCHES_START EXPANDED -->
-> **[v1.6.1](https://github.com/andrewliang25/morphe-patches/releases/tag/v1.6.1)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;21 patches total
+> **[v1.7.0-dev.1](https://github.com/andrewliang25/morphe-patches/releases/tag/v1.7.0-dev.1)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;22 patches total
 <details open>
-<summary>📦 LINE&nbsp;&nbsp;•&nbsp;&nbsp;21 patches</summary>
+<summary>📦 LINE&nbsp;&nbsp;•&nbsp;&nbsp;22 patches</summary>
 <br>
 
 **🎯 Supported versions:**
@@ -37,6 +37,7 @@ Morphe Manager to build a modified APK.
 | [Hide Home modules](#hide-home-modules) | Hides Home-tab clutter modules: the recommended stickers/content section, the real-time hot-topics (即時夯話題) block, and Home feed ads. |  |
 | [Hide LINE GIFT button](#hide-line-gift-button) | Removes the LINE GIFT tile from a chat room's + attach menu. |  |
 | [Hide LINE TODAY tab](#hide-line-today-tab) | Removes the LINE TODAY (News) tab from the main bottom navigation, in both the news-tab and news-row layouts. |  |
+| [Hide Shopping tab](#hide-shopping-tab) | Removes the Shopping tab from the main bottom navigation, covering both the Japan (Shopping / ショッピング) and Taiwan (Discover / 逛逛) variants. |  |
 | [Hide Transfer button](#hide-transfer-button) | Removes the Transfer (LINE Pay) tile from a chat room's + attach menu. |  |
 | [Hide VOOM tab](#hide-voom-tab) | Removes the VOOM (formerly Timeline) tab from the main bottom navigation. |  |
 | [Hide Wallet tab](#hide-wallet-tab) | Removes the Wallet (LINE Pay) tab from the main bottom navigation, in both the normal and mini-tab layouts. |  |
