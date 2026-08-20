@@ -144,10 +144,14 @@ premium is available in this market". The facade reads it three ways that **all 
 | `l()` | `return H().b()`; `e13.a.b()` returns `UNAVAILABLE` when `!d()` | provider = `UNAVAILABLE` | 53 region switches take the handled UNAVAILABLE/hide branch |
 | `o()`/`a()` | status mapper `j13.m`: `if (!d()) return i$d` | status = `Unavailable` | 10 `instanceof i$d` sites hide |
 
-So one edit — force `e13.a.d()` to `return false` — reproduces the exact state the app already ships
-to non-premium markets. **Crash-safe** because that state is the app's own default: `UNAVAILABLE` /
-`Unavailable` are explicitly-handled hide branches everywhere; no entry-point path has an unguarded
-`check-cast` to `i$b`/`i$a`, and there's no retry-until-available loop.
+So one edit — force `e13.a.d()` to `return false` — reproduces the state the app ships to
+non-premium markets *for everything that reads the facade*: `UNAVAILABLE` / `Unavailable` are
+explicitly-handled hide branches everywhere; no entry-point path has an unguarded `check-cast` to
+`i$b`/`i$a`, and there's no retry-until-available loop.
+
+That audit covered the facade's **enum** branches but not its **nullable** returns, and not the
+sibling server flags that ship enabled alongside `d()`. One of each combined into a crash — see
+[Second lever: the premium-backup flag](#second-lever-the-premium-backup-flag-required).
 
 **Premium-scoped:** `e13.a.d()` has only 4 direct callers, all in the premium module. The shared
 underlying `jw4.i1.W()` is read directly by 6 non-premium features (profile, etc.) — those are
@@ -163,6 +167,60 @@ its 2nd call's `MethodReference` to resolve `e13.a.d()` at apply time. Verified 
 (album promo, app-icon seasonal) independently of `e13.a.d()`. If any premium surface survives on
 device, neuter that bit too and record it here. Re-verify all descriptors when bumping the pinned
 LINE version.
+
+### Second lever: the premium-backup flag (required)
+
+**Symptom:** on a patched build, **Settings ▸ Chats** threw and bounced back to Home. Stock is fine;
+reproduced on both Standard (re-signed) and Root Mount, i.e. signing-independent. Caused by
+`Disable LINE Premium` alone.
+
+**Chain** (all verified against decompiled 26.11.0):
+
+| # | Site | Effect |
+|---|---|---|
+| 1 | `b13/l.java:1007` — `z() { return H().d(); }` | `false` |
+| 2 | `b13/l.java:375` — `E() { if (!z()) return null; … }` | **returns `null`** |
+| 3 | `pd4/a.java` — `b() { return lypPremiumFacade.E(); }` (`pd4.a implements rc4.b`) | `null` |
+| 4 | `cy4/d.java` case 0 — `rc4.b.b()?.f307436c` (the row's badge-icon provider) | `null` |
+| 5 | `com/linecorp/line/settings/chats/a.java:1758` — the one `px4.c1` (text **+ badge**) row, `R.string.line_premiumbackup_title_chathistorybackup` | row is bound |
+| 6 | `ux4/d3.java:66` — `setImageDrawable(getDrawable(numInvoke != null ? numInvoke.intValue() : 0))` | **`getDrawable(0)` → `Resources$NotFoundException: Resource ID #0x0`** |
+
+Thrown synchronously while the RecyclerView binds the first screenful, so the whole fragment dies.
+
+**Why the row was still visible.** Its gate is `ic4.d.j()` → `vc4/k0.java:949` → `vc4/a0.java` →
+`m2.a().i0().g()` — a **separate server-pushed premium-backup config**, not derived from
+`e13.a.d()`. Stock LINE only enables it where LYP is available, so `E()` is never null while the row
+shows. Forcing only `d()` false produced a pairing LINE never ships.
+
+**Why only this screen.** `ux4/d3.java:66` is the *only* settings view holder with the `: 0`
+fallback; every sibling null-guards (`ux4/a0.java:73`, `ux4/d0.java:89`,
+`ux4/c0.java:123,167,281` all use `if (num != null) … getDrawable(num.intValue())`). The other two
+`px4.c1` badge rows are both fine: Settings ▸ Friends by inspection (provider `p05.b` returns the
+constant `R.drawable.lyp_premium_label`), and Settings ▸ Albums **by device test** — its provider
+`::providePremiumBadgeResId` (`settings/albums/a.java:237`) is nullable and its target is obfuscated,
+so it could not be read statically, but that screen opened fine on the *unfixed* build, i.e. with the
+market gate already off. That is the exact condition that would have triggered it, so the Albums
+provider never returns null here and there is no second null source. **Don't re-investigate it.**
+
+**Fix (shipped, device-confirmed 2026-08-20 on LINE 26.11.0).** Also force the premium-backup gate
+`ic4.d.j()` (impl `vc4.k0.j()`) to `false`.
+The gate is used **complementarily** in the settings UI — `chats/a.java:880` shows the premium row
+on `j()`, `chats/a.java:303` shows the ordinary **"Back up chat history"** row on `!j()` — so
+`false` hides the crashing row *and* restores a working non-premium backup entry (a `px4.i1`, not a
+badge row, so it can't reach `getDrawable`). All 8 `ic4.d.j()` call sites
+(`j25/u2.java:1388,1619,1817`, `lz4/t.java:216,242`, `chats/a.java:303,730,880`) are premium-vs-classic
+backup UI gating, so `false` degrades cleanly to the classic backup UI everywhere — device-checked:
+Settings ▸ Chats opens with the ordinary backup row, and every other settings screen (main list,
+Albums, Friends) is unaffected both before and after the fix.
+
+**Anchoring:** `vc4.k0` is obfuscated but holds the non-obfuscated WorkManager unique name
+`"PremiumBackupStatusSyncWorker"`. That string is **not** globally unique — it also appears in
+`com.linecorp.line.premium.backup.impl.common.worker.a.a()V` — so the fingerprint pins the
+`(String, Z)Lkotlin/Unit;` signature of `vc4.k0.h` to disambiguate, then takes `definingClass`.
+`j()` is then selected **by shape**, not by its drift-prone name: of `k0`'s three `()Z` methods it is
+the only one that opens with an `iget-object` (of the `vc4.a0` lambda field) and contains no
+`invoke-interface` (`q()` opens with `invoke-virtual`; `r()` opens with an `iget-object` of a
+`Lkotlin/Lazy;` read via `invoke-interface`). `j()` is `.locals 0`, so the injection writes `p0`.
 
 ### Known survivors: premium unsend upsells (patch `Hide premium unsend upsells`)
 
