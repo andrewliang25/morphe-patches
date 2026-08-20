@@ -1,3 +1,9 @@
+## [1.7.0](https://github.com/andrewliang25/morphe-patches/compare/v1.6.1...v1.7.0) (2026-08-20)
+
+### ✨ New Features
+
+* add "Hide Shopping tab" patch ([04b256b](https://github.com/andrewliang25/morphe-patches/commit/04b256b9fa446217997a16b5ab2c46e98ecab1ea)), closes [#59](https://github.com/andrewliang25/morphe-patches/issues/59)
+
 ## [1.7.0-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v1.6.1...v1.7.0-dev.1) (2026-08-20)
 
 ### ✨ New Features
