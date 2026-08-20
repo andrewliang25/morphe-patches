@@ -195,9 +195,12 @@ shows. Forcing only `d()` false produced a pairing LINE never ships.
 **Why only this screen.** `ux4/d3.java:66` is the *only* settings view holder with the `: 0`
 fallback; every sibling null-guards (`ux4/a0.java:73`, `ux4/d0.java:89`,
 `ux4/c0.java:123,167,281` all use `if (num != null) … getDrawable(num.intValue())`). The other two
-`px4.c1` badge rows: Settings ▸ Friends is safe (provider `p05.b` returns the constant
-`R.drawable.lyp_premium_label`), Settings ▸ Albums uses a nullable `::providePremiumBadgeResId`
-whose target is obfuscated — **unresolved statically, verify on device**.
+`px4.c1` badge rows are both fine: Settings ▸ Friends by inspection (provider `p05.b` returns the
+constant `R.drawable.lyp_premium_label`), and Settings ▸ Albums **by device test** — its provider
+`::providePremiumBadgeResId` (`settings/albums/a.java:237`) is nullable and its target is obfuscated,
+so it could not be read statically, but that screen opened fine on the *unfixed* build, i.e. with the
+market gate already off. That is the exact condition that would have triggered it, so the Albums
+provider never returns null here and there is no second null source. **Don't re-investigate it.**
 
 **Fix (shipped, device-confirmed 2026-08-20 on LINE 26.11.0).** Also force the premium-backup gate
 `ic4.d.j()` (impl `vc4.k0.j()`) to `false`.
@@ -206,7 +209,9 @@ on `j()`, `chats/a.java:303` shows the ordinary **"Back up chat history"** row o
 `false` hides the crashing row *and* restores a working non-premium backup entry (a `px4.i1`, not a
 badge row, so it can't reach `getDrawable`). All 8 `ic4.d.j()` call sites
 (`j25/u2.java:1388,1619,1817`, `lz4/t.java:216,242`, `chats/a.java:303,730,880`) are premium-vs-classic
-backup UI gating, so `false` degrades cleanly to the classic backup UI everywhere.
+backup UI gating, so `false` degrades cleanly to the classic backup UI everywhere — device-checked:
+Settings ▸ Chats opens with the ordinary backup row, and every other settings screen (main list,
+Albums, Friends) is unaffected both before and after the fix.
 
 **Anchoring:** `vc4.k0` is obfuscated but holds the non-obfuscated WorkManager unique name
 `"PremiumBackupStatusSyncWorker"`. That string is **not** globally unique — it also appears in
