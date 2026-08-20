@@ -155,6 +155,56 @@ row, and the sibling "Hide community button" which targets `OPEN_CHAT`).
 
 ---
 
+## Main bottom-navigation tabs
+
+Every tab patch in the bundle edits the **same** builder:
+`wy7.b.a() → List<jp.naver.line.android.activity.main.a>` (cached by `wy7.b.b()`), which appends
+each tab as an `sget-object <main.a const>` + `invoke-virtual ArrayList.add` pair. The enum
+`jp.naver.line.android.activity.main.a` is **not obfuscated**, so its constants are stable anchors —
+fingerprint on `returnType = "Ljava/util/List;"` + `fieldAccess(MAIN_TAB, "<CONST>")`, then
+`removeInstructions(index, 2)`.
+
+| Constant | Tracking name | Label resource | Shown when | Hidden by |
+|---|---|---|---|---|
+| `HOME` / `HOME26` / `GLOBALHOME` | `hometab` / `linehome` / `globalhome` | — | always (one of the three) | — |
+| `CHAT` | `chatlist` | — | always | — |
+| `COMMERCE` | `commercetab` | `gnb_commerce` — "Shopping" / ja **ショッピング** | `function.maintab.commercetab` (JP) | **Hide Shopping tab** |
+| `COMMERCE_TW` | `commercetwtab` | `tw_commerce_tab_gnb` — "Discover" / zh-TW **逛逛** | `function.maintab.commercetwtab` (TW) | **Hide Shopping tab** |
+| `SQUARE` | `squaretab` | — | `rm5.b.C()` | — |
+| `TIMELINE` | `timeline` | — | `db0.k0.a(m2)` | Hide VOOM tab |
+| `NEWS` / `NEWS_ROW` | `newstab` / `newsrowtab` | — | `s28.a.b()` / `kc3.d.a()` | Hide LINE TODAY tab |
+| `CALL` | `call` | — | `y28.d.c()` | — |
+| `MINI` / `WALLET` | `minitab` / `wallettab` | — | `m2.a().Y().d()` / `m2.a().H0().l()` | Hide Wallet tab |
+
+**`COMMERCE`, `COMMERCE_TW`, `SQUARE` and `TIMELINE` share one `if`/`else-if` chain** — they compete
+for a single slot and are mutually exclusive. That drives two rules:
+
+- **Remove the `sget`+`add` pair; never force the gate false.** Forcing `jw4.u.h()`
+  (`CommerceTabConfiguration.isCommerceTabEnabled`) false would fall *through* the chain and surface
+  `SQUARE` or `TIMELINE` in the freed slot — a tab the user never had. Removing just the body leaves
+  the branch's trailing `goto` intact, so the slot stays empty, which is what stock LINE does when
+  the commerce gate is on.
+- **Anchor each patch only on its own constants.** The tab patches run in arbitrary order against
+  the same method, and each fingerprint resolves *after* earlier patches have mutated it — so
+  anchoring on a constant another patch removes would break the match. (Already noted in
+  `hidevoomtab/Fingerprints.kt`; the same is why Hide Shopping tab anchors on neither
+  `TIMELINE` nor `MINI`/`WALLET`.)
+
+**A missing tab is safe everywhere.** Tab→index lookups are `Math.max(list.indexOf(...), 0)` (clamps
+to Home) in `jp/naver/line/android/activity/main/c.java`; `x66.d.a` only emits a `VoomSecondDepth`
+telemetry event; `qy4.f0` only writes the `ADDITIONAL_MAIN_TAB` pref. The bottom bar's layout carries
+a view per tab (`xy7.g` maps each constant to its `R.id.bnb_*`), so an absent list entry simply never
+renders.
+
+**The commerce tabs are region-gated, so they cannot be device-tested from TW.**
+`function.maintab.commercetab` is pushed by the server and is off outside JP — local proof stops at
+disassembling the patched `wy7/b.smali`. Hide Shopping tab was confirmed that way (both pairs gone,
+`if-eqz`/`goto` skeletons and the `SQUARE`/`TIMELINE` pairs intact, whole-dex branch-offset sweep
+clean, and all four tab patches coexisting under the full bundle); on-device confirmation comes from
+the JP reporter of issue #59.
+
+---
+
 ## Shipped / proposed patches (this line of work)
 
 | Patch (name) | Package | Targets |
@@ -166,6 +216,7 @@ row, and the sibling "Hide community button" which targets `OPEN_CHAT`).
 | Hide attach menu extra tools | `line.hideattachmenutools` | all server-driven `hg1.d` services |
 | Redirect LINE Pay | `line.disablepay` | `PayLaunchActivity` / `PayLiffActivity` onCreate (see below) |
 | Keep unsent messages | `line.keepunsent` | `g38.b0.invoke` — the unsend DB write (see below) |
+| Hide Shopping tab | `line.hideshoppingtab` | `COMMERCE` + `COMMERCE_TW` in `wy7.b.a()` (see above) |
 
 Each is an independent, `default = true`, user-facing `bytecodePatch` — one feature (or one feature's
 full set of entry points) per patch, matching the bundle's convention (cf. *Hide Wallet tab*,
