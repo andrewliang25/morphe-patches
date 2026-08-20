@@ -17,3 +17,24 @@ internal object PremiumFacadeFingerprint : Fingerprint(
         string("LITE_ENJOY"),
     ),
 )
+
+/**
+ * `vc4.k0.h(String, Z)Unit` — a sibling in the premium-backup facade impl (`vc4.k0`, which
+ * implements the premium-backup facade interface `ic4.d`). Anchored on the non-obfuscated
+ * WorkManager unique-name `"PremiumBackupStatusSyncWorker"`.
+ *
+ * That string is not globally unique — it also appears in the worker helper
+ * `com.linecorp.line.premium.backup.impl.common.worker.a.a()V` — so the `(String, Z)Unit`
+ * signature is pinned to disambiguate; the two enclosing methods share nothing else.
+ *
+ * We do NOT patch `h()`; we only need its `definingClass` to reach the premium-backup
+ * availability gate `ic4.d.j()` (see the patch). `vc4.k0`, `vc4.a0` and `ic4.d` are all
+ * obfuscated and drift between versions, so none of them is hardcoded.
+ */
+internal object PremiumBackupFacadeFingerprint : Fingerprint(
+    returnType = "Lkotlin/Unit;",
+    parameters = listOf("Ljava/lang/String;", "Z"),
+    filters = listOf(
+        string("PremiumBackupStatusSyncWorker"),
+    ),
+)
