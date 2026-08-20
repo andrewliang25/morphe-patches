@@ -1,3 +1,9 @@
+## [1.6.1](https://github.com/andrewliang25/morphe-patches/compare/v1.6.0...v1.6.1) (2026-08-20)
+
+### 🐛 Bug Fixes
+
+* stop Settings ▸ Chats crashing under "Disable LINE Premium" ([8aaac97](https://github.com/andrewliang25/morphe-patches/commit/8aaac9702d54644aea42a98801eb1ca189c4006a))
+
 ## [1.6.1-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v1.6.0...v1.6.1-dev.1) (2026-08-20)
 
 ### 🐛 Bug Fixes
