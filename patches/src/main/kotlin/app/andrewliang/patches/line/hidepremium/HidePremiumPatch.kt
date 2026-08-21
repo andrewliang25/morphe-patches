@@ -10,10 +10,10 @@ import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 @Suppress("unused")
 val hidePremiumPatch = bytecodePatch(
     name = "Disable LINE Premium",
-    description = "Hides all LINE Yahoo Premium (LYP) surfaces — upsells, badges, the " +
-        "Premium settings page, and subscribe/manage flows. Premium chat backup falls back " +
-        "to the ordinary chat-history backup. Doesn't unlock anything (premium is " +
-        "server-enforced).",
+    description = "Hides all LINE Yahoo Premium (LYP) surfaces: the upsells, the badges, the " +
+        "Premium settings page, and the subscribe and manage flows. Premium chat backup changes " +
+        "to the ordinary chat-history backup. This patch unlocks nothing, because the server " +
+        "enforces premium.",
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_LINE)

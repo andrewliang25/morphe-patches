@@ -7,7 +7,7 @@ import app.morphe.patcher.patch.bytecodePatch
 @Suppress("unused")
 val hideGiftButtonPatch = bytecodePatch(
     name = "Hide LINE GIFT button",
-    description = "Removes the LINE GIFT tile from a chat room's + attach menu.",
+    description = "Removes the LINE GIFT tile from the + attach menu in a chat room.",
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_LINE)

@@ -16,8 +16,8 @@ private const val FILTER_DESC = "(Ljava/util/List;)Ljava/util/List;"
 @Suppress("unused")
 val hideHomeModulesPatch = bytecodePatch(
     name = "Hide Home modules",
-    description = "Hides Home-tab clutter modules: the recommended stickers/content section, " +
-        "the real-time hot-topics (即時夯話題) block, and Home feed ads.",
+    description = "Hides three modules from the Home tab: the recommended stickers and content " +
+        "section, the real-time hot-topics (即時夯話題) block, and the Home feed ads.",
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_LINE)
