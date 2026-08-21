@@ -81,7 +81,7 @@ From decompiling LINE 26.11.0 (detail in `work/decompiled-line-<ver>/NOTES-integ
 - **No Play Integrity / SafetyNet** is bundled. The `attest` code is LINE's own *server-side* WebAuthn/FIDO2 plus a fire-and-forget "DeviceAttestation" WorkManager job that always returns success.
 - **Enforcement is confined to LINE Pay**, via the bundled native **VKey V-OS / V-Guard** engine (`libvosWrapperEx.so`; `VosWrapperBase.getAppSignerHash()` → native SHA-256 signer compare), which initializes only on entering Pay flows. Block/Warn/Bypass per threat is **server-driven** (`TamperSettingsGetResDto`); on block, `VGuardDetectionActivity` ends the Pay flow without killing the app.
 
-**Implication:** messaging patches are safe on a re-signed build. Defeating LINE Pay would mean neutralizing the VKey native library (out of scope).
+**Implication:** messaging patches are safe on a re-signed build. Defeating LINE Pay would mean neutralizing the VKey native library (out of scope). Anchor fingerprints on **string literals / non-obfuscated class names** — LINE obfuscates class and method names *including* `org.apache.thrift`'s, so a seemingly-stable framework type is not a safe anchor.
 
 ### Re-signed builds & closed-app push notifications (fixed by "Fix push notifications")
 
@@ -95,7 +95,7 @@ Re-signing (Standard install) breaks push while the app is *fully closed*. Unlik
 
 ### Known limitation: Google account sign-in on re-signed builds
 
-Same *class* of cause as the FCM break (Google config pinned to LINE's official cert SHA-1) but a distinct mechanism, and only half fixable. Device-confirmed on LINE 26.11.0 / Android 16; not a patch bug. **Full investigation, anchors and the GmsCore route in `docs/line-patch-map.md` — read it before touching this; do not re-derive.**
+Also documented user-facing as a "Known limitation" in `README.md` — update both together. Same *class* of cause as the FCM break (Google config pinned to LINE's official cert SHA-1) but a distinct mechanism, and only half fixable. Device-confirmed on LINE 26.11.0 / Android 16; not a patch bug. **Full investigation, anchors and the GmsCore route in `docs/line-patch-map.md` — read it before touching this; do not re-derive.**
 
 LINE reaches a Google account by **two paths that share nothing**, and conflating them cost a round of wrong conclusions:
 

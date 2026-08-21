@@ -131,7 +131,7 @@ private val gmsCoreAuthManifestPatch = resourcePatch {
  * can redirect it. Only the backup picker — an activity intent LINE aims itself — is reachable.
  *
  * Requires MicroG-RE installed, signed in, with device registration enabled. Safe on by default:
- * device-checked with GmsCore absent, the redirected picker resolves to nothing and the account row
+ * device-checked with GmsCore disabled, the redirected picker resolves to nothing and the account row
  * does nothing rather than crashing.
  *
  * Device-confirmed end to end (LINE 26.11.0 + MicroG-RE 6.1.4, Android 16): picker, token grant and

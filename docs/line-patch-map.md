@@ -829,9 +829,7 @@ produces that toast. (`hidepremiumunsend` narrows it for the same reason.)
 the picker sets `maxVideoDurationSec = 300` at every chat entry point. Both are trivial to remove, but
 the OBS gateway enforces its own ceiling — `rc1.b` parses the `x-line-obs-talk-exception` header
 carrying `EXCEED_FILE_MAX_SIZE` / `EXCEED_DAILY_QUOTA` / `NOT_SUPPORT_SEND_FILE`. Removing the client
-checks trades a clean local toast for a mid-upload server rejection. (That OBS ceiling has never been
-observed directly; 20 MB is inferred from LINE's own threshold, and sub-20 MB originals are known to
-upload byte-identical. Record the real limit here if a device test ever surfaces the error.)
+checks trades a clean local toast for a mid-upload server rejection.
 
 **Change the ringback tone your friends hear.** The *callee's* ringback is delivered to the **caller's**
 client in their connect info and played there, so no local edit changes what a friend hears — same class
@@ -842,3 +840,9 @@ as the unsend window. (The ringback *you* hear while dialing out is client-side,
 **Log in with / link a Google account on a re-signed build.** The framework picks the credential
 provider, so nothing in the APK names Play Services — see [the two-path section](#google-account-access--two-independent-paths-one-patched-one-not).
 The Drive **backup** picker is a different mechanism and *is* patchable.
+
+**Note on the OBS size ceiling for *photos*.** It has never been observed directly — the 20 MB figure
+is inferred from LINE's own client-side threshold (`0x1400000`, the photo pipeline's gate), not from
+anything the gateway reported. Sub-20 MB originals are known to upload byte-identical, so that much is
+safe; record the real limit here if a device test ever surfaces `EXCEED_FILE_MAX_SIZE`. This says
+nothing about video, whose client check is the separate 200 MB one above.
