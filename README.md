@@ -4,15 +4,15 @@ Morphe patches for LINE and other apps I use.
 
 ## ❓ About
 
-A collection of [Morphe](https://github.com/MorpheApp) patches, currently focused on
+These are [Morphe](https://github.com/MorpheApp) patches. The current focus is
 [LINE](https://line.me) (`jp.naver.line.android`). Apply them with the Morphe CLI or
 Morphe Manager to build a modified APK.
 
-> 💡 **Don't want to build it yourself?** Grab ready-made patched apps from
+> 💡 **Do not want to build it yourself?** Download ready-made patched apps from
 > [andrewliang25/patched-apps](https://github.com/andrewliang25/patched-apps/releases).
 
-> This is an independent project and is not affiliated with, endorsed by, or authored by
-> the Morphe open source project, LINE, or LY Corporation.
+> This project has no connection to the Morphe open source project, LINE, or LY
+> Corporation. They do not endorse it and did not write it.
 
 ## 🩹 Patches list
 
@@ -60,33 +60,33 @@ Morphe Manager to build a modified APK.
 
 Click here to add these patches to Morphe: https://morphe.software/add-source?github=andrewliang25/morphe-patches
 
-Or manually add this repository url as a patch source in Morphe: https://github.com/andrewliang25/morphe-patches
+Or add this repository URL as a patch source in Morphe: https://github.com/andrewliang25/morphe-patches
 
 ### 🛠️ Building
 
-To build Andrew's Patches,
-you can follow the [Morphe documentation](https://github.com/MorpheApp/morphe-documentation).
+To build Andrew's Patches, obey the instructions in the
+[Morphe documentation](https://github.com/MorpheApp/morphe-documentation).
 
 ## ⚠️ Known limitations
 
-### LINE: Google account login fails (re-signed builds)
+### LINE: Google account sign-in fails (re-signed builds)
 
-**What:** On a patched **LINE** build, logging in with — or linking — a Google account fails.
+**What:** On a patched **LINE** build, you cannot sign in with a Google account or link one.
 
-**Why:** Google accepts an account only for an OAuth client registered under LINE's package name
-**and** its original signing certificate, which re-signing changes. LINE asks Android's Credential
-Manager for the account, so the *system* picks Google Play Services and no patch can intervene
-([details](docs/line-patch-map.md)).
+**Why:** Google accepts an account only for an OAuth client that is registered under LINE's package
+name **and** its original signing certificate. A re-signed build changes that certificate, so no
+client matches. LINE asks Android's Credential Manager for the account, so the *system* picks
+Google Play Services. No patch can change this ([details](docs/line-patch-map.md)).
 
-**Workaround:** install with **Root Mount**, which keeps LINE's original signature, instead of
+**Workaround:** install with **Root Mount**, which keeps LINE's original signature. Do not use the
 **Standard** install.
 
-Chat-history backup is *not* affected: the *Fix chat backup sign-in via GmsCore* patch restores it
-via [MicroG-RE](https://github.com/MorpheApp/MicroG-RE).
+This limitation does not affect chat-history backup. The *Fix chat backup sign-in via GmsCore*
+patch restores it through [MicroG-RE](https://github.com/MorpheApp/MicroG-RE).
 
 ## 🙏 Special thanks
 
-- [@f870103](https://github.com/f870103) — for lending a LINE account for testing, and for finding the LINE Pay app redirect URL.
+- [@f870103](https://github.com/f870103) — lent a LINE account for tests, and found the redirect URL of the LINE Pay app.
 
 ## ⭐ Star history
 

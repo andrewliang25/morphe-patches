@@ -7,8 +7,8 @@ import app.morphe.patcher.patch.bytecodePatch
 @Suppress("unused")
 val hideShoppingTabPatch = bytecodePatch(
     name = "Hide Shopping tab",
-    description = "Removes the Shopping tab from the main bottom navigation, covering both the " +
-        "Japan (Shopping / ショッピング) and Taiwan (Discover / 逛逛) variants.",
+    description = "Removes the Shopping tab from the main bottom navigation. This includes the " +
+        "Japan variant (Shopping, ショッピング) and the Taiwan variant (Discover, 逛逛).",
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_LINE)
