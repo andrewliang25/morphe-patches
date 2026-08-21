@@ -43,14 +43,13 @@ val keepUnsentMessagesPatch = bytecodePatch(
     //     goto/16 :goto_c                      # yes -> skip it all, return the row unchanged
     //
     // Forcing the guard register non-zero always takes the "skip" branch, so the message survives
-    // intact — text, media, reactions and its search-index entry. LINE never learns it was
-    // recalled, so nothing marks it: we insert our own i38.c.UNSENT (dbValue 27) row just below
-    // it, which LINE's stock renderer draws as "<name> unsent a message." with correct sender
-    // naming and localisation. See the extension for the INSERT.
+    // intact — text, media, reactions, search-index entry. LINE never learns it was recalled, so we
+    // insert our own i38.c.UNSENT (dbValue 27) row just below it, which the stock renderer draws as
+    // "<name> unsent a message." with correct sender naming and localisation (INSERT in the
+    // extension).
     //
-    // The guard is located by instruction shape rather than by name: i38.c and its h() are
-    // obfuscated and drift. The SQLiteDatabase field read (g38.f3.b) is likewise taken from the
-    // method's own bytecode instead of being hardcoded.
+    // The guard is located by instruction shape, not by name — i38.c and its h() drift — and the
+    // SQLiteDatabase field read (g38.f3.b) likewise comes from the method's own bytecode.
     execute {
         val method = UnsendMessageDbWriteFingerprint.method
         val instructions = method.implementation!!.instructions.toList()
@@ -71,10 +70,10 @@ val keepUnsentMessagesPatch = bytecodePatch(
 
         val guardRegister = (instructions[guardIndex + 1] as OneRegisterInstruction).registerA
 
-        // The fetched row (i38.b), taken from whatever the guard reads its receiver off. Anchoring
-        // on it keeps the id search below from wandering: an `iget-wide` that reads the same object
-        // the guard does is the row's id, and it sits in the same straight-line stretch, so the
-        // register it writes is live where we inject.
+        // The fetched row (i38.b), taken from whatever the guard reads its receiver off. Anchoring on
+        // it keeps the id search below from wandering: an `iget-wide` off the same object the guard
+        // reads is the row's id, and sits in the same straight-line stretch, so its destination
+        // register is live where we inject.
         val guardReceiverRegister = (instructions[guardIndex] as FiveRegisterInstruction).registerC
         val rowReadIndex = (guardIndex - 1 downTo 0).firstOrNull { index ->
             instructions[index].opcode == Opcode.IGET_OBJECT &&
@@ -82,9 +81,9 @@ val keepUnsentMessagesPatch = bytecodePatch(
         } ?: throw PatchException("unsend: guard receiver read not found in ${method.definingClass}")
         val rowRegister = (instructions[rowReadIndex] as TwoRegisterInstruction).registerB
 
-        // The message id, read off that row between it being loaded and the guard. Which of i38.b's
-        // longs this is (local id vs server message id) doesn't matter — the extension's WHERE
-        // clause accepts either. On 26.11.0 it is `b`, the server id.
+        // The message id, read off that row between load and guard. Which of i38.b's longs it is
+        // (local vs server id) doesn't matter — the extension's WHERE clause accepts either. On
+        // 26.11.0 it is `b`, the server id.
         val messageIdRegister = ((rowReadIndex + 1) until guardIndex)
             .firstOrNull { index ->
                 instructions[index].opcode == Opcode.IGET_WIDE &&

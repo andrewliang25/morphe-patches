@@ -23,14 +23,14 @@ val hidePremiumPatch = bytecodePatch(
     //   z() = H().d()            -> "premium enabled"   (35 entry-point gates)
     //   l() = H().b()            -> q.UNAVAILABLE when !d()  (53 region switches)
     //   status mapper j13.m      -> i$d Unavailable when !d() (o()/a(), 10 instanceof hides)
-    // Forcing d() = false reproduces the shipped "LYP not available here" state (crash-safe: it's
-    // the app's own default for non-premium markets). It is premium-scoped: the shared jw4.i1.W()
-    // read by non-premium features is left untouched (we patch e13.a.d(), not i1.W()).
+    // Forcing d() = false reproduces the shipped "LYP not available here" state — the app's own
+    // default for non-premium markets. Premium-scoped: the shared jw4.i1.W() that non-premium
+    // features read is untouched, since we patch e13.a.d(), not i1.W().
     //
-    // We locate the obfuscated facade b13.l via the unique string "LITE_ENJOY", then read its z()
-    // accessor to resolve e13.a.d() without hardcoding any drifting obfuscated name. z() is the
-    // only parameterless ()Z facade method with exactly two invoke-virtual instructions
-    // (`return H().d()`); its 2nd call is <config>.d() -> gives us the class + method to neuter.
+    // The obfuscated facade b13.l is located via the unique string "LITE_ENJOY", then its z()
+    // accessor resolves e13.a.d() with no drifting name hardcoded: z() is the only parameterless
+    // ()Z facade method with exactly two invoke-virtuals (`return H().d()`), and its 2nd call is
+    // <config>.d() — the class + method to neuter.
     execute {
         val facade = mutableClassDefBy(PremiumFacadeFingerprint.method.definingClass)
 
@@ -60,17 +60,17 @@ val hidePremiumPatch = bytecodePatch(
             """,
         )
 
-        // Flipping d() alone leaves LINE in a state it never ships: premium is "unavailable"
-        // while the premium chat-BACKUP flag (ic4.d.j(), a separate server config read via
-        // vc4.a0 -> m2.a().i0().g()) stays on. The Chats settings screen then renders the
-        // premium-backup row whose badge provider asks the facade for an icon, gets null from
-        // b13.l.E() (`if (!z()) return null`), and the one settings view holder that doesn't
-        // null-guard calls Context.getDrawable(0) -> Resources$NotFoundException, killing
-        // Settings > Chats. Flip the backup gate too, so both halves match a real non-LYP market.
+        // Flipping d() alone leaves a state LINE never ships: premium "unavailable" while the
+        // premium chat-BACKUP flag (ic4.d.j(), a separate server config via vc4.a0 ->
+        // m2.a().i0().g()) stays on. The Chats settings screen then renders the premium-backup row,
+        // whose badge provider asks the facade for an icon and gets null from b13.l.E()
+        // (`if (!z()) return null`); the one view holder that doesn't null-guard calls
+        // Context.getDrawable(0) -> Resources$NotFoundException, killing Settings > Chats. Flipping
+        // the backup gate too makes both halves match a real non-LYP market.
         //
-        // The gate is used complementarily throughout the settings UI (`j()` shows the premium
-        // row, `!j()` shows the ordinary "Back up chat history" row), so false restores a working
-        // non-premium backup entry point rather than leaving a hole.
+        // The gate is used complementarily across the settings UI (`j()` shows the premium row,
+        // `!j()` the ordinary "Back up chat history" row), so false restores a working non-premium
+        // backup entry point rather than leaving a hole.
         val backupFacade = mutableClassDefBy(PremiumBackupFacadeFingerprint.method.definingClass)
 
         // vc4.k0 has exactly three ()Z methods. Select on shape rather than the drift-prone name

@@ -3,21 +3,19 @@
 Reference notes for authoring LINE (`jp.naver.line.android`) patches, distilled from decompiling
 **LINE 26.11.0** (the version pinned in `app/andrewliang/patches/shared/Constants.kt`).
 
-> ⚠️ **Obfuscation drift.** Class/method names like `hg1.d`, `az0.q`, `d00.z`, `ne1.y0$c`,
-> `fg1.a$b`, `r51.a` are R8-obfuscated and **change between LINE versions**. The *concepts,
-> mechanisms, and anchoring strategies* below are durable; the exact descriptors must be
-> re-confirmed against the decompiled smali when bumping the target version. Prefer anchors that
-> survive obfuscation: Kotlin **enum-constant names** (`CALENDAR`, `GIFT`, …), **string literals**,
-> and **resource ids**.
+> ⚠️ **Obfuscation drift.** Names like `hg1.d`, `az0.q`, `d00.z`, `ne1.y0$c`, `fg1.a$b`, `r51.a`
+> are R8-obfuscated and **change between LINE versions**. The concepts and anchoring strategies are
+> durable; re-confirm every descriptor against the decompiled smali on a version bump. Prefer
+> anchors obfuscation can't touch: Kotlin **enum-constant names** (`CALENDAR`, `GIFT`), **string
+> literals**, **resource ids**.
 
 ---
 
 ## Local build & verify without GitHub Packages credentials
 
-Building normally needs a PAT for `maven.pkg.github.com/MorpheApp/registry`. If the patcher/plugin
-artifacts are already in the Gradle cache, you can build and verify **fully offline** — the
-`app.morphe.patches` settings plugin only requires the credential values to be *non-null*, not
-valid, when nothing is fetched:
+Building normally needs a PAT for `maven.pkg.github.com/MorpheApp/registry`. If the artifacts are
+already in the Gradle cache you can work **fully offline** — the `app.morphe.patches` settings
+plugin only needs the credential values to be *non-null*, not valid, when nothing is fetched:
 
 ```bash
 # Compile + build the bundle offline (dummy creds satisfy the non-null credential block)
@@ -35,16 +33,13 @@ java -jar work/morphe-desktop-*.jar patch \
   work/apkm-extract/base.apk
 ```
 
-The apply log prints `Applied: <name>` and `Writing N new classes` — **N is the number of classes
-your patch modified**, a fast sanity check (e.g. the Calendar patch touches 5, the attach-tools
-patch touches 1).
+The apply log's `Writing N new classes` is **the number of classes your patch modified** — a fast
+sanity check (Calendar touches 5, attach-tools 1).
 
-**Disassembling the result.** The Morphe/apktool jars bundle only the smali *assembler*
-(`com.android.tools.smali.smali.Main`) and a proguard-shrunk `baksmali` **library** with no CLI —
-so there is no ready `baksmali` command. `apktool d` on the full APK works but is slow. The fast
-path: STRIP_FAST (the default) writes every modified class into a fresh small `classes.dex`, so
-unzip just that and read it with **dexlib2** (available in the Gradle cache jar
-`smali-dexlib2-*.jar`):
+**Disassembling the result.** No `baksmali` CLI ships: the Morphe/apktool jars carry only the smali
+*assembler* and a shrunk `baksmali` library. `apktool d` works but is slow. Fast path — STRIP_FAST
+(the default) writes every modified class into a fresh small `classes.dex`, so unzip just that and
+read it with **dexlib2** (Gradle cache jar `smali-dexlib2-*.jar`):
 
 ```java
 // javac -cp smali-dexlib2-*.jar:smali-util-*.jar Dump.java && java -cp .:...:... Dump
@@ -90,11 +85,11 @@ whatever class owns that `f()`.
 | LINE GIFT (`chathistory_attach_dialog_label_giftshop`) | `hg1.h` | `GIFT` | `contains(dl3.a.GIFT)` |
 | Files `hg1.g`, Contact `hg1.f`, Location `hg1.m`, Voice `hg1.t`, Keep `hg1.i`, PayPay `hg1.p`, Live talk `hg1.l`, LINE MUSIC `hg1.n` | — | (their own) | — |
 
-**To hide one static tile** (pattern used by "Hide Transfer button" / "Hide LINE GIFT button", and
-the Calendar `+` tile): anchor its ctor via the **unique read of its `fg1.a$b` type constant**
-(each constant is read only in that one ctor; the enum's `<clinit>` `sput` is excluded by pinning
-the ctor's parameter list), then `mutableClassDefBy(fp.method.definingClass)`, select
-`j(Lgi1/b;)Z` by descriptor, and prepend `const/4 p0, 0x0` / `return p0`.
+**To hide one static tile** (used by "Hide Transfer button", "Hide LINE GIFT button" and the Calendar
+`+` tile): anchor its ctor on the **unique read of its `fg1.a$b` type constant** — each constant is read
+in that one ctor only, and pinning the ctor's parameter list excludes the enum's `<clinit>` `sput` —
+then `mutableClassDefBy(fp.method.definingClass)`, select `j(Lgi1/b;)Z` by descriptor, and prepend
+`const/4 p0, 0x0` / `return p0`.
 
 ### Server-driven services — Poll, Reservation, Schedule, Ladder shuffle, …
 
@@ -104,16 +99,15 @@ icons and destinations all come from the server payload, **not** from local reso
 `chathistory_attach_dialog_label_poll/schedule/ladder_shuffle/reservation` strings still exist in
 `res/` but are **dead** — unreferenced by any smali.)
 
-- **Hide the whole category (stable):** every service is an `hg1.d`, and `hg1.d` is built *only* in
-  `gg1.e` — so forcing **`hg1.d.f(Lgi1/b;Lfg1/a;Lhg1/a$a;)Z`** to `return false` drops them all at
-  once, with no dependency on the (drifting) server payload. This is what **"Hide attach menu extra
-  tools"** does. Anchor: `hg1.d.f` is the only `f(...)Z` that reads `Lr51/a;->f` (its
-  `availableChatTypes` set), which uniquely distinguishes it from the sibling `f()` overrides in
-  `hg1.a`/`hg1.r`.
-- **Hide one service (fragile — avoid):** an individual service can only be identified by its LINE
-  service **channel id** (e.g. Schedule/create-event = `"1655112642"` real / `"1651805621"` beta,
-  hardcoded in enum `jg1.a$a.SCHEDULE` → `et1.s.g.SCHEDULE`). Channel ids are server-assigned and can
-  change, so a single-service patch can't be pinned to an APK version. Prefer the category-level gate.
+- **Hide the whole category (stable):** every service is an `hg1.d`, built *only* in `gg1.e`, so forcing
+  **`hg1.d.f(Lgi1/b;Lfg1/a;Lhg1/a$a;)Z`** to `return false` drops them all at once with no dependency on
+  the drifting server payload. This is **"Hide attach menu extra tools"**. Anchor: `hg1.d.f` is the only
+  `f(...)Z` reading `Lr51/a;->f` (its `availableChatTypes` set), which separates it from the sibling
+  `f()` overrides in `hg1.a`/`hg1.r`.
+- **Hide one service (fragile — avoid):** a single service is identifiable only by its LINE service
+  **channel id** (Schedule/create-event = `"1655112642"` real / `"1651805621"` beta, in enum
+  `jg1.a$a.SCHEDULE` → `et1.s.g.SCHEDULE`). Channel ids are server-assigned and can change, so such a
+  patch can't be pinned to an APK version. Prefer the category gate.
 
 ---
 
@@ -157,12 +151,10 @@ row, and the sibling "Hide community button" which targets `OPEN_CHAT`).
 
 ## Main bottom-navigation tabs
 
-Every tab patch in the bundle edits the **same** builder:
-`wy7.b.a() → List<jp.naver.line.android.activity.main.a>` (cached by `wy7.b.b()`), which appends
-each tab as an `sget-object <main.a const>` + `invoke-virtual ArrayList.add` pair. The enum
-`jp.naver.line.android.activity.main.a` is **not obfuscated**, so its constants are stable anchors —
-fingerprint on `returnType = "Ljava/util/List;"` + `fieldAccess(MAIN_TAB, "<CONST>")`, then
-`removeInstructions(index, 2)`.
+Every tab patch edits the **same** builder: `wy7.b.a() → List<jp.naver.line.android.activity.main.a>`
+(cached by `b()`), appending each tab as an `sget-object <main.a const>` + `ArrayList.add` pair. The
+enum is **not obfuscated**, so fingerprint on `returnType = "Ljava/util/List;"` +
+`fieldAccess(MAIN_TAB, "<CONST>")` and `removeInstructions(index, 2)`.
 
 | Constant | Tracking name | Label resource | Shown when | Hidden by |
 |---|---|---|---|---|
@@ -176,32 +168,32 @@ fingerprint on `returnType = "Ljava/util/List;"` + `fieldAccess(MAIN_TAB, "<CONS
 | `CALL` | `call` | — | `y28.d.c()` | — |
 | `MINI` / `WALLET` | `minitab` / `wallettab` | — | `m2.a().Y().d()` / `m2.a().H0().l()` | Hide Wallet tab |
 
-**`COMMERCE`, `COMMERCE_TW`, `SQUARE` and `TIMELINE` share one `if`/`else-if` chain** — they compete
-for a single slot and are mutually exclusive. That drives two rules:
+**`COMMERCE`, `COMMERCE_TW`, `SQUARE` and `TIMELINE` share one `if`/`else-if` chain**, competing for a
+single slot. Two rules follow:
 
 - **Remove the `sget`+`add` pair; never force the gate false.** Forcing `jw4.u.h()`
-  (`CommerceTabConfiguration.isCommerceTabEnabled`) false would fall *through* the chain and surface
-  `SQUARE` or `TIMELINE` in the freed slot — a tab the user never had. Removing just the body leaves
-  the branch's trailing `goto` intact, so the slot stays empty, which is what stock LINE does when
-  the commerce gate is on.
-- **Anchor each patch only on its own constants.** The tab patches run in arbitrary order against
-  the same method, and each fingerprint resolves *after* earlier patches have mutated it — so
-  anchoring on a constant another patch removes would break the match. (Already noted in
-  `hidevoomtab/Fingerprints.kt`; the same is why Hide Shopping tab anchors on neither
-  `TIMELINE` nor `MINI`/`WALLET`.)
+  (`CommerceTabConfiguration.isCommerceTabEnabled`) false falls *through* the chain and surfaces
+  `SQUARE` or `TIMELINE` in the freed slot — a tab the user never had. Removing only the body leaves
+  the branch's trailing `goto`, so the slot stays empty, as stock LINE does when the gate is on.
+- **Anchor each patch on its own constants only.** The tab patches run in arbitrary order against one
+  method and each fingerprint resolves *after* earlier mutations, so anchoring on a constant another
+  patch removes breaks the match. (Hence Hide Shopping tab avoids `TIMELINE` and `MINI`/`WALLET`; see
+  also `hidevoomtab/Fingerprints.kt`.)
 
-**A missing tab is safe everywhere.** Tab→index lookups are `Math.max(list.indexOf(...), 0)` (clamps
-to Home) in `jp/naver/line/android/activity/main/c.java`; `x66.d.a` only emits a `VoomSecondDepth`
-telemetry event; `qy4.f0` only writes the `ADDITIONAL_MAIN_TAB` pref. The bottom bar's layout carries
-a view per tab (`xy7.g` maps each constant to its `R.id.bnb_*`), so an absent list entry simply never
-renders.
+**A missing tab is safe everywhere.** Tab→index lookups are `Math.max(list.indexOf(...), 0)`, clamping
+to Home (`jp/naver/line/android/activity/main/c.java`); `x66.d.a` only emits a `VoomSecondDepth`
+telemetry event and `qy4.f0` only writes the `ADDITIONAL_MAIN_TAB` pref. The layout carries a view per
+tab (`xy7.g` → `R.id.bnb_*`), so an absent entry never renders.
 
-**The commerce tabs are region-gated, so they cannot be device-tested from TW.**
-`function.maintab.commercetab` is pushed by the server and is off outside JP — local proof stops at
-disassembling the patched `wy7/b.smali`. Hide Shopping tab was confirmed that way (both pairs gone,
-`if-eqz`/`goto` skeletons and the `SQUARE`/`TIMELINE` pairs intact, whole-dex branch-offset sweep
-clean, and all four tab patches coexisting under the full bundle); on-device confirmation comes from
-the JP reporter of issue #59.
+**The commerce tabs are region-gated, so they can't be device-tested from TW** —
+`function.maintab.commercetab` is server-pushed and off outside JP. Local proof stopped at
+disassembly: both pairs gone, `if-eqz`/`goto` skeletons and the `SQUARE`/`TIMELINE` pairs intact,
+whole-dex branch-offset sweep clean, all four tab patches coexisting under the full bundle. Then
+**device-confirmed in JP on `v1.7.0-dev.1`** (2026-08-20, reporter of issue #59).
+
+**A region-gated patch needs a pre-release and a tester in the region — plan for it.** Land on `dev`,
+point the reporter at the auto-published pre-release tag, and hold the `dev → main` merge for a
+screenshot. That is the only step separating "the instructions are gone" from "the tab is gone".
 
 ---
 
@@ -219,17 +211,16 @@ the JP reporter of issue #59.
 | Hide Shopping tab | `line.hideshoppingtab` | `COMMERCE` + `COMMERCE_TW` in `wy7.b.a()` (see above) |
 
 Each is an independent, `default = true`, user-facing `bytecodePatch` — one feature (or one feature's
-full set of entry points) per patch, matching the bundle's convention (cf. *Hide Wallet tab*,
-*Disable VOOM*). Most are fixed-value / instruction-level edits; *Redirect LINE Pay* and *Keep
+full set of entry points) per patch. Most are instruction-level edits; *Redirect LINE Pay* and *Keep
 unsent messages* carry extension code.
 
 ## LINE Pay intake & the "Redirect LINE Pay" patch
 
 **Why redirect instead of disable:** the messenger can't run its own Pay flow on a re-signed build
-(the bundled VKey/V-Guard integrity check fails — see the integrity notes in `CLAUDE.md`). The
-patch (still packaged under `line.disablepay`, object `disablePayPatch`) forwards the payment to the
-user's **separately-installed standalone LINE Pay app** (unpatched → integrity passes) and then
-closes the in-app Pay screen. A failed hand-off degrades to the old "just close" behavior.
+(the bundled VKey/V-Guard check fails — see `CLAUDE.md`). The patch (still packaged
+`line.disablepay`, object `disablePayPatch`) forwards the payment to the user's separately-installed
+**standalone LINE Pay app** — unpatched, so integrity passes — then closes the in-app Pay screen. A
+failed hand-off degrades to the old "just close" behavior.
 
 ### How an external pay URL enters LINE (decompiled 26.11.0)
 
@@ -241,24 +232,22 @@ merchant "LINE Pay" link  (line:// or https://line.me/R/…)
     iv3.a.c(...) / PayLiffActivity$a.a(...) → Intent(PayLiffActivity, extra "linepay.intent.extra.URI")
 ```
 
-- **`PayLaunchActivity`** (`Lcom/linecorp/line/pay/base/PayLaunchActivity;`) — general front door; its
-  URL is `getIntent().getDataString()` (a `line://pay/…` scheme form).
-- **`PayLiffActivity`** (`Lcom/linecorp/line/pay/impl/liff/common/PayLiffActivity;`) — the LIFF/web
-  path for the `waitPreLogin` / `lpUsage=STANDALONE` web-payment flow. Reads the incoming `Uri` from
-  intent extra **`linepay.intent.extra.URI`** (field `f73569l`) and calls LINE's own resolver
-  **`l5().r7(uri)`** (obfuscated `sv3.n`) to produce the real `https://web-pay.line.me/…` URL right
-  before loading it in a WebView.
-- `web-pay.line.me` / `web-tw-pay.line.me` / `/R/iab` are **not** string literals in the APK or
-  manifest — those hosts are server-config. So an `ACTION_VIEW` for `https://web-tw-pay.line.me/R/iab?…`
-  fired from inside LINE is **not** caught by the messenger; it auto-resolves to the standalone app.
+- **`PayLaunchActivity`** (`Lcom/linecorp/line/pay/base/PayLaunchActivity;`) — general front door; URL
+  is `getIntent().getDataString()` (a `line://pay/…` form).
+- **`PayLiffActivity`** (`Lcom/linecorp/line/pay/impl/liff/common/PayLiffActivity;`) — the LIFF/web path
+  for the `waitPreLogin` / `lpUsage=STANDALONE` flow. Reads its `Uri` from intent extra
+  **`linepay.intent.extra.URI`** (field `f73569l`) and calls LINE's resolver **`l5().r7(uri)`**
+  (obfuscated `sv3.n`) for the real `https://web-pay.line.me/…` URL before loading it in a WebView.
+- `web-pay.line.me` / `web-tw-pay.line.me` / `/R/iab` are **not** literals in the APK or manifest —
+  those hosts are server config. So an `ACTION_VIEW` for `https://web-tw-pay.line.me/R/iab?…` fired
+  from inside LINE is not caught by the messenger; it resolves to the standalone app.
 
 ### The redirect
 
-Both Pay activities are intercepted at `onCreate`, right after `super.onCreate` (same anchor the old
-disable patch used: `PayLaunchActivityOnCreateFingerprint` / `PayLiffActivityOnCreateFingerprint`,
-`methodCall("onCreate")` = the super call). Injected: `invoke-static {p0}, …LinePayRedirect;->redirect`
-then `finish(); return-void`. The extension
-(`extensions/.../app/andrewliang/extension/LinePayRedirect.java`) reads the intent (extra
+Both Pay activities are intercepted at `onCreate`, right after `super.onCreate`
+(`PayLaunchActivityOnCreateFingerprint` / `PayLiffActivityOnCreateFingerprint`, `methodCall("onCreate")`
+= the super call). Injected: `invoke-static {p0}, …LinePayRedirect;->redirect` then `finish(); return-void`.
+The extension (`app/andrewliang/extension/LinePayRedirect.java`) reads the intent (extra
 `linepay.intent.extra.URI`, else `getDataString()`) and builds the standalone url:
 
 - **`…/pay/payment/<reserveId>`** deep link (the merchant checkout case) — the last path segment IS
@@ -276,18 +265,16 @@ https://web-tw-pay.line.me/R/iab?url=<urlencoded inner web-pay url>
 ```
 
 with `FLAG_ACTIVITY_NEW_TASK`, swallowing all exceptions so `finish()` always runs. A token-free
-breadcrumb is logged under logtag **`AndrewLinePay`** (the single-use reserve id is deliberately not
-logged).
+breadcrumb is logged under logtag **`AndrewLinePay`**; the single-use reserve id deliberately is not.
 
-**Device-confirmed path (LINE 26.11.0):** tapping a merchant "LINE Pay" button
-(`http://line.me/R/pay/payment/<reserveId>`) enters LINE and reaches **`PayLaunchActivity`** with
-`getDataString() == line://pay/payment/<reserveId>` (not `PayLiffActivity`; extra was null). The
-reconstruction above opened the standalone LINE Pay app on the transaction. The `PayLiffActivity`
-hook is retained as defensive coverage for the LIFF/web (`lpUsage=STANDALONE`) route — if a future
-LINE version routes there instead and the raw intent lacks a usable web url, reuse LINE's `r7()`
-resolver (anchor a fingerprint on the stable `"lpUsage"` / `"STANDALONE"` literals in
-`PayLiffActivity`, read the obfuscated `l5()`/`r7()` descriptors from the matches — don't hardcode
-`sv3.n`, which drifts).
+**Device-confirmed (LINE 26.11.0):** tapping a merchant "LINE Pay" button
+(`http://line.me/R/pay/payment/<reserveId>`) reaches **`PayLaunchActivity`** with
+`getDataString() == line://pay/payment/<reserveId>` — not `PayLiffActivity`, whose extra was null —
+and the reconstruction opened the standalone app on the transaction. The `PayLiffActivity` hook is
+kept as defensive coverage for the `lpUsage=STANDALONE` route; if a future version routes there with
+no usable web url in the intent, reuse LINE's `r7()` resolver (anchor on the stable `"lpUsage"` /
+`"STANDALONE"` literals and read the obfuscated `l5()`/`r7()` descriptors from the matches — don't
+hardcode `sv3.n`, which drifts).
 
 ---
 
@@ -304,11 +291,10 @@ OpType NOTIFIED_DESTROY_MESSAGE(65) / DESTROY_MESSAGE(64)   (Lcb8/ce;, Operation
 Both ops funnel through the **same** lambda, so one patch site covers your own unsends too.
 
 **LINE does not delete the row for 1:1/group chats.** `Lg38/b0;->invoke(Ljava/lang/Object;)Ljava/lang/Object;`
-(`smali_classes4/g38/b0.smali`) rewrites `chat_history.type` to an `i38.c.UNSENT*` variant and NULLs
+(`smali_classes4/g38/b0.smali`) rewrites `chat_history.type` to an `i38.c.UNSENT*` variant, NULLs
 `content`, `parameter`, `attachement_type` and the location columns via `h38.h0` →
-`Lh38/b;->g(SQLiteDatabase, Li38/k;, Lh38/h0;)I`, then drops the message from the full-text-search
-index and deletes its `reactions` / `multiple_image_message_mapping` rows. All of it sits behind one
-guard:
+`Lh38/b;->g(SQLiteDatabase, Li38/k;, Lh38/h0;)I`, drops the message from the full-text-search index and
+deletes its `reactions` / `multiple_image_message_mapping` rows — all behind one guard:
 
 ```smali
     :cond_0
@@ -327,9 +313,9 @@ parameter, `v1`) carries the transaction's `SQLiteDatabase` in field `b`.
 → `fp5.i` → `Lg38/q0;->m(Ljava/lang/String;Ljava/util/Set;)V` → `g38.f3.c(Set)` →
 `DELETE FROM chat_history WHERE id IN(...)`. Not covered by the patch.
 
-A third path exists for messages unsent while offline: full sync / message-box restore reads
+A third path covers messages unsent while offline: full sync / message-box restore reads
 `z58.b.c.KEY_UNSENT_MESSAGE` / `KEY_SILENTLY_UNSENT` from `contentMetadata` (`g38.q0`, `g38.x2`) and
-stores the row already stripped. Nothing local to keep there.
+stores the row already stripped — nothing local to keep.
 
 ### How the placeholder is rendered
 
@@ -351,25 +337,25 @@ comparing `from_mid` against your own mid.
 
 ### What the patch does
 
-Skips the guard, then inserts its **own** `type = UNSENT` row so the notice still appears — see
-`app/andrewliang/extension/KeepUnsentMessages.java`. Keeping the original row untouched (rather than
-copying it and letting LINE tombstone the original) preserves its real `server_id`, so reply-jump,
+Skips the guard, then inserts its **own** `type = UNSENT` row so the notice still appears
+(`app/andrewliang/extension/KeepUnsentMessages.java`). Leaving the original row untouched — rather than
+copying it and letting LINE tombstone the original — preserves its real `server_id`, so reply-jump,
 forwarding and reactions keep working on the kept message.
 
-The guard is located **by instruction shape** (no-arg `Z` call → `move-result` → `if-eqz` → `goto`),
-and the `SQLiteDatabase` field reference is read out of the method's own bytecode — `i38.c`, its
-`h()`, and `g38.f3.b` are all obfuscated and drift. The two register reads are anchored rather than
-scanned blind: the message id must be a field of the same row object the guard reads its receiver
-off, and the `SQLiteDatabase` holder register must carry a `check-cast` to the field's own owner
-before the guard (this method has a *second* `SQLiteDatabase` read, `h38.t0.a`, that reuses the same
-register `v1` for a different type). Anything unresolvable — including a register spilling past
-`v15`, where `iget`/`invoke` operands stop fitting — throws rather than applying a half-patch.
+The guard is located **by instruction shape** (no-arg `Z` call → `move-result` → `if-eqz` → `goto`) and
+the `SQLiteDatabase` field reference is read from the method's own bytecode, since `i38.c`, its `h()`
+and `g38.f3.b` all drift. The two register reads are anchored rather than scanned blind: the message id
+must be a field of the same row object the guard reads its receiver off, and the `SQLiteDatabase` holder
+register must carry a `check-cast` to the field's own owner before the guard (this method has a *second*
+`SQLiteDatabase` read, `h38.t0.a`, reusing register `v1` for a different type). Anything unresolvable —
+including a register past `v15`, where `iget`/`invoke` operands stop fitting — throws rather than
+applying a half-patch.
 
-The insert is skipped when the row is **already** a tombstone (`type IN (27, 28, 38)` = what
-`i38.c.h()` covers). The injection sits ahead of the branch it flips, so it also runs where LINE's
-guard would have exited early — a redelivered unsend for a message tombstoned before the patch was
-installed, or one stripped by the offline `KEY_UNSENT_MESSAGE` path, which never reaches the guard
-at all. Both would otherwise draw the notice twice.
+The insert is skipped when the row is **already** a tombstone (`type IN (27, 28, 38)`, what `i38.c.h()`
+covers). The injection sits ahead of the branch it flips, so it also runs where LINE's guard would have
+exited early: a redelivered unsend for a row tombstoned before the patch was installed, or one stripped
+by the offline `KEY_UNSENT_MESSAGE` path, which never reaches the guard at all. Both would otherwise
+draw the notice twice.
 
 ### Values that drift on a version bump
 
@@ -386,33 +372,30 @@ at all. Both would otherwise draw the notice twice.
 
 ## Outbound photo pipeline (reference — no patch ships for this)
 
-> **A "Send original photos without the quality drop" patch was built, device-confirmed working, and
-> then deliberately dropped.** It is recorded here so nobody re-derives it from scratch. It reached a
-> 126.5 MP / 34 MB photo arriving at 24 MP instead of 1.64 MP, via five sites across two send paths
-> plus an extension. It was dropped because:
+> **A "Send original photos without the quality drop" patch was built, device-confirmed (a 126.5 MP /
+> 34 MB photo arrived at 24 MP instead of 1.64 MP, via five sites across two send paths plus an
+> extension), and then deliberately dropped.** Recorded so nobody re-derives it. Why it was dropped:
 >
 > - **Coverage can't match the promise.** It fixed the chatroom `+` / photo-strip flow only. Album is
->   unfixable without inflating every album upload (no "Original" button, see below), share-to-LINE is
->   a third path that was never traced, and a user cannot tell which entry point they used or inspect
->   the result. A patch that silently applies to some sends and not others invites bug reports.
-> - **Maintenance is a re-investigation, not a fingerprint refresh.** Four fingerprints, one anchored
->   on a synthetic Kotlin lambda (`th1.t$c$b`) that reshuffles whenever its enclosing method changes.
->   Worse, four device rounds were spent on sites that resolved and disassembled perfectly while
->   sitting on a path that never executed — so each LINE bump needs a device send with an oversized
->   photo, not just a clean build.
-> - **The trigger is rare.** A 12 MP phone JPEG is 3–6 MB; crossing 20 MB needs a 50–200 MP high-res
->   mode, and the 100 MP gate needs pixel-shift.
+>   unfixable without inflating every album upload (no "Original" button, below), share-to-LINE is a
+>   third path never traced, and a user can't tell which entry point they used. A patch that silently
+>   applies to some sends invites bug reports.
+> - **Maintenance is a re-investigation, not a fingerprint refresh.** Four fingerprints, one on a
+>   synthetic Kotlin lambda (`th1.t$c$b`) that reshuffles whenever its enclosing method changes — and
+>   four device rounds went to sites that disassembled perfectly on a path that never executed. Each
+>   LINE bump needs a device send with an oversized photo, not just a clean build.
+> - **The trigger is rare.** A 12 MP phone JPEG is 3–6 MB; crossing 20 MB needs a 50–200 MP mode, and
+>   the 100 MP gate needs pixel-shift.
 >
-> If it is ever revived: the minimal form is **`th1.t$c$b`'s two literals alone** — one fingerprint,
-> two `replaceInstruction` calls, no extension. With the flag preserved, an oversized JPEG takes
-> LINE's stock raw byte copy at *full* resolution, losslessly, which is better output than the 24 MP
-> q80 re-encode the extension produced. The extension only existed to avoid putting ~34 MB on the
-> wire.
+> If revived, the minimal form is **`th1.t$c$b`'s two literals alone** — one fingerprint, two
+> `replaceInstruction` calls, no extension. With the flag preserved an oversized JPEG takes LINE's
+> stock raw byte copy at *full* resolution, losslessly — better output than the 24 MP q80 re-encode
+> the extension produced, which only existed to keep ~34 MB off the wire.
 
 ### The two paths a photo can take
 
-`u13.c1.f(dVar, fVar, uri, rotation)` writes the local file that gets uploaded. Exactly two
-outcomes exist for a photo — there is no tier in between, which is the defect.
+`u13.c1.f(dVar, fVar, uri, rotation)` writes the local file that gets uploaded. A photo has exactly
+two outcomes, with no tier in between — that is the defect.
 
 | `cw0.f` | What `c1.f` does |
 |---|---|
@@ -461,9 +444,9 @@ anything else (HEIC, WEBP) → full-res decode + `Matrix` rotate + JPEG at the t
 
 ### The `>= 20 MB / >= 100 MP` test exists in FIVE places
 
-This is the single most important fact about this area, and it cost four device rounds to learn. The
-same pair of literals (`0x1400000`, `0x5f5e100`) is duplicated across two independent send paths
-plus Album, and **any one of them alone is enough to drop the photo to the standard variant**:
+The most important fact here, and it cost four device rounds. The same literals (`0x1400000`,
+`0x5f5e100`) are duplicated across two independent send paths plus Album, and **any one alone is
+enough to drop the photo to the standard variant**:
 
 | Copy | Decides | On the chatroom path? |
 |---|---|---|
@@ -481,11 +464,10 @@ Two send paths reach `u13.c1.f`, and they do **not** share the decision:
 - **Full gallery picker** — `m63.n0` + `t73.k0.b0`.
 
 `wi0.h.g` is deliberately left alone: Album has **no "Original" button**, so its `IMAGE_ORIGINAL`
-branch is unreachable and the only remaining lever there would be the always-compress branch, which
-would inflate every album upload. Album's config comes from `ch0.j.m()` →
-`ei0.n(maxDimension², quality, 8192|1280)` off the *same* `f1.a()` tier as chat, so if an Original
-button ever appears there, the fix is to swap that config for a bounded one rather than to neutralise
-the gate.
+branch is unreachable and the only lever left is the always-compress branch, which would inflate
+every album upload. Album's config is `ch0.j.m()` → `ei0.n(maxDimension², quality, 8192|1280)` off
+the *same* `f1.a()` tier as chat, so if an Original button ever appears the fix is to swap that
+config for a bounded one, not to neutralise the gate.
 
 ### What the dropped patch did (for reference)
 
@@ -502,20 +484,19 @@ gallery-picker path and were never device-verified.
   fall-through target **must** be an `ExternalLabel`, not a label written inside the injected block.
 - **3.** `u13.y0` — the tier-quality `iget` feeding `c1.o` → `const/16 0x50` (q80).
 
-The extension re-derived the same `>= 20 MB || >= 100 MP` test the sites removed and returned
-`null` otherwise, so every case that already worked stayed untouched — notably a 50 MP / 10 MB
-JPEG, which must keep being copied byte for byte. Output was bounded to 24 MP via `inSampleSize` plus
+The extension re-derived the same `>= 20 MB || >= 100 MP` test the sites removed and returned `null`
+otherwise, leaving every already-working case untouched — notably a 50 MP / 10 MB JPEG, which must
+keep being copied byte for byte. Output was bounded to 24 MP via `inSampleSize` plus
 `inScaled`/`inDensity`/`inTargetDensity`; the density scaler matters because `inSampleSize` alone
-would quantise a 126 MP source to ~7.9 MP. Rotation was baked into the pixels rather than written
-as an EXIF tag, matching what every other LINE encoder on this path does.
+quantises a 126 MP source to ~7.9 MP. Rotation was baked into the pixels rather than written as an
+EXIF tag, matching every other LINE encoder on this path.
 
 **Rotation must come from LINE, not from EXIF.** `c1.f(dVar, fVar, uri, Integer rotation)` hands
-the *same* `Integer` to `c1.p` (the standard variant, and so the thumbnail and OBS's derived
-`/preview`) and to the `y0` lambda. Both prefer it and only fall back to the file's EXIF
-(`c1.d(uri)`, itself an `ExifInterface` "Orientation" read) when it is `null`. So the patch passed
-the lambda's `Ljava/lang/Integer;` capture (`y0.c`) into the extension with EXIF as fallback
-only — deriving from EXIF unconditionally would leave the original sideways relative to the
-standard variant whenever the caller supplied a rotation the file itself does not carry.
+the *same* `Integer` to `c1.p` (the standard variant, hence the thumbnail and OBS's `/preview`) and to
+the `y0` lambda. Both prefer it and fall back to the file's EXIF (`c1.d(uri)`, an `ExifInterface`
+"Orientation" read) only when it is `null`. So the patch passed the lambda's `Ljava/lang/Integer;`
+capture (`y0.c`) in with EXIF as fallback only: deriving from EXIF unconditionally leaves the original
+sideways relative to the standard variant whenever the caller supplied a rotation the file lacks.
 
 Sites 2 and 3 resolved `u13.c1`, its `Context` field and the lambda's captures (`c1`, `Uri`,
 `Integer` rotation) **from the matched method's own bytecode**; only the two literals and framework
@@ -535,9 +516,9 @@ types were hardcoded.
 ## Call ringtone pipeline (investigated, deliberately not shipped)
 
 Freeing the incoming-call ringtone from LINE's four bundled tones / paid Melody Shop tones is
-**technically patchable** — the whole decision is client-side and the playback layer already accepts
-an arbitrary `Uri`. Nothing shipped; see [Why nothing shipped](#why-nothing-shipped) for the reason,
-which is product value, not feasibility. Recorded so this doesn't get re-derived from scratch.
+**technically patchable**: the decision is entirely client-side and the playback layer already accepts
+an arbitrary `Uri`. Nothing shipped — the reason is product value, not feasibility, see
+[Why nothing shipped](#why-nothing-shipped). Recorded so it isn't re-derived.
 
 ### The choke point
 
@@ -550,8 +531,8 @@ resolves the ringtone for **both** incoming call types, called from `c97/a.java:
 | `be7.a$a$a(ue7.a tone, be7.q fallbackFrom)` | a bundled `res/raw` tone |
 | **`be7.a$a$b(be7.q, android.net.Uri)`** | **an arbitrary URI** |
 
-The method's own MELODY branch already builds the second from a `file://` path, so URI playback is a
-shipping path, not a theoretical one.
+The method's own MELODY branch already builds the second from a `file://` path, so URI playback ships
+today — it is not theoretical.
 
 ### Playback — LINE's own MediaPlayer, in LINE's own process
 
@@ -567,11 +548,10 @@ shipping path, not a theoretical one.
 
 then `setAudioAttributes(USAGE_NOTIFICATION_RINGTONE)`, `setLooping(true)`, `prepare()`.
 
-This is why it is patchable at all: the URI is opened **inside LINE's process** and never handed to
-the system NotificationManager, so none of the cross-process read-permission problems that make the
-Google sign-in limitation unfixable apply here. (Message *notification* sounds are a different
-system entirely — ordinary Android notification channels, already customisable from system Settings
-with no patch.)
+This is what makes it patchable: the URI is opened **inside LINE's process**, never handed to the
+system NotificationManager, so the cross-process permission problems that sink the Google sign-in
+limitation don't apply. (Message *notification* sounds are a separate system — ordinary Android
+notification channels, already customisable in system Settings.)
 
 ### What actually limits users today
 
@@ -597,11 +577,11 @@ configured:
 
 Only MUSIC / MELODY / FRIEND_MELODY set `exposeExternalSetting = true`, which is what makes the
 "Ringtones & ringback tones" entry appear. `DEFAULT` hardcodes `ue7.a.RING_1`; `EMBEDDED` resolves
-through `ge7.c.e(m87.h.RING)`, which reads the *legacy* melody prefs and falls back to `RING_1` when
-they are empty. **So outside JP/TH/TW there is no ringtone choice in the UI at all** — not even among
-the four bundled tones, which are reachable only under JP's `MUSIC` provider (it alone reads the
-`cf7.m` prefs). The config int is a server-supplied *value* consumed locally, not a server-made
-*decision* — same shape as the photo tier.
+through `ge7.c.e(m87.h.RING)`, reading the *legacy* melody prefs and falling back to `RING_1` when
+empty. **So outside JP/TH/TW there is no ringtone choice in the UI at all** — not even among the four
+bundled tones, reachable only under JP's `MUSIC` provider (it alone reads the `cf7.m` prefs). The
+config int is a server-supplied *value* consumed locally, not a server-made *decision* — same shape as
+the photo tier.
 
 Two per-call overrides sit upstream of the local choice: the **caller's** friend-melody (`m87.e` on
 `VoIPFreeCallIncomingConnectInfo`) preempts it, and a per-call boolean
@@ -631,11 +611,11 @@ Two parallel storage systems, both **encrypted** and therefore not readable from
   (`getRingToneOnTalkServer`), which **resets to default and deletes the local files** when the
   server reports no tone.
 
-**File-playback precedent.** The LINE MUSIC path plays a plain file out of LINE's *private internal*
+**File-playback precedent.** The LINE MUSIC path plays a plain file from LINE's *private internal*
 dir — `cf7.k.b()` → `<applicationInfo.dataDir>/ringtone/decoded_ringtone_1|2` (`j48.h.d()` is
-`applicationInfo.dataDir`, not external storage). A file placed in LINE's private storage therefore
-plays with **zero runtime permissions**. Purchased-track entitlement is re-verified against the
-server every 14 days (`af7.g`, pref `ringToneMusicVerifyLastTime`).
+`applicationInfo.dataDir`, not external storage) — so a file in LINE's private storage plays with
+**zero runtime permissions**. Purchased-track entitlement re-verifies server-side every 14 days
+(`af7.g`, pref `ringToneMusicVerifyLastTime`).
 
 ### If it is ever built
 
@@ -656,30 +636,28 @@ Uniqueness verified against 26.11.0: only three methods in the APK carry **both*
 `c97.m.a(Landroid/content/Context;Lb97/c;)Z` (excluded by `Uri.parse`). Filters are in program order:
 both `instance-of`s precede the MELODY branch's `Uri.parse`.
 
-`be7/a$a$b` and `be7/q` must be read from the matched method's **own** MELODY branch rather than
-hardcoded — the idiom the dropped photo patch used for `u13.c1` and the `y0` captures above: find
-the `INVOKE_DIRECT` whose `name == "<init>"` and whose
-`parameterTypes` end in `Landroid/net/Uri;` → its `definingClass` is `a$a$b` and `parameterTypes[0]`
-is `q`; then the `SGET_OBJECT` whose field type is that `q` gives a valid enum constant. The method
-is static with `.locals 5` and two params (registers v0–v6, `p0` = v5), so `invoke-direct` /
-`new-instance` stay inside the 4-bit operand limit, and v0–v2 are dead on entry.
+Read `be7/a$a$b` and `be7/q` from the matched method's **own** MELODY branch rather than hardcoding
+them — the idiom the dropped photo patch used for `u13.c1`: the `INVOKE_DIRECT` whose `name == "<init>"`
+and whose `parameterTypes` end in `Landroid/net/Uri;` gives `a$a$b` as its `definingClass` and `q` as
+`parameterTypes[0]`; the `SGET_OBJECT` whose field type is that `q` gives a valid enum constant. The
+method is static, `.locals 5`, two params (v0–v6, `p0` = v5), so `invoke-direct`/`new-instance` stay
+inside the 4-bit operand limit and v0–v2 are dead on entry.
 
-**Any custom URI must be probed before use.** LINE declares `READ_MEDIA_IMAGES`,
-`READ_MEDIA_VIDEO`, `READ_MEDIA_VISUAL_USER_SELECTED` and legacy `READ_EXTERNAL_STORAGE`, but
-**not `READ_MEDIA_AUDIO`** — so a user-added MediaStore ringtone throws `SecurityException` on open,
-`xx.c` swallows it in its `catch` and calls `c()`, and **the call rings silently**. Probe with
-`ContentResolver.openAssetFileDescriptor(uri, "r")` and return `null` on failure so LINE keeps its
-own tone. Stock OEM ringtones (`content://media/internal/audio/…`,
-`content://settings/system/ringtone`) open with no permission.
+**Any custom URI must be probed before use.** LINE declares `READ_MEDIA_IMAGES`, `READ_MEDIA_VIDEO`,
+`READ_MEDIA_VISUAL_USER_SELECTED` and legacy `READ_EXTERNAL_STORAGE` but **not `READ_MEDIA_AUDIO`**, so
+a user-added MediaStore ringtone throws `SecurityException` on open, `xx.c` swallows it and calls `c()`,
+and **the call rings silently**. Probe with `ContentResolver.openAssetFileDescriptor(uri, "r")` and
+return `null` on failure so LINE keeps its own tone. Stock OEM ringtones
+(`content://media/internal/audio/…`, `content://settings/system/ringtone`) open with no permission.
 
 ### Why nothing shipped
 
 - **Follow the device ringtone** (`RingtoneManager.getActualDefaultRingtoneUri`) is one small patch,
-  but it is a feature nobody asked for, and it silently ignores the ringtone of anyone whose phone
-  tone is a file they imported themselves — see the `READ_MEDIA_AUDIO` note above.
+  but nobody asked for it and it silently ignores the tone of anyone whose phone ringtone is a file
+  they imported themselves (the `READ_MEDIA_AUDIO` note above).
 - **A real in-app picker** needs a new Activity, an `AndroidManifest.xml` patch, SAF plus a copy into
   LINE's private dir, and a settings-row injection into obfuscated declarative Kotlin (`l15.c`'s
-  `px4.b0` item list) whose natural host rows only exist in JP/TH/TW. Disproportionate to the payoff.
+  `px4.b0` item list) whose host rows only exist in JP/TH/TW. Disproportionate to the payoff.
 
 ### Values that drift on a version bump
 
@@ -696,8 +674,8 @@ own tone. Stock OEM ringtones (`content://media/internal/audio/…`,
 
 ## Google account access — two independent paths (one patched, one not)
 
-LINE reaches a Google account by **two mechanisms that share nothing**. Conflating them cost a
-round of wrong conclusions, so establish which one a symptom belongs to before touching anything.
+LINE reaches a Google account by **two mechanisms that share nothing**. Establish which one a symptom
+belongs to before touching anything — conflating them cost a round of wrong conclusions.
 
 | | **Path 1 — log in / link a Google account** | **Path 2 — Drive chat-history backup** |
 |---|---|---|
@@ -711,18 +689,18 @@ Both fail on a re-signed build for the same underlying reason: an Android OAuth 
 **(package name, signing certificate)**, so re-signing means no client matches and Google refuses
 with `UNREGISTERED_ON_API_CONSOLE`.
 
-Callers of `jl0.t` (path 1): `settings/account/LineUserAccountSettingsFragment`,
+Path 1's callers: `settings/account/LineUserAccountSettingsFragment`,
 `registration/ui/fragment/EapLoginFragment`, `RegistrationMethodSelectionFragment`,
 `registration/restore/ui/AccountRestoreEapLoginFragment`. The `kl0` package is LINE's third-party
 identity login (it also carries `apple_login_code_result_key`), shared by Google and Apple.
 
 ### Path 1 is not patchable
 
-LINE asks the platform for a credential; the framework service in `system_server` enumerates
-registered providers and picks Google's `…credman.service.GoogleIdService`. LINE never names Play
-Services, so there is **no package, action or string in the APK to rewrite**. MicroG-RE implements
-the *GMS* Credentials API but not `android.service.credentials.CredentialProviderService`, so it
-can never be offered as a provider either. Device log for this path:
+LINE asks the platform for a credential; `system_server` enumerates registered providers and picks
+Google's `…credman.service.GoogleIdService`. LINE never names Play Services, so there is **no package,
+action or string in the APK to rewrite**, and MicroG-RE implements the *GMS* Credentials API but not
+`android.service.credentials.CredentialProviderService`, so it can't be offered as a provider either.
+Device log:
 
 ```
 CredentialManager(1527): Provider session created for:
@@ -731,18 +709,17 @@ Auth.Api.Credentials: [AccountReauth_flowRunner] Flow failed.
 colz: [8] Unknown error [status=UNREGISTERED_ON_API_CONSOLE].
 ```
 
-Reviving this would need a credential provider added to MicroG-RE plus per-user setup — a feature
-in someone else's project, not a patch.
+Reviving this needs a credential provider added to MicroG-RE plus per-user setup — a feature in
+someone else's project, not a patch.
 
 ### Path 2 is patchable — what `gmscoreauth` does
 
 Device-confirmed end to end (LINE 26.11.0 + MicroG-RE 6.1.4, Android 16): GmsCore's picker, a
 granted `drive.appdata` token, and a completed chat-history restore.
 
-The backup flow needs exactly two things from Play Services — an account **name** and a token for
-it — but reaching GmsCore for both took **five separate string sites**. Each became visible only
-after the previous one stopped failing, so expect the same if this ever regresses: fix one, re-test,
-find the next.
+The backup flow needs exactly two things from Play Services — an account **name** and a token for it
+— but reaching GmsCore for both took **five separate string sites**, each visible only after the
+previous stopped failing. Expect the same if it regresses: fix one, re-test, find the next.
 
 | # | Site | What moves | Symptom if missed |
 |---|---|---|---|
@@ -753,47 +730,45 @@ find the next.
 | 5 | `vk.g.<clinit>` — bind **ComponentName** | the *package* half only | `SecurityException: uid <gms> cannot get user data for accounts of type: app.revanced` |
 
 **Site 2 needs code, not a string.** `setSelectedAccountName` resolves the picked name by scanning
-`AccountManager.getAccountsByType(type)`. That scan cannot work for a GmsCore account: since
-Android 8 an authenticator controls account **visibility**, and GmsCore grants it on its first
-`setAuthToken` — i.e. *after* a token, which needs the account to resolve first. The scan returns an
-empty array, both fields stay null, and LINE re-prompts forever. The patch constructs the `Account`
-directly from the name instead; the scan only ever existed to turn a name into an `Account`.
+`AccountManager.getAccountsByType(type)`, which can never work for a GmsCore account: since Android 8
+an authenticator controls account **visibility**, and GmsCore grants it on its first `setAuthToken` —
+i.e. *after* a token, which needs the account to resolve first. The scan returns empty, both fields
+stay null, and LINE re-prompts forever. The patch builds the `Account` directly from the name; the
+scan only ever existed to turn a name into an `Account`.
 
 Guard **both** null and empty string, branching into the original body: LINE calls
 `setSelectedAccountName("")` when the backup screen opens before an account is chosen, and
-`new Account("", type)` throws `IllegalArgumentException` — a crash the original code avoided only
-because a search for `""` matched nothing.
+`new Account("", type)` throws `IllegalArgumentException` — a crash the original avoided only because
+a search for `""` matched nothing.
 
-**Site 5 is the trap worth remembering.** `getToken` does not resolve a service by action at all —
+**Site 5 is the trap worth remembering.** `getToken` resolves no service by action at all —
 `vk.g.<clinit>` builds an explicit `ComponentName("com.google.android.gms",
 "com.google.android.gms.auth.GetToken")`, and an explicit bind ignores every action redirect. Move
 **only the package half**: MicroG-RE ships `applicationId app.revanced.android.gms` but keeps
 `namespace com.google.android.gms`, so its `<service android:name=".auth.GetToken">` really is the
 class `com.google.android.gms.auth.GetToken` inside the `app.revanced` package. Rewriting the class
-name too binds a component that does not exist — LINE then shows a generic access error with
-**nothing in the log**, because no service ever starts.
+name too binds a component that doesn't exist — LINE shows a generic access error with **nothing in
+the log**, because no service starts.
 
-Everything else keeps talking to real Play Services — Maps and location sharing, ML Kit, FCM,
-anything Pay touches — so the "Play Services missing" checks a wholesale GmsCore patch must defeat
-never trigger.
+Everything else keeps talking to real Play Services — Maps, location sharing, ML Kit, FCM, anything
+Pay touches — so the "Play Services missing" checks a wholesale GmsCore patch must defeat never fire.
 
-Also required, and easy to forget: a `<queries>` entry for GmsCore (LINE is `targetSdk 30+`, so
-without it every lookup fails as "package not found"), and **not** renaming LINE's package (see the
-certificate section below).
+Also required and easy to forget: a `<queries>` entry for GmsCore (LINE is `targetSdk 30+`, so without
+it every lookup fails as "package not found"), and **not** renaming LINE's package (below).
 
 ### Redirecting one GMS client without redirecting all of them
 
-Every GMS client extends an obfuscated `BaseGmsClient` (`kl.d` in 26.11.0) exposing two overridable
-suppliers: the start-service **action** (`D()`) and the service **package** (`E()`). `E()` is
-`public`, *not* `final`, and returns `"com.google.android.gms"`. Rewriting that literal would
-redirect every GMS client in the app; instead, give the one target class its own override. Resolve
-the supplier's name by walking supers for the method returning that literal — `E` drifts.
+Every GMS client extends an obfuscated `BaseGmsClient` (`kl.d` in 26.11.0) with two overridable
+suppliers: the start-service **action** (`D()`) and the service **package** (`E()`). `E()` is `public`,
+*not* `final`, and returns `"com.google.android.gms"` — rewriting that literal would redirect every GMS
+client in the app, so give the one target class its own override instead. Resolve the supplier's name
+by walking supers for the method returning that literal; `E` drifts.
 
 ### Certificate handling (device-proven)
 
-Google **will** grant `oauth2:…/auth/drive.appdata` for `jp.naver.line.android` once GmsCore
-presents the original certificate — first shown with a standalone probe, later confirmed by a real
-restore through the shipped patch. Probe A/B, same account and scope:
+Google **will** grant `oauth2:…/auth/drive.appdata` for `jp.naver.line.android` once GmsCore presents
+the original certificate — first shown by a standalone probe, then by a real restore through the
+shipped patch. Probe A/B, same account and scope:
 
 | `client_sig` sent | Google's response |
 |---|---|
@@ -804,8 +779,8 @@ restore through the shipped patch. Probe A/B, same account and scope:
 `…SPOOFED_PACKAGE_SIGNATURE` off the package being looked up. It is generic — no allow-list, no
 per-app table — so **no GmsCore fork is needed**.
 
-The order is the trap. `PackageUtils.getAndCheckPackage()` spoofs the caller's **name first**, and
-`AuthManager` then looks the certificate up **under the spoofed name** — i.e. off whatever
+The order is the trap. `PackageUtils.getAndCheckPackage()` spoofs the caller's **name first**, then
+`AuthManager` looks the certificate up **under the spoofed name** — off whatever
 `jp.naver.line.android` is installed, not off the caller's own meta-data. So:
 
 - If the spoofed package is absent, `getPackageInfo` throws and the code falls back to
@@ -843,34 +818,31 @@ needed anyway — real Play Services is installed, so the "GMS missing" checks n
 
 ## Dead ends (investigated, not patchable)
 
-**Extend the unsend window.** The client windows (`j51.a.o` free, `.p` premium) are UX
-pre-filters fed by server config (`function.chatroom.message.unsend.timelimit`,
-`.premium.timelimit`). `unsendMessage` carries only `(seq, messageId)`; the server decides and has
-a dedicated `TalkException` code `MESSAGE_NOT_DESTRUCTIBLE(71)` (`cb8.m9`), handled at `ne1.o2` /
-`ne1.b2` → *"You can't unsend this message as too much time has passed."* Widening the client
-window only re-shows the menu item and produces that toast. (`hidepremiumunsend` deliberately
-narrows it for the same reason.)
+**Extend the unsend window.** The client windows (`j51.a.o` free, `.p` premium) are UX pre-filters fed
+by server config (`function.chatroom.message.unsend.timelimit`, `.premium.timelimit`). `unsendMessage`
+carries only `(seq, messageId)`; the server decides, with a dedicated `TalkException` code
+`MESSAGE_NOT_DESTRUCTIBLE(71)` (`cb8.m9`) handled at `ne1.o2` / `ne1.b2` → *"You can't unsend this
+message as too much time has passed."* Widening the client window only re-shows the menu item and
+produces that toast. (`hidepremiumunsend` narrows it for the same reason.)
 
-**Remove video length / size limits.** `c81.b.c()` rejects `> 301000 ms` and `> 209715200` bytes,
-and the picker sets `maxVideoDurationSec = 300` at every chat entry point. Both are trivial to
-remove, but the OBS gateway enforces its own ceiling: `rc1.b` parses the
-`x-line-obs-talk-exception` response header carrying `EXCEED_FILE_MAX_SIZE` / `EXCEED_DAILY_QUOTA`
-/ `NOT_SUPPORT_SEND_FILE`. Removing the client checks trades a clean local toast for a mid-upload
-server rejection.
+**Remove video length / size limits.** `c81.b.c()` rejects `> 301000 ms` and `> 209715200` bytes, and
+the picker sets `maxVideoDurationSec = 300` at every chat entry point. Both are trivial to remove, but
+the OBS gateway enforces its own ceiling — `rc1.b` parses the `x-line-obs-talk-exception` header
+carrying `EXCEED_FILE_MAX_SIZE` / `EXCEED_DAILY_QUOTA` / `NOT_SUPPORT_SEND_FILE`. Removing the client
+checks trades a clean local toast for a mid-upload server rejection.
 
-**Change the ringback tone your friends hear.** The *callee's* ringback is delivered to the
-**caller's** client in their connect info and played there, so no local edit can change what a friend
-hears when they call you — same class as the unsend window. (The ringback *you* hear while dialing
-out is client-side, `oy.d.f261845a` / `be7.a$b`, but changing that helps nobody.) The incoming-call
-**ringtone** is a different matter and is patchable — see
-[Call ringtone pipeline](#call-ringtone-pipeline-investigated-deliberately-not-shipped).
+**Change the ringback tone your friends hear.** The *callee's* ringback is delivered to the **caller's**
+client in their connect info and played there, so no local edit changes what a friend hears — same class
+as the unsend window. (The ringback *you* hear while dialing out is client-side, `oy.d.f261845a` /
+`be7.a$b`, but changing it helps nobody.) The incoming-call **ringtone** is different and *is* patchable
+— see [Call ringtone pipeline](#call-ringtone-pipeline-investigated-deliberately-not-shipped).
 
-**Log in with / link a Google account on a re-signed build.** LINE asks
-`androidx.credentials.CredentialManager` and the *framework* picks the provider, so nothing in the
-APK names Play Services and there is no string to redirect; MicroG-RE implements no
-`CredentialProviderService` either. The Drive **backup** picker is a different mechanism and *is*
-patchable — see the two-path section above.
+**Log in with / link a Google account on a re-signed build.** The framework picks the credential
+provider, so nothing in the APK names Play Services — see [the two-path section](#google-account-access--two-independent-paths-one-patched-one-not).
+The Drive **backup** picker is a different mechanism and *is* patchable.
 
-**Note on the OBS size ceiling.** It has never been observed directly — 20 MB is inferred from
-LINE's own client-side threshold. Sub-20 MB originals are known to upload byte-identical, so that
-much is safe; record the real limit here if a device test ever surfaces `EXCEED_FILE_MAX_SIZE`.
+**Note on the OBS size ceiling for *photos*.** It has never been observed directly — the 20 MB figure
+is inferred from LINE's own client-side threshold (`0x1400000`, the photo pipeline's gate), not from
+anything the gateway reported. Sub-20 MB originals are known to upload byte-identical, so that much is
+safe; record the real limit here if a device test ever surfaces `EXCEED_FILE_MAX_SIZE`. This says
+nothing about video, whose client check is the separate 200 MB one above.
