@@ -25,8 +25,8 @@ private const val LINE_ORIGINAL_CERT_SHA1 = "89396DC419292473972813922867E6973D6
 @Suppress("unused")
 val fixPushNotificationsPatch = bytecodePatch(
     name = "Fix push notifications",
-    description = "Restores push notifications on re-signed builds when LINE is fully " +
-        "closed. Root Mount install does not need this patch.",
+    description = "When LINE is fully closed, push notifications work again on a re-signed " +
+        "build. A Root Mount install does not need this patch.",
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_LINE)

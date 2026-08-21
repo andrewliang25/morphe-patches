@@ -12,8 +12,8 @@ private const val RETURN_NULL = """
 @Suppress("unused")
 val removeBannerAdsPatch = bytecodePatch(
     name = "Remove banner ads",
-    description = "Stops LINE from loading Smart Channel banner ads " +
-        "(neutralizes the getBanners and getPrefetchableBanners responses).",
+    description = "LINE no longer loads the Smart Channel banner ads. This patch makes the " +
+        "getBanners and getPrefetchableBanners responses null.",
     default = true, // applied by default in Morphe Manager; users can deselect it.
 ) {
     compatibleWith(COMPATIBILITY_LINE)
