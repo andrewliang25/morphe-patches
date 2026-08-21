@@ -200,8 +200,15 @@ renders.
 `function.maintab.commercetab` is pushed by the server and is off outside JP — local proof stops at
 disassembling the patched `wy7/b.smali`. Hide Shopping tab was confirmed that way (both pairs gone,
 `if-eqz`/`goto` skeletons and the `SQUARE`/`TIMELINE` pairs intact, whole-dex branch-offset sweep
-clean, and all four tab patches coexisting under the full bundle); on-device confirmation comes from
-the JP reporter of issue #59.
+clean, and all four tab patches coexisting under the full bundle), then **device-confirmed in JP by
+the reporter of issue #59 on the `v1.7.0-dev.1` pre-release** (2026-08-20): the Shopping tab is gone
+and the remaining tabs still switch normally.
+
+**A region-gated patch needs a pre-release and a tester in the region — plan for it.** Bytecode
+verification is the whole of what TW can prove here, so the workflow is: land on `dev`, point the
+reporter at the auto-published pre-release tag, and hold the `dev → main` merge until a screenshot
+comes back. That round-trip took under a day on #59 and is the only thing that distinguishes "the
+instructions are gone" from "the tab is gone".
 
 ---
 
