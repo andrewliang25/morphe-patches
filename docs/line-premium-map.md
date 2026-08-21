@@ -4,28 +4,24 @@ Reference notes on how **LINE Yahoo Premium (LYP)** feature-gating works in LINE
 (`jp.naver.line.android`), distilled from decompiling **LINE 26.11.0** (the version pinned in
 `app/andrewliang/patches/shared/Constants.kt`). Companion to `docs/line-patch-map.md`.
 
-> ⚠️ **Obfuscation drift.** Class/method names like `b13.l`, `z03.b`, `t13.i/k/n/b/q` are
-> R8-obfuscated and **change between LINE versions**. The concepts and anchoring strategies below
-> are durable; re-confirm exact descriptors against decompiled smali when bumping the target
-> version. Prefer anchors that survive obfuscation: **string literals** (`"LITE_ENJOY"`), stable
-> framework types (`Ljava/lang/Boolean;`, `Lkotlin/coroutines/Continuation;`), and Thrift op-name
-> literals.
+> ⚠️ **Obfuscation drift.** Names like `b13.l`, `z03.b`, `t13.i/k/n/b/q` are R8-obfuscated and
+> **change between LINE versions**; re-confirm every descriptor on a version bump. Prefer anchors
+> obfuscation can't touch: **string literals** (`"LITE_ENJOY"`), framework types
+> (`Ljava/lang/Boolean;`, `Lkotlin/coroutines/Continuation;`), Thrift op-name literals.
 
 ---
 
 ## The two questions, answered
 
-1. **Is there a client-side premium flag the app reads to unlock features?**
-   **Yes** — a central LYP facade the whole app reads through. But it is a *rich per-feature model*,
-   not a single global boolean.
+1. **Is there a client-side premium flag the app reads to unlock features?** **Yes** — a central LYP
+   facade, but a *rich per-feature model*, not one global boolean.
 
-2. **Does the server double-check premium status?**
-   **Yes.** The premium status the client reads is **server-authored** (synced from a Thrift RPC),
-   and every premium *action* (content download, purchase, etc.) round-trips to a server endpoint
-   that independently re-verifies entitlement. The client status is a read-model, not the gate.
+2. **Does the server double-check premium status?** **Yes.** The status the client reads is
+   **server-authored** (synced from a Thrift RPC), and every premium *action* round-trips to an endpoint
+   that re-verifies entitlement independently. The client status is a read-model, not the gate.
 
-**Net:** a blanket "unlock premium" is not achievable. Flipping the client gate can at most surface
-UI / enable purely-local behaviors; server-delivered or authorized content stays enforced.
+**Net:** a blanket "unlock premium" is not achievable. Flipping the client gate can at most surface UI or
+enable purely-local behavior; server-delivered or authorized content stays enforced.
 
 ---
 
@@ -55,16 +51,16 @@ current `LypUserStatus` **is** `Subscribed` (`instance-of Lt13/i$b;`) **AND** pr
 | `h()` | `Boolean` | "is LITE plan" (`productTier == "LITE_ENJOY"`) | — |
 | `z()` | `Boolean` | premium module/feature enabled flag | — |
 
-`u()` internally = `subscribed(above) && !s(feature).a()`. Note `s/u/A` share the erased bytecode
-descriptor `(Lt13/b;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;` — only `u()` boxes a
-`Boolean` (the sole `Ljava/lang/Boolean;->valueOf` call in the class).
+`u()` = `subscribed(above) && !s(feature).a()`. `s`/`u`/`A` share the erased descriptor
+`(Lt13/b;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;`; only `u()` boxes a `Boolean` (the class's
+sole `Ljava/lang/Boolean;->valueOf` call).
 
 ### Feature enum `t13.b`
 
-Values (matched by `.name()` — string anchors): `AI_TALK_SUGGESTION, ALBUM, APP_ICON, CALL_STT,
-FONT, FRIENDS_MANAGEMENT, LINE_AI, MANGA, MESSAGE_BACKUP, MESSAGE_EDIT, MESSAGE_SCHEDULING, NETFLIX,
+Values (matched by `.name()`): `AI_TALK_SUGGESTION, ALBUM, APP_ICON, CALL_STT, FONT,
+FRIENDS_MANAGEMENT, LINE_AI, MANGA, MESSAGE_BACKUP, MESSAGE_EDIT, MESSAGE_SCHEDULING, NETFLIX,
 PREMIUM_BLOCK, PREMIUM_MUTE_MESSAGE, PREMIUM_UNSEND, RING_TONE, STICKER_PREMIUM_BASIC, SUBPROFILE,
-YJ_SERVICES`. Which accessor a feature reads varies: `SUBPROFILE`/`MESSAGE_EDIT` → `u()`;
+YJ_SERVICES`. The accessor varies per feature: `SUBPROFILE`/`MESSAGE_EDIT` → `u()`;
 `APP_ICON`/`FONT`/`RING_TONE` → mostly `s()`/`A()`.
 
 ### `LypUserStatus` (`t13.i`, `com.linecorp.line.lyppremium.model.LypUserStatus`)
@@ -81,10 +77,9 @@ productTier=, …, cancelledProviders=, incentive=)`**; `i$a` = `NotSubscribed(i
 
 - **Status originates server-side:** Thrift client
   `com.linecorp.line.lyppremium.impl.network.LinePremiumStatusServiceClient` calls op
-  `"getLinePremiumStatus"` → `GetPremiumStatusResponse` whose field **`active`** (Thrift field id 1)
-  is the entitlement. `LypUserStatusRepository` re-syncs it revision-by-revision
-  (`syncAllBatched`, `buildRevisionDrivenFlow`). The `Subscribed`/`active` the client reads is not a
-  local decision.
+  `"getLinePremiumStatus"` → `GetPremiumStatusResponse`, whose field **`active`** (Thrift id 1) is the
+  entitlement. `LypUserStatusRepository` re-syncs revision-by-revision (`syncAllBatched`,
+  `buildRevisionDrivenFlow`), so the `Subscribed`/`active` the client reads is not a local decision.
 - **Every premium action re-checks server-side:**
   - Sticker Premium → `"downloadStickerPackage"`, `"getPurchasedProducts"`,
     `"getProductValidationScheme"` (content bytes are on the server, not the device).
@@ -115,25 +110,24 @@ non-obfuscated class refs inside `b13.l` (`LypPremiumSubscriptionActivity`,
 
 ## Unlocking is not viable (tested)
 
-Forcing the client gate `b13.l.u(Feature) -> Boolean` to `true` was built and **tested on device —
-it does not unlock anything**, confirming the analysis: the gate is a read-model, and every premium
-*action* is server-enforced. That experimental patch has been **dropped**. Why it can't work:
+Forcing the client gate `b13.l.u(Feature) -> Boolean` to `true` was built and **tested on device — it
+unlocks nothing**, confirming the analysis. That experimental patch was **dropped**. Why it can't work:
 
-- Features gated through the object-returning `s()`/`A()` accessors (e.g. `APP_ICON`, `FONT`) or read
-  directly off raw status via `o()`/`a()` are not even reached by a `u()` flip; forcing `s()`/`A()`
-  to a boolean would `ClassCastException` their callers.
-- Anything the server delivers or authorizes — premium stickers/themes download, purchases,
-  cloud-backup retention windows, message scheduling — stays enforced regardless of any client flag.
+- Features gated through the object-returning `s()`/`A()` accessors (`APP_ICON`, `FONT`) or read straight
+  off raw status via `o()`/`a()` are never reached by a `u()` flip, and forcing `s()`/`A()` to a boolean
+  would `ClassCastException` their callers.
+- Anything the server delivers or authorizes — sticker/theme downloads, purchases, cloud-backup
+  retention, message scheduling — stays enforced regardless of any client flag.
 
-The practical direction is therefore **hiding** premium, not unlocking it (below).
+So the practical direction is **hiding** premium, not unlocking it.
 
 ---
 
 ## Disabling premium (this bundle: `Disable LINE Premium`)
 
-The inverse of unlocking: since premium can't be unlocked, the `Disable LINE Premium` patch **hides
-every premium surface** — upsell popups/banners, badges/locks, the "LINE Premium" settings page and
-its entry rows, and the subscribe/manage flows — by forcing LINE's own market-availability flag off.
+Since premium can't be unlocked, `Disable LINE Premium` **hides every premium surface** — upsell
+popups/banners, badges/locks, the "LINE Premium" settings page and its entry rows, the subscribe/manage
+flows — by forcing LINE's own market-availability flag off.
 
 **Master lever:** `e13.a.d()Z` (`return a().W()`, i.e. `jw4.i1.W()`) — the config bit meaning "LYP
 premium is available in this market". The facade reads it three ways that **all cascade from `d()`**:
@@ -144,24 +138,24 @@ premium is available in this market". The facade reads it three ways that **all 
 | `l()` | `return H().b()`; `e13.a.b()` returns `UNAVAILABLE` when `!d()` | provider = `UNAVAILABLE` | 53 region switches take the handled UNAVAILABLE/hide branch |
 | `o()`/`a()` | status mapper `j13.m`: `if (!d()) return i$d` | status = `Unavailable` | 10 `instanceof i$d` sites hide |
 
-So one edit — force `e13.a.d()` to `return false` — reproduces the state the app ships to
-non-premium markets *for everything that reads the facade*: `UNAVAILABLE` / `Unavailable` are
-explicitly-handled hide branches everywhere; no entry-point path has an unguarded `check-cast` to
-`i$b`/`i$a`, and there's no retry-until-available loop.
+So one edit — force `e13.a.d()` to `return false` — reproduces the state the app ships to non-premium
+markets *for everything that reads the facade*: `UNAVAILABLE`/`Unavailable` are explicitly-handled hide
+branches everywhere, no entry point has an unguarded `check-cast` to `i$b`/`i$a`, and there is no
+retry-until-available loop.
 
-That audit covered the facade's **enum** branches but not its **nullable** returns, and not the
-sibling server flags that ship enabled alongside `d()`. One of each combined into a crash — see
-[Second lever: the premium-backup flag](#second-lever-the-premium-backup-flag-required).
+That audit covered the facade's **enum** branches but not its **nullable** returns, nor the sibling
+server flags that ship enabled alongside `d()`. One of each combined into a crash — see
+[Second lever](#second-lever-the-premium-backup-flag-required).
 
 **Premium-scoped:** `e13.a.d()` has only 4 direct callers, all in the premium module. The shared
 underlying `jw4.i1.W()` is read directly by 6 non-premium features (profile, etc.) — those are
 **not** touched (the patch neuters `e13.a.d()`, not `i1.W()`).
 
-**Anchoring (no hardcoded obfuscated names):** locate facade `b13.l` via the unique `"LITE_ENJOY"`
-string, then read its `z()` accessor — uniquely the parameterless `()Z` method with exactly two
-`invoke-virtual` instructions (`return H().d()`; siblings `h()`/`y()`/`B()` have four) — and take
-its 2nd call's `MethodReference` to resolve `e13.a.d()` at apply time. Verified on 26.11.0: only
-`e13.a.d()` is rewritten (to `const/4 v0,0x0` / `return v0`); the facade is left unchanged.
+**Anchoring (nothing obfuscated hardcoded):** find facade `b13.l` via the unique `"LITE_ENJOY"` string,
+then its `z()` accessor — uniquely the parameterless `()Z` with exactly two `invoke-virtual`s
+(`return H().d()`; siblings `h()`/`y()`/`B()` have four) — and take the 2nd call's `MethodReference` to
+resolve `e13.a.d()` at apply time. Verified on 26.11.0: only `e13.a.d()` is rewritten (to
+`const/4 v0,0x0` / `return v0`); the facade is untouched.
 
 **Not covered / follow-up:** a secondary market bit `jw4.m2…a().U().O()` gates a couple of surfaces
 (album promo, app-icon seasonal) independently of `e13.a.d()`. If any premium surface survives on
@@ -192,40 +186,38 @@ Thrown synchronously while the RecyclerView binds the first screenful, so the wh
 `e13.a.d()`. Stock LINE only enables it where LYP is available, so `E()` is never null while the row
 shows. Forcing only `d()` false produced a pairing LINE never ships.
 
-**Why only this screen.** `ux4/d3.java:66` is the *only* settings view holder with the `: 0`
-fallback; every sibling null-guards (`ux4/a0.java:73`, `ux4/d0.java:89`,
-`ux4/c0.java:123,167,281` all use `if (num != null) … getDrawable(num.intValue())`). The other two
-`px4.c1` badge rows are both fine: Settings ▸ Friends by inspection (provider `p05.b` returns the
-constant `R.drawable.lyp_premium_label`), and Settings ▸ Albums **by device test** — its provider
-`::providePremiumBadgeResId` (`settings/albums/a.java:237`) is nullable and its target is obfuscated,
-so it could not be read statically, but that screen opened fine on the *unfixed* build, i.e. with the
-market gate already off. That is the exact condition that would have triggered it, so the Albums
-provider never returns null here and there is no second null source. **Don't re-investigate it.**
+**Why only this screen.** `ux4/d3.java:66` is the *only* settings view holder with the `: 0` fallback;
+every sibling null-guards (`ux4/a0.java:73`, `ux4/d0.java:89`, `ux4/c0.java:123,167,281` all use
+`if (num != null) … getDrawable(num.intValue())`). The other two `px4.c1` badge rows are fine: Settings ▸
+Friends by inspection (provider `p05.b` returns the constant `R.drawable.lyp_premium_label`), and
+Settings ▸ Albums **by device test** — its provider `::providePremiumBadgeResId`
+(`settings/albums/a.java:237`) is nullable with an obfuscated target, so it couldn't be read statically,
+but that screen opened fine on the *unfixed* build, i.e. with the market gate already off. That is the
+exact triggering condition, so the Albums provider never returns null here and there is no second null
+source. **Don't re-investigate it.**
 
-**Fix (shipped, device-confirmed 2026-08-20 on LINE 26.11.0).** Also force the premium-backup gate
-`ic4.d.j()` (impl `vc4.k0.j()`) to `false`.
-The gate is used **complementarily** in the settings UI — `chats/a.java:880` shows the premium row
-on `j()`, `chats/a.java:303` shows the ordinary **"Back up chat history"** row on `!j()` — so
-`false` hides the crashing row *and* restores a working non-premium backup entry (a `px4.i1`, not a
-badge row, so it can't reach `getDrawable`). All 8 `ic4.d.j()` call sites
+**Fix (shipped, device-confirmed 2026-08-20 on LINE 26.11.0):** also force the premium-backup gate
+`ic4.d.j()` (impl `vc4.k0.j()`) to `false`. The gate is used **complementarily** in the settings UI —
+`chats/a.java:880` shows the premium row on `j()`, `chats/a.java:303` shows the ordinary **"Back up chat
+history"** row on `!j()` — so `false` hides the crashing row *and* restores a working non-premium backup
+entry (a `px4.i1`, not a badge row, so it can't reach `getDrawable`). All 8 call sites
 (`j25/u2.java:1388,1619,1817`, `lz4/t.java:216,242`, `chats/a.java:303,730,880`) are premium-vs-classic
-backup UI gating, so `false` degrades cleanly to the classic backup UI everywhere — device-checked:
-Settings ▸ Chats opens with the ordinary backup row, and every other settings screen (main list,
-Albums, Friends) is unaffected both before and after the fix.
+backup UI gating, so `false` degrades cleanly everywhere — device-checked: Settings ▸ Chats opens with
+the ordinary backup row, and every other settings screen (main list, Albums, Friends) is unaffected.
 
 **Anchoring:** `vc4.k0` is obfuscated but holds the non-obfuscated WorkManager unique name
-`"PremiumBackupStatusSyncWorker"`. That string is **not** globally unique — it also appears in
-`com.linecorp.line.premium.backup.impl.common.worker.a.a()V` — so the fingerprint pins the
-`(String, Z)Lkotlin/Unit;` signature of `vc4.k0.h` to disambiguate, then takes `definingClass`.
-`j()` is then selected **by shape**, not by its drift-prone name: of `k0`'s three `()Z` methods it is
-the only one that opens with an `iget-object` (of the `vc4.a0` lambda field) and contains no
-`invoke-interface` (`q()` opens with `invoke-virtual`; `r()` opens with an `iget-object` of a
-`Lkotlin/Lazy;` read via `invoke-interface`). `j()` is `.locals 0`, so the injection writes `p0`.
+`"PremiumBackupStatusSyncWorker"`. That string is **not** globally unique (it also appears in
+`com.linecorp.line.premium.backup.impl.common.worker.a.a()V`), so the fingerprint pins the
+`(String, Z)Lkotlin/Unit;` signature of `vc4.k0.h` to disambiguate, then takes `definingClass`. `j()` is
+selected **by shape**, not by its drift-prone name: of `k0`'s three `()Z` methods it alone opens with an
+`iget-object` (of the `vc4.a0` lambda field) and contains no `invoke-interface` (`q()` opens with
+`invoke-virtual`; `r()` opens with an `iget-object` of a `Lkotlin/Lazy;` read via `invoke-interface`).
+`j()` is `.locals 0`, so the injection writes `p0`.
 
 ### Known survivors: premium unsend upsells (patch `Hide premium unsend upsells`)
 
-Two premium-unsend surfaces bypass `e13.a.d()` (they read config directly), so the master lever
-doesn't hide them — a separate supplementary patch does:
+Two premium-unsend surfaces read config directly, bypassing `e13.a.d()`, so the master lever doesn't
+hide them — a supplementary patch does:
 
 - **"Unsend discreetly" button** in `UnsendMessageLdsDialog.onViewCreated` (shown only for the
   `…$a$c` UnsendSilently variant; the dialog gates on the *variant type*, not on LYP availability).
