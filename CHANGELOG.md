@@ -1,3 +1,9 @@
+## [1.8.0-dev.2](https://github.com/andrewliang25/morphe-patches/compare/v1.8.0-dev.1...v1.8.0-dev.2) (2026-08-22)
+
+### 🐛 Bug Fixes
+
+* resolve every hidepremium lookup before the first mutation ([68d9778](https://github.com/andrewliang25/morphe-patches/commit/68d97783d064c72d31b269e1109eff2ee0e6d48f))
+
 ## [1.8.0-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v1.7.0...v1.8.0-dev.1) (2026-08-22)
 
 ### 🐛 Bug Fixes
