@@ -3,9 +3,19 @@ package app.andrewliang.patches.line.hidepremium
 import app.andrewliang.patches.shared.Constants.COMPATIBILITY_LINE
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.bytecodePatch
+import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
+import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
+import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
+import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
+import com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter
+
+private const val HOME_STATE = "Lx72/h\$a;"
+private const val FILTER_NAME = "filterPremiumModules"
+private const val FILTER_DESC = "(Ljava/util/List;)Ljava/util/List;"
+private const val LYP_MODULE_TYPE = "HomeTabLypRecommendation"
 
 @Suppress("unused")
 val hidePremiumPatch = bytecodePatch(
@@ -92,6 +102,79 @@ val hidePremiumPatch = bytecodePatch(
             """
                 const/4 p0, 0x0
                 return p0
+            """,
+        )
+
+        // Third lever: the Home tab upsell module. The Home tab shows one server-driven list of
+        // typed modules. The LYP recommendation is the module of type "HomeTabLypRecommendation"
+        // (m52.a0$n0, payload m52.y). The master lever does not hide it. Its renderer ac2.k and
+        // its view model ac2.n read no premium gate. As a result the tab shows the module
+        // whenever the server sends it, and a false market gate changes nothing.
+        //
+        // Thus this patch removes the module from the list. It does not flip another gate. The
+        // list is the first ctor argument (field `a`) of the Compose state x72.h$a. Every build
+        // path goes to that constructor. One literal comparison needs no extension code, so this
+        // patch declares no extension.
+        //
+        // The loop lives in a new method, x72.h$a.filterPremiumModules. If a patch injects a loop
+        // with a backward branch inline, the loop corrupts the layout of an existing method. ART
+        // then throws a VerifyError.
+        //
+        // "Hide Home modules" and "Hide Home content feed" prepend the same call shape at the
+        // same index. All three are pure List -> List filters on p1. Thus the patch that applies
+        // last runs first, and the result is the same in every order.
+        val homeState = mutableClassDefBy(HOME_STATE)
+        val filter = MutableMethod(
+            ImmutableMethod(
+                HOME_STATE,
+                FILTER_NAME,
+                listOf(ImmutableMethodParameter("Ljava/util/List;", null, null)),
+                "Ljava/util/List;",
+                AccessFlags.PUBLIC.value or AccessFlags.STATIC.value,
+                null,
+                null,
+                MutableMethodImplementation(6),
+            ),
+        )
+        homeState.methods.add(filter)
+        // p0 = input List. v0 = result ArrayList, v1 = iterator, v2 = element, v3 = type/bool,
+        // v4 = the literal. The literal is the receiver of equals(), so a null type is safe.
+        filter.addInstructions(
+            0,
+            """
+                new-instance v0, Ljava/util/ArrayList;
+                invoke-direct {v0}, Ljava/util/ArrayList;-><init>()V
+                invoke-interface {p0}, Ljava/util/List;->iterator()Ljava/util/Iterator;
+                move-result-object v1
+                :loop
+                invoke-interface {v1}, Ljava/util/Iterator;->hasNext()Z
+                move-result v2
+                if-eqz v2, :done
+                invoke-interface {v1}, Ljava/util/Iterator;->next()Ljava/lang/Object;
+                move-result-object v2
+                check-cast v2, Lm52/z;
+                iget-object v3, v2, Lm52/z;->e:Lm52/a0;
+                invoke-interface {v3}, Lm52/a0;->getType()Ljava/lang/String;
+                move-result-object v3
+                const-string v4, "$LYP_MODULE_TYPE"
+                invoke-virtual {v4, v3}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+                move-result v3
+                if-nez v3, :loop
+                invoke-virtual {v0, v2}, Ljava/util/ArrayList;->add(Ljava/lang/Object;)Z
+                goto :loop
+                :done
+                return-object v0
+            """,
+        )
+
+        // At the top of x72.h$a.<init>, replace the list parameter (p1) with the filtered copy
+        // before the constructor stores it. The call has no branch (invoke + move-result) and it
+        // reuses p1 (`.locals 0`).
+        HomeStateCtorFingerprint.method.addInstructions(
+            0,
+            """
+                invoke-static {p1}, $HOME_STATE->$FILTER_NAME$FILTER_DESC
+                move-result-object p1
             """,
         )
     }
