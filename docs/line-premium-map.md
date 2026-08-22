@@ -214,6 +214,43 @@ selected **by shape**, not by its drift-prone name: of `k0`'s three `()Z` method
 `invoke-virtual`; `r()` opens with an `iget-object` of a `Lkotlin/Lazy;` read via `invoke-interface`).
 `j()` is `.locals 0`, so the injection writes `p0`.
 
+### Third lever: the Home tab upsell module (required for the Home tab)
+
+The master lever does not reach the LYP upsell on the **Home tab**. The Home tab shows one
+server-driven `List<m52.z>` of typed modules, and this upsell is the module of type
+**`HomeTabLypRecommendation`** (`m52.a0$n0`, payload `m52.y`, renderer `ac2.k`, view model `ac2.n`).
+
+**Why the gate flip misses it:** nothing on that render path reads a premium gate. `ac2.k` and
+`ac2.n` reference neither the facade `b13.l` nor the market config `e13.a`, so the module paints
+whenever the server sends it — market gate false or not. The server decides whether to send it, and
+the client renders what arrives.
+
+**What the patch does:** it drops the module from the list instead of flipping another gate. That
+also keeps the lesson from the Settings ▸ Chats crash — a gate flipped without its siblings produced
+a state LINE never ships, whereas an absent module is a state the tab already handles (every module
+in the list is optional).
+
+The filter goes on `x72.h$a.<init>(List, Z×5, String, Long, Long, I, Z)`, at index 0: a new method
+`x72.h$a.filterPremiumModules(List)List`, plus a branchless `invoke-static {p1}` +
+`move-result-object p1` call. Notes on that surface:
+
+- **The loop must live in a new method.** A loop with a backward branch injected inline corrupts the
+  layout of an existing method, and ART then throws a `VerifyError`.
+- **One literal comparison needs no extension.** The type string is compared in smali, with the
+  literal as the receiver of `String.equals`, so a null type is safe. This patch stays free of
+  extension code.
+- **Three patches prepend at that same index** — this one, `Hide Home modules` and
+  `Hide Home content feed`. All three are pure `List -> List` filters on `p1`, so the patch that
+  applies last runs first and the result is the same in any order. Verified in the dex: the three
+  `invoke-static` + `move-result-object v1` pairs chain, then the original `Object.<init>` and
+  `iput-object v1` into field `a`.
+
+The full Home module inventory (45 types) is in `line-patch-map.md`, section "Home tab modules".
+
+**Not confirmed on device.** This is a static finding: the type never appeared in the on-device Home
+module capture from a Taiwan account (8 modules, no `HomeTabLypRecommendation`). The module list is
+region-driven and server-driven, so this needs a tester whose account gets the upsell.
+
 ### Known survivors: premium unsend upsells (patch `Hide premium unsend upsells`)
 
 Two premium-unsend surfaces read config directly, bypassing `e13.a.d()`, so the master lever doesn't
