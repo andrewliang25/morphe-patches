@@ -1,3 +1,13 @@
+## [1.8.0-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v1.7.0...v1.8.0-dev.1) (2026-08-22)
+
+### 🐛 Bug Fixes
+
+* hide the Home tab LYP upsell under "Disable LINE Premium" ([#71](https://github.com/andrewliang25/morphe-patches/issues/71)) ([d4362b3](https://github.com/andrewliang25/morphe-patches/commit/d4362b3b54929c9e90584120d09e6e190353e5bd)), closes [#70](https://github.com/andrewliang25/morphe-patches/issues/70)
+
+### ✨ New Features
+
+* add "Hide Home content feed" patch (issue [#69](https://github.com/andrewliang25/morphe-patches/issues/69)) ([6bcb05b](https://github.com/andrewliang25/morphe-patches/commit/6bcb05bd54e86be115d0f01567c39bdc9bead29f)), closes [#15](https://github.com/andrewliang25/morphe-patches/issues/15)
+
 ## [1.7.0](https://github.com/andrewliang25/morphe-patches/compare/v1.6.1...v1.7.0) (2026-08-20)
 
 ### ✨ New Features
