@@ -197,6 +197,118 @@ screenshot. That is the only step separating "the instructions are gone" from "t
 
 ---
 
+## Home tab modules
+
+The Home tab renders a single server-driven `List<m52.z>`. Everything on the tab is one of these
+modules — the friends list, the service icons, the ads, and the whole content feed below the friends
+list. Two patches filter that list.
+
+**The chain.** `v52.g.a(Ls52/i;Lm52/m0;)` assembles the list from the GCS response (one giant
+`packed-switch` over the payload oneof; **jadx fails on this method** — `Method not decompiled` — so
+read `apktool/smali_classes9/v52/g.smali`; the `FLEX` arm is separate, at `v52/g.smali:5748` and
+`jadx/sources/v52/j.java:191`). The list is stored as the first ctor arg (field `a`) of the Compose
+state `x72.h$a`, and rendered at `v72/c2.java:296-300` via `r72.d(z.f229498a, z.f229502e.getType())`.
+
+**Where to filter: `x72.h$a.<init>(List, Z×5, String, Long, Long, I, Z)`, index 0.** Every build path
+and every state copy funnels through this constructor, so one branchless
+`invoke-static {p1}` + `move-result-object p1` covers the whole tab. Two rules, both learned the hard
+way:
+
+- **The loop must live in a new method.** A backward-branching loop injected into an existing method
+  corrupts the branch layout into a runtime `VerifyError`. Add
+  `x72.h$a.filterHomeModules` / `filterHomeFeed` with `mutableClassDefBy(...).methods.add(...)` and
+  inject only the call.
+- **Both patches prepend at index 0, and that is safe.** Each is a pure `List → List` filter on `p1`,
+  so whichever patch applies second simply runs first — verified in the dex: the ctor starts with the
+  two `invoke-static` + `move-result-object v1` pairs chained, then the original
+  `Object.<init>` + `iput-object v1 → field a`.
+- The earlier target `i52.c.e` built only the Friends sub-tab list (a single
+  `FriendsSubTabFriendsList`), not the feed — confirmed via on-device logging.
+
+### Module type inventory (LINE 26.11.0) — 45 types
+
+`m52.a0` is a marker interface with one member, `getType() : String`. 43 implementations are nested
+in `m52/a0.java`; **two are top-level and easy to miss** (`m52.c0`, `m52.d0`).
+
+| `getType()` | Class | Surface | Status |
+|---|---|---|---|
+| `HomeContentsRecommendation` | `a0$s` | recommended stickers / content | **Hide Home modules** (device-confirmed) |
+| `HomePerformanceAd` | `a0$j0` | performance ads in the feed | **Hide Home modules** (device-confirmed) |
+| `FLEX` | `a0$f` | 即時夯話題 hot topics **and** the bottom promo/ad block | **Hide Home modules** (device-confirmed) |
+| `AdModel` | `a0$a` | generic ad module (`GcsAdModuleViewData` / `GcsAdMeta`) | **Hide Home modules** (static evidence only — never seen on device) |
+| `HomeFeedPost` | `a0$z` | OA / LINE NEWS post card | **Hide Home content feed** |
+| `HomeFeedLiveSingle` | `a0$w` | the `OA_LIVE` variant | **Hide Home content feed** |
+| `HomeFeedMatomeSingle` / `-Carousel` | `a0$y` / `a0$x` | AI-digest ("matome") news cards | **Hide Home content feed** |
+| `HomeFeedUnitBigVisual` / `-Grid` / `-Ranking` / `-ShortFormGrid` / `-Single` / `-SingleAndGrid` | `a0$b0`–`a0$g0` | content-unit layouts, each wrapping posts | **Hide Home content feed** |
+| `HomeFeedDefaultPageError` / `-DefaultPageLoading` / `HomeFeedError` / `HomeFeedSeedPostError` | `a0$t` / `a0$u` / `a0$v` / `a0$a0` | that feed's error & spinner placeholders | **Hide Home content feed** |
+| `FriendsSubTabFriendsList`, `-AllAlbum`, `-Calendar`, `-LatestNotifications`, `-RecentlyUpdatedProfiles` | `a0$i`, `a0$g`, `a0$h`, `a0$j`, `a0$k` | the friends list and its sub-tabs | kept |
+| `HomeSocialGraph`, `HomeRecentlyProfileUpdate`, `HomeActivityFriendList`, `GlobalHomeFriendList` | `a0$m0`, `a0$k0`, `a0$r`, `a0$o` | friend updates / profiles | kept |
+| `HomeServiceList`, `GlobalHomeServiceSection`, `SquareJoinedChatList`, `HomeNotificationHub` | `a0$l0`, `a0$p`, `a0$q0`, `a0$i0` | service icons, OpenChat list, notification hub | kept |
+| `HomeTopBanner`, `SafetyCheckBanner`, `HomeLimitedNetworkModeBanner` | `a0$o0`, `a0$p0`, `a0$h0` | banners (not identified as ads) | kept |
+| `GlobalHomePageError`, `GlobalHomeError`, `GlobalHomePageLoading` | `a0$l`, `a0$n`, `a0$m` | whole-tab error / loading | kept |
+| `CommerceTwTabFriendshipGifts`, `-GreetingBanners`, `-QuickPolls`, `-Shortcuts` | `a0$b`–`a0$e` | the TW commerce tab | kept |
+| `HomeActivityCard` | `a0$q` | recommendation surface (`contentList` / `extraContentList`) | **not blocked** — no device evidence |
+| `GcsHomeActivityHybridContentCard` | `m52.d0` (top-level) | the hybrid variant of the above | **not blocked** — no device evidence |
+| `HomeTabLypRecommendation` | `a0$n0` | LYP premium upsell | **not blocked** — belongs to *Disable LINE Premium*, see `line-premium-map.md` |
+| `GcsDummyHybridModule` | `m52.c0` (top-level) | dev/dummy, no renderer | kept |
+
+**Take this table from jadx, never from a smali grep.** 17 of the 43 nested classes are Kotlin
+singletons whose `getType()` returns a `static final` field, so a grep for the literal nearest
+`getType` silently reports a *neighbouring* method's string. `a0$m` is the trap: `getType()` returns
+`"GlobalHomePageLoading"` while its `toString()` says `"GlobalHomeDefaultPageLoading"`.
+
+### Why the content feed is matched by prefix
+
+Every type in the feed below the friends list starts with `HomeFeed` (network models `GcsHomeFeed*`,
+including `GcsHomeFeedScrollAffordance` — it is an infinite scroller). The server rotates between card
+variants, so a literal list reopens the hole on the next rotation; the extension tests
+`type.startsWith("HomeFeed")` instead. The error and loading placeholders are included on purpose, so
+no orphan spinner or error shell is left where the cards were.
+
+**No `function.*` config gate exists for this feed.** `function.hometab.*`, `function.line_home.*` and
+`function.my_home.*` carry no feed switch, so filtering the module list is the only cheap mechanism —
+this is not a "force the gate false" surface.
+
+### The feed is region-driven — plan for a remote tester
+
+Issue #69 (JP) reported LINE NEWS cards surviving every ad patch. The cards are `HomeFeedPost`,
+identified by `GcsHomeFeedPost.platform{type ∈ {OA_POST, YOUTUBE, LINE_NEWS, LIVE_PREVIEW}, name}` (the
+`carview! / LINE NEWS` header pair), `home_post_desc_linenews` = "LINE NEWS"
+(`values-ja/strings.xml:5218`), `lineNewsContent{title, imageUrl}`, `createdTime`, `likeReaction` (the
+きになる pill) and `home_post_menu_accounthide` (the ⋮ menu). Renderer `ze2.h extends l72.g<a0.z>`.
+
+They were never blocked because PR #15 locked the blocklist to what a **Taiwan** account renders —
+PR #14's `MorpheHomeModules` logcat showed `size=8` with **no** `HomeFeed*` type at all. Same lesson as
+the commerce tabs: a region-gated surface needs a pre-release and a tester in the region.
+
+**Diagnostic recipe** (from PR #11, revert before shipping): log every type at filter entry under tag
+`MorpheHomeModules`, then `adb logcat -c && adb logcat -s MorpheHomeModules`. No lines = the filter
+never ran; `ENTER` with no per-type lines = empty list at that point; per-type lines = the real strings.
+
+### Finer discriminators, if a type string is ever too coarse
+
+`m52.z` carries more than the payload: `f229498a` = module id (e.g.
+`home-feed-module_home-feed-default-page-loading`; **LINE itself filters on it** at `an2/d.java:75`),
+`f229499b` = module name, `f229500c`/`f229501d` = timestamps, `f229502e` = the `m52.a0` payload,
+`f229503f` = ACI gate enum `m52.m0` (`DISABLED` / `ACI_REQUIRED` / `ALWAYS`), `f229504g` = upstream
+request id, `f229505h` = global service key, `f229506i` = render kind (`FLEX` / `NATIVE` / `HYBRID`).
+Inside the `HomeFeedUnit*` payloads there is also `type: m52.l0` (`AUTO` / `PACKAGED` / `KEYWORD` /
+`FITTED` / `MANUAL`) and `contentType: m52.k0` (`MASS` / `CLUSTER` / `PERSONAL`).
+
+Renderers subclass `l72.g<T>` / `r72.b<T>` and register a `KClass`, so the renderer confirms a type
+actually paints: `a0$z`→`ze2/h.java`, `a0$x`→`mg2/h.java`, `a0$y`→`ng2/g.java`, `a0$s`→`tg2/n.java`,
+`a0$j0`→`ec2/f.java`, `a0$f`→`d62/r.java`, `a0$m0`→`f30/b.java`, `a0$l0`→`b30/b.java`,
+`a0$n0`→`ac2/k.java`, `m52.d0`→`sd2/i.java`.
+
+### Values that drift on a version bump
+
+`x72.h$a` (state class + ctor signature), `m52.z` field `e`, `m52.a0` and every `a0$*` letter suffix,
+the assembler `v52.g`, the consumer `v72.c2`. The **type strings themselves are server contract** and
+have been stable; re-run the jadx sweep over `m52/a0.java` to re-audit the `HomeFeed*` family, in case
+LINE adds a wanted module under that prefix.
+
+---
+
 ## Shipped / proposed patches (this line of work)
 
 | Patch (name) | Package | Targets |

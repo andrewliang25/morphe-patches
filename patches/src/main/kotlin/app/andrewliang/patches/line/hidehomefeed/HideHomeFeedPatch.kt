@@ -1,4 +1,4 @@
-package app.andrewliang.patches.line.hidehomemodules
+package app.andrewliang.patches.line.hidehomefeed
 
 import app.andrewliang.patches.shared.Constants.COMPATIBILITY_LINE
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
@@ -10,31 +10,33 @@ import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter
 
 private const val HOME_STATE = "Lx72/h\$a;"
-private const val FILTER_NAME = "filterHomeModules"
+private const val FILTER_NAME = "filterHomeFeed"
 private const val FILTER_DESC = "(Ljava/util/List;)Ljava/util/List;"
 
 @Suppress("unused")
-val hideHomeModulesPatch = bytecodePatch(
-    name = "Hide Home modules",
-    description = "Hides clutter modules from the Home tab: the recommended stickers and content " +
-        "section, the real-time hot-topics (即時夯話題) block, and the Home ad modules. The " +
-        "content feed below the friends list is a separate patch.",
+val hideHomeFeedPatch = bytecodePatch(
+    name = "Hide Home content feed",
+    description = "Removes the recommended content feed below the friends list on the Home tab " +
+        "— LINE NEWS and official-account post cards, live cards, and the content and ranking " +
+        "units. The friends list, the service icons and the rest of the Home tab are unaffected.",
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_LINE)
 
     extendWith("extensions/extension.mpe")
 
-    // The rendered Home feed is a List<m52.z> (each z.e a typed m52.a0 module) stored as the
-    // first ctor arg (field `a`) of the Compose state x72.h$a. Filter that list to drop
-    // modules whose z.e.getType() is blocklisted.
+    // Same mechanism as "Hide Home modules", on the same list: the rendered Home feed is a
+    // List<m52.z> (each z.e a typed m52.a0 module) stored as the first ctor arg (field `a`) of
+    // the Compose state x72.h$a. Filter that list to drop modules whose z.e.getType() belongs to
+    // the server-driven content feed (every such type starts with "HomeFeed" — see the HomeFeed
+    // extension).
     //
-    // The filtering loop is a new method x72.h$a.filterHomeModules (backward-branching loops
-    // corrupt an existing method's layout when injected inline -> VerifyError). We then inject
-    // a branchless call at the top of x72.h$a.<init> to replace p1 (the list) with its
-    // filtered copy before it's stored. One constructor covers every feed build path + copies.
+    // The filtering loop is a new method x72.h$a.filterHomeFeed (backward-branching loops corrupt
+    // an existing method's layout when injected inline -> VerifyError). We then inject a
+    // branchless call at the top of x72.h$a.<init> to replace p1 (the list) with its filtered copy
+    // before it's stored. One constructor covers every feed build path + copies.
     //
-    // "Hide Home content feed" prepends the same shape of call at the same index. Both are pure
+    // "Hide Home modules" prepends the same shape of call at the same index. Both are pure
     // List -> List filters on p1, so whichever patch applies second simply runs first — the
     // result is identical either way.
     execute {
@@ -71,7 +73,7 @@ val hideHomeModulesPatch = bytecodePatch(
                 iget-object v3, v2, Lm52/z;->e:Lm52/a0;
                 invoke-interface {v3}, Lm52/a0;->getType()Ljava/lang/String;
                 move-result-object v3
-                invoke-static {v3}, Lapp/andrewliang/extension/HomeModules;->shouldHide(Ljava/lang/String;)Z
+                invoke-static {v3}, Lapp/andrewliang/extension/HomeFeed;->shouldHide(Ljava/lang/String;)Z
                 move-result v3
                 if-nez v3, :loop
                 invoke-virtual {v0, v2}, Ljava/util/ArrayList;->add(Ljava/lang/Object;)Z
