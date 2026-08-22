@@ -48,12 +48,12 @@ val hideAdViewsPatch = bytecodePatch(
         // Chat-list Smart Channel banner: hide its host container at controller construction.
         SmartChannelControllerFingerprint.method.addInstructions(0, HIDE_HOST)
 
-        // LINE Ads SDK display ads (Home/Wallet/etc.): self-collapse at onAttachedToWindow.
+        // LINE Ads SDK display ads (Home, Wallet, and more): self-collapse at onAttachedToWindow.
         LadAdViewFingerprint.method.addInstructions(0, HIDE_SELF)
         LyadAdViewFingerprint.method.addInstructions(0, HIDE_SELF)
 
         // Google AdManager wrappers — BEST-EFFORT. Obfuscated names drift across versions,
-        // so skip silently if not found; can never break the robust hiding above. Inject
+        // so skip silently if not found. It can never break the robust hiding above. Inject
         // setVisibility(GONE) on self right AFTER the super <init> call.
         val adManagerWrappers = listOf(
             AdManagerBannerChatroomFingerprint to HIDE_SELF_CTOR_V0,

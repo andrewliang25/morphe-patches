@@ -13,7 +13,7 @@ val hideTransferButtonPatch = bytecodePatch(
     compatibleWith(COMPATIBILITY_LINE)
 
     // The Transfer tile (hg1.k) is shown only if its availability predicate `j(gi1.b)Z` returns
-    // true (the attach-menu filter hg1.r.f gates on it). Neuter that predicate to false; the tile
+    // true (the attach-menu filter hg1.r.f gates on it). Neuter that predicate to false. The tile
     // is then dropped by the existing filter in gg1.e. Anchor via the constructor (the sole reader
     // of the fg1.a$b.PAY enum constant), then select `j` by its unique descriptor.
     execute {

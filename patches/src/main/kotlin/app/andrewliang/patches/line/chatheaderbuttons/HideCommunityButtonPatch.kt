@@ -12,9 +12,9 @@ val hideCommunityButtonPatch = bytecodePatch(
 ) {
     compatibleWith(COMPATIBILITY_LINE)
 
-    // Remove the `sget-object OPEN_CHAT` + following `add(...)` pair so the button is never
-    // added to the header list. instructionMatches[0] = the OPEN_CHAT sget-object; the add is
-    // the immediately-following instruction.
+    // Remove the `sget-object OPEN_CHAT` + following `add(...)` pair so nothing adds the button
+    // to the header list. instructionMatches[0] = the OPEN_CHAT sget-object. The add is the
+    // next instruction.
     execute {
         val openChatSgetIndex = CommunityButtonFingerprint.instructionMatches.first().index
         CommunityButtonFingerprint.method.removeInstructions(openChatSgetIndex, 2)

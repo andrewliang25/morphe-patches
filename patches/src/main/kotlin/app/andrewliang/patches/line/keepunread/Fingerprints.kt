@@ -10,7 +10,7 @@ import app.morphe.patcher.methodCall
  * locate the read-manager class `q33.e` (all of q33.e's names are obfuscated and have no
  * string literals).
  *
- * We don't patch this worker (it's shared by manual mark-as-read); we only use it to find the
+ * We do not patch this worker (it is shared by manual mark-as-read). We only use it to find the
  * class, then no-op the sibling open-on-view wrapper `b(String, String)` in the same class.
  */
 internal object ReadWorkerFingerprint : Fingerprint(

@@ -8,11 +8,11 @@ import app.morphe.patcher.methodCall
 /**
  * Fingerprints for every LINE Calendar button in the messenger: the Chats-tab header
  * ([CalendarButtonFingerprint]) plus four inside a chat room (top toolbar, "+" attach menu,
- * slide-out chat menu, message long-press menu). Each anchors on a token obfuscation can't touch —
+ * slide-out chat menu, message long-press menu). Each anchors on a token obfuscation cannot touch —
  * an enum-constant name (`CALENDAR` / `CALENDAR_BUTTON`) or a resource id.
  */
 
-// The Chats-tab header button enum (`az0.q`); the constant names survive obfuscation.
+// The Chats-tab header button enum (`az0.q`). The constant names survive obfuscation.
 private const val BUTTON_ENUM = "Laz0/q;"
 
 // The header button list is a `fb8/b`. Pinning the `add`'s definingClass separates it from the
@@ -35,7 +35,7 @@ internal object CalendarButtonFingerprint : Fingerprint(
 
 /**
  * The "+" attach-menu calendar tile is `hg1.b` (CalendarButtonType). Matches its constructor — the
- * only method that READS `fg1.a$b.CALENDAR`; the sole other reference is the enum's own `<clinit>`
+ * only method that READS `fg1.a$b.CALENDAR`. The sole other reference is the enum's own `<clinit>`
  * write, excluded by the constructor's parameter signature. `definingClass` (`Lhg1/b;`) then gives
  * the class whose availability predicate `j(...)` gets neutered.
  */
@@ -51,7 +51,7 @@ internal object AttachMenuCalendarButtonFingerprint : Fingerprint(
  * The chat-room top-toolbar calendar button is added inside `ed1.d0.a(...)` at two sites (one per
  * chat-type branch), each an `sget-object <ed1.g1.CALENDAR_BUTTON>` followed by the `ed1.s1.g(...)`
  * "add header button" call. Two `CALENDAR_BUTTON` filters pin this method — the only one reading the
- * constant twice — and yield both `sget-object` indices. (`ed1.u0$b` reads it once, so it can't
+ * constant twice — and yield both `sget-object` indices. (`ed1.u0$b` reads it once, so it cannot
  * satisfy two filters.)
  */
 internal object ChatRoomToolbarCalendarButtonFingerprint : Fingerprint(

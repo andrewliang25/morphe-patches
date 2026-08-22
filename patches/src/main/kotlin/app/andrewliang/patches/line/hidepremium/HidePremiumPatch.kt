@@ -35,7 +35,7 @@ val hidePremiumPatch = bytecodePatch(
     //   status mapper j13.m      -> i$d Unavailable when !d() (o()/a(), 10 instanceof hides)
     // Forcing d() = false reproduces the shipped "LYP not available here" state — the app's own
     // default for non-premium markets. Premium-scoped: the shared jw4.i1.W() that non-premium
-    // features read is untouched, since we patch e13.a.d(), not i1.W().
+    // features read is untouched, because we patch e13.a.d(), not i1.W().
     //
     // The obfuscated facade b13.l is located via the unique string "LITE_ENJOY", then its z()
     // accessor resolves e13.a.d() with no drifting name hardcoded: z() is the only parameterless
@@ -74,7 +74,7 @@ val hidePremiumPatch = bytecodePatch(
         // premium chat-BACKUP flag (ic4.d.j(), a separate server config via vc4.a0 ->
         // m2.a().i0().g()) stays on. The Chats settings screen then renders the premium-backup row,
         // whose badge provider asks the facade for an icon and gets null from b13.l.E()
-        // (`if (!z()) return null`); the one view holder that doesn't null-guard calls
+        // (`if (!z()) return null`). The one view holder that does not null-guard calls
         // Context.getDrawable(0) -> Resources$NotFoundException, killing Settings > Chats. Flipping
         // the backup gate too makes both halves match a real non-LYP market.
         //
@@ -96,7 +96,7 @@ val hidePremiumPatch = bytecodePatch(
                 } == true
         }
 
-        // `.locals 0`, so p0 is the only register — and it's dead after the immediate return.
+        // `.locals 0`, so p0 is the only register — and it is dead after the immediate return.
         backupGate.addInstructions(
             0,
             """

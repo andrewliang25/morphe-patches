@@ -161,7 +161,7 @@ val gmsCoreAuthPatch = bytecodePatch(
         // region account selection
 
         // Matches are, in program order: drive.appdata scope, allowable account type, picker
-        // action, target package. The scope is only an anchor; the other three all move.
+        // action, target package. The scope is only an anchor. The other three all move.
         AccountPickerIntentFingerprint.apply {
             rewriteString(1, MICROG_ACCOUNT_TYPE)
             rewriteString(2, MICROG_CHOOSE_ACCOUNT_ACTION)
@@ -175,10 +175,10 @@ val gmsCoreAuthPatch = bytecodePatch(
         // ...but the type alone is not enough — this is what sent the first device test back to the
         // picker with no token ever requested. Since Android 8 an authenticator controls account
         // *visibility*: `getAccountsByType` returns only accounts the caller was granted, and
-        // GmsCore grants that on its first `setAuthToken` — i.e. after a token, which needs the
+        // GmsCore grants that on its first `setAuthToken` — that is, after a token, which needs the
         // account to resolve first. The lookup returns empty, both fields stay null, LINE re-prompts.
         //
-        // Break the circle by building the Account straight from the name the picker returned; the
+        // Break the circle by building the Account straight from the name the picker returned. The
         // search only ever existed to turn a name into an Account.
         //
         // Null AND empty string must branch into the original body, which clears the fields: LINE
@@ -238,7 +238,7 @@ val gmsCoreAuthPatch = bytecodePatch(
         //
         // Not on the getToken path (that binds by ComponentName above), but it is the auth client
         // the rest of the GMS auth surface uses and was part of the device-confirmed build.
-        // Retained for that reason; trimming it is untested.
+        // Retained for that reason. Trimming it is untested.
 
         /**
          * The obfuscated name of `BaseGmsClient.getStartServicePackage()`, found by walking up from

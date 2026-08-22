@@ -10,7 +10,7 @@ private const val MAIN_TAB = "Ljp/naver/line/android/activity/main/a;"
  *
  * The main-tab enum `jp.naver.line.android.activity.main.a` is non-obfuscated, so its `MINI`
  * and `WALLET` constants are stable anchors. The builder appends `MINI` (mini-tab mode,
- * earlier) and `WALLET` (normal, later); both resolve to the Wallet/Pay fragment. Matching on
+ * earlier) and `WALLET` (normal, later). Both resolve to the Wallet/Pay fragment. Matching on
  * both field accesses (in program order) uniquely identifies this method and yields the two
  * `sget-object` indices to remove.
  */

@@ -73,7 +73,7 @@ public final class LinePayRedirect {
     }
 
     /**
-     * Turn an incoming pay deep link into the standalone web-payment url, or null if it isn't a
+     * Turn an incoming pay deep link into the standalone web-payment url, or null if it is not a
      * recognizable payment link. Handles:
      *   - an already-resolved web-pay page (returned as-is)
      *   - {@code .../pay/payment/<reserveId>} deep links (http(s)://line.me/R/... or line://pay/...)

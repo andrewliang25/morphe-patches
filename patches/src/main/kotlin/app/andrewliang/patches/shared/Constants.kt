@@ -8,9 +8,9 @@ object Constants {
     /**
      * LINE messenger (jp.naver.line.android).
      *
-     * LINE is distributed as a split app bundle, hence [ApkFileType.APKM].
-     * Pin the exact version the patches were developed and confirmed against;
-     * add to this list as new versions are verified.
+     * LINE ships as a split app bundle, so it uses [ApkFileType.APKM].
+     * Pin the exact version the patches were developed and confirmed against.
+     * Add a new version to this list after you verify it.
      */
     val COMPATIBILITY_LINE = Compatibility(
         name = "LINE",
