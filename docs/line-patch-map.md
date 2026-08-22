@@ -201,7 +201,8 @@ screenshot. That is the only step separating "the instructions are gone" from "t
 
 The Home tab renders a single server-driven `List<m52.z>`. Everything on the tab is one of these
 modules — the friends list, the service icons, the ads, and the whole content feed below the friends
-list. Two patches filter that list.
+list. Three patches filter that list: *Hide Home modules*, *Hide Home content feed*, and
+*Disable LINE Premium*. If you change this surface, update all three call sites.
 
 **The chain.** `v52.g.a(Ls52/i;Lm52/m0;)` assembles the list from the GCS response (one giant
 `packed-switch` over the payload oneof; **jadx fails on this method** — `Method not decompiled` — so
@@ -216,11 +217,11 @@ way:
 
 - **The loop must live in a new method.** A backward-branching loop injected into an existing method
   corrupts the branch layout into a runtime `VerifyError`. Add
-  `x72.h$a.filterHomeModules` / `filterHomeFeed` with `mutableClassDefBy(...).methods.add(...)` and
-  inject only the call.
-- **Both patches prepend at index 0, and that is safe.** Each is a pure `List → List` filter on `p1`,
-  so whichever patch applies second simply runs first — verified in the dex: the ctor starts with the
-  two `invoke-static` + `move-result-object v1` pairs chained, then the original
+  `x72.h$a.filterHomeModules` / `filterHomeFeed` / `filterPremiumModules` with
+  `mutableClassDefBy(...).methods.add(...)` and inject only the call.
+- **All three patches prepend at index 0, and that is safe.** Each one is a pure `List → List`
+  filter on `p1`. Thus the patch that applies last runs first. The dex confirms it: the ctor starts
+  with the `invoke-static` + `move-result-object v1` pairs chained, then the original
   `Object.<init>` + `iput-object v1 → field a`.
 - The earlier target `i52.c.e` built only the Friends sub-tab list (a single
   `FriendsSubTabFriendsList`), not the feed — confirmed via on-device logging.
@@ -249,7 +250,7 @@ in `m52/a0.java`; **two are top-level and easy to miss** (`m52.c0`, `m52.d0`).
 | `CommerceTwTabFriendshipGifts`, `-GreetingBanners`, `-QuickPolls`, `-Shortcuts` | `a0$b`–`a0$e` | the TW commerce tab | kept |
 | `HomeActivityCard` | `a0$q` | recommendation surface (`contentList` / `extraContentList`) | **not blocked** — no device evidence |
 | `GcsHomeActivityHybridContentCard` | `m52.d0` (top-level) | the hybrid variant of the above | **not blocked** — no device evidence |
-| `HomeTabLypRecommendation` | `a0$n0` | LYP premium upsell | **not blocked** — belongs to *Disable LINE Premium*, see `line-premium-map.md` |
+| `HomeTabLypRecommendation` | `a0$n0` | LYP premium upsell | **Disable LINE Premium** (third lever, no device evidence — see `line-premium-map.md`) |
 | `GcsDummyHybridModule` | `m52.c0` (top-level) | dev/dummy, no renderer | kept |
 
 **Take this table from jadx, never from a smali grep.** 17 of the 43 nested classes are Kotlin
