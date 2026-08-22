@@ -21,7 +21,7 @@ import app.morphe.patcher.string
  * The `Object invoke(Object)` signature additionally pins it to the Kotlin lambda itself.
  *
  * The strings are only used to *locate* the method — the guard is then found by instruction shape,
- * since `i38.c` and its `h()` are obfuscated and drift between LINE versions.
+ * because `i38.c` and its `h()` are obfuscated and drift between LINE versions.
  */
 internal object UnsendMessageDbWriteFingerprint : Fingerprint(
     returnType = "Ljava/lang/Object;",

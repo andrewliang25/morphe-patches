@@ -82,7 +82,7 @@ val keepUnsentMessagesPatch = bytecodePatch(
         val rowRegister = (instructions[rowReadIndex] as TwoRegisterInstruction).registerB
 
         // The message id, read off that row between load and guard. Which of i38.b's longs it is
-        // (local vs server id) doesn't matter — the extension's WHERE clause accepts either. On
+        // (local vs server id) does not matter — the extension's WHERE clause accepts either. On
         // 26.11.0 it is `b`, the server id.
         val messageIdRegister = ((rowReadIndex + 1) until guardIndex)
             .firstOrNull { index ->
@@ -106,7 +106,7 @@ val keepUnsentMessagesPatch = bytecodePatch(
 
         // The transaction's SQLiteDatabase, read off the g38.f3 receiver inside the block we skip.
         // Reuse that exact field reference and holder register rather than hardcoding g38.f3.b.
-        // The field reference travels safely (it is position-independent); the register number only
+        // The field reference travels safely (it is position-independent). The register number only
         // does if the register provably holds the field's owner at the injection point, so require
         // a dominating cast. That also rejects the second SQLiteDatabase read further down this
         // method (h38.t0.a), which reuses the same register for a different type.
@@ -124,7 +124,7 @@ val keepUnsentMessagesPatch = bytecodePatch(
         val (databaseField, databaseHolderRegister) = databaseRead
             ?: throw PatchException("unsend: SQLiteDatabase field read not found in ${method.definingClass}")
 
-        // v0-v15 only for iget-object (22c) and invoke-static (35c); referencing v16+ there is
+        // v0-v15 only for iget-object (22c) and invoke-static (35c). Referencing v16+ there is
         // silently mis-assembled. On 26.11.0 these are v1/v6/v7, but the method is `.locals 29`,
         // so a future version could spill them. Fail loudly rather than keeping messages with no
         // notice: an unmarked kept message is indistinguishable from one that was never unsent.

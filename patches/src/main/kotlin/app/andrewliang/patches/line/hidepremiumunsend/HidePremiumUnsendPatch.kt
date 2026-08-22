@@ -29,11 +29,11 @@ val hidePremiumUnsendPatch = bytecodePatch(
         // `instance-of …$a$c` false so n3()/o3() take the hide branch, and (b) hide the green button
         // r3() itself. r3() exists ONLY in the silent dialog — NormalUnsendMessageLdsDialog.r3()
         // returns null and onViewCreated wires r3() under an `if (r3() != null)` guard — so hiding it
-        // can't affect the ordinary dialog, which keeps its Unsend/Close buttons (p3()/m3()).
+        // cannot affect the ordinary dialog, which keeps its Unsend/Close buttons (p3()/m3()).
         val dialogMethod = UnsendDiscreetlyButtonFingerprint.method
         val instructions = dialogMethod.implementation!!.instructions.toList()
 
-        // (b) first (higher index than the instance-of, so it doesn't shift that match's index):
+        // (b) first (higher index than the instance-of, so it does not shift that match's index):
         // r3() is the Button-returning no-arg call whose result is null-checked (invoke ->
         // move-result-object -> if-eqz). m3()/p3() are used without a null check. Hide it inside the
         // non-null branch. v0 is a safe scratch: the next original instruction overwrites it.
@@ -63,7 +63,7 @@ val hidePremiumUnsendPatch = bytecodePatch(
         // --- 2) "How to unsend discreetly" promo link (wi1.j4 constructor) ---
         // The link handler is created only when `k2.a(i1.W() && i1.X(), …) == SUPPORTED_CHAT`.
         // Force k2.a's first argument (the W()&&X() result) to 0 so it returns non-SUPPORTED and
-        // the link stays null. k2.a is called exactly once in this class; obfuscated `Lne1/k2;`
+        // the link stays null. k2.a is called exactly once in this class. Obfuscated `Lne1/k2;`
         // drifts between versions (re-verify on version bump).
         val promoClass = mutableClassDefBy(UnsendPromoLinkFingerprint.method.definingClass)
         var promoPatched = false

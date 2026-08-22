@@ -50,7 +50,7 @@ public final class KeepUnsentMessages {
      * <p>{@code created_time} is a TEXT column of epoch millis, so the +1 that orders the placeholder
      * directly below its message needs a cast round-trip. Ordering follows {@code created_time} (the
      * {@code IDX_CHAT_ID_ID_CREATED_TIME} sort columns), so the notice lands under the message rather
-     * than at the end of the conversation; one millisecond is invisible at the UI's minute precision.
+     * than at the end of the conversation. One millisecond is invisible at the UI's minute precision.
      *
      * <p>{@code status}, {@code read_count} and {@code sent_count} are inherited so the notice carries
      * the same read receipt as the message it annotates. They are <em>not</em> what the chat list's
@@ -94,7 +94,7 @@ public final class KeepUnsentMessages {
      * @param messageId the unsent message's id — whichever of the row's two long ids is already
      *                  loaded at the patch site, so either the local {@code chat_history.id} or the
      *                  {@code server_id}. The statement matches on either; local ids are small and
-     *                  server ids large, so the spaces don't realistically overlap, and
+     *                  server ids large, so the spaces do not realistically overlap, and
      *                  {@code LIMIT 1} bounds it regardless.
      */
     public static void insertPlaceholder(SQLiteDatabase db, long messageId) {

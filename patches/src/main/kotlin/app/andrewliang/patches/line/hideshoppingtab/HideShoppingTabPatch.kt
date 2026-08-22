@@ -19,7 +19,7 @@ val hideShoppingTabPatch = bytecodePatch(
     // ever sees one of them. Dropping only the `add` leaves the branch's trailing `goto` in
     // place, so no other tab moves into the freed slot — matching stock LINE, which shows
     // nothing there when the commerce gate is on.
-    // instructionMatches[0] = COMMERCE (earlier), [1] = COMMERCE_TW (later); remove the higher
+    // instructionMatches[0] = COMMERCE (earlier), [1] = COMMERCE_TW (later). Remove the higher
     // index first so the earlier one stays valid.
     execute {
         val matches = ShoppingTabListFingerprint.instructionMatches

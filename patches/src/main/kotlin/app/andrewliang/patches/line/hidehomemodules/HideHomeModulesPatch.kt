@@ -32,7 +32,7 @@ val hideHomeModulesPatch = bytecodePatch(
     // The filtering loop is a new method x72.h$a.filterHomeModules (backward-branching loops
     // corrupt an existing method's layout when injected inline -> VerifyError). We then inject
     // a branchless call at the top of x72.h$a.<init> to replace p1 (the list) with its
-    // filtered copy before it's stored. One constructor covers every feed build path + copies.
+    // filtered copy before it is stored. One constructor covers every feed build path + copies.
     //
     // "Hide Home content feed" prepends the same call shape at the same index. Both are pure
     // List -> List filters on p1. Thus the patch that applies second runs first, and the

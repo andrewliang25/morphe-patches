@@ -23,7 +23,7 @@ val hideCalendarButtonPatch = bytecodePatch(
 
         // 2. Chat-room "+" attach menu: the CalendarButtonType (hg1.b) is shown only if its
         //    availability predicate `j(gi1.b)Z` returns true (the attach-menu filter hg1.r.f
-        //    gates on it). Neuter that predicate to false; the item is then dropped by the
+        //    gates on it). Neuter that predicate to false. The item is then dropped by the
         //    existing filter in gg1.e. Anchor via the constructor (the sole reader of the
         //    fg1.a$b.CALENDAR enum constant), then select `j` by its unique descriptor.
         val attachMenuCalendarClass =
@@ -42,7 +42,7 @@ val hideCalendarButtonPatch = bytecodePatch(
 
         // 3. Chat-room top toolbar: ed1.d0.a adds the button at two chat-type branches, each a
         //    `sget-object CALENDAR_BUTTON` + following `ed1.s1.g(...)` add call. Remove both
-        //    pairs. instructionMatches[0] = earlier site, [1] = later; remove the higher index
+        //    pairs. instructionMatches[0] = earlier site, [1] = later. Remove the higher index
         //    first so the earlier one stays valid.
         val toolbarMatches = ChatRoomToolbarCalendarButtonFingerprint.instructionMatches
         ChatRoomToolbarCalendarButtonFingerprint.method.apply {
@@ -51,7 +51,7 @@ val hideCalendarButtonPatch = bytecodePatch(
         }
 
         // 4. Slide-out chat menu: the calendar row (d00.o) forwards its first ctor bool as the
-        //    row's isVisible field (d00.a.e); the menu builder only renders rows whose e is true.
+        //    row's isVisible field (d00.a.e). The menu builder only renders rows whose e is true.
         //    Force that bool false at method entry (p1 is the first param) so the row is filtered
         //    out.
         ChatMenuCalendarRowFingerprint.method.addInstructions(0, "const/4 p1, 0x0")

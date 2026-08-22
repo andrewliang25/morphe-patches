@@ -15,7 +15,7 @@ val hideWalletTabPatch = bytecodePatch(
 
     // The tab-list builder appends MINI then WALLET, each as `sget-object <const>` followed by
     // `ArrayList.add`. Remove both pairs. instructionMatches[0] = MINI (earlier), [1] = WALLET
-    // (later); remove the higher index first so the earlier one stays valid.
+    // (later). Remove the higher index first so the earlier one stays valid.
     execute {
         val matches = WalletTabListFingerprint.instructionMatches
         val miniIndex = matches[0].index

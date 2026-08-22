@@ -14,7 +14,7 @@ val removeBannerAdsPatch = bytecodePatch(
     name = "Remove banner ads",
     description = "LINE no longer loads the Smart Channel banner ads. This patch makes the " +
         "getBanners and getPrefetchableBanners responses null.",
-    default = true, // applied by default in Morphe Manager; users can deselect it.
+    default = true, // applied by default in Morphe Manager. Users can deselect it.
 ) {
     compatibleWith(COMPATIBILITY_LINE)
 

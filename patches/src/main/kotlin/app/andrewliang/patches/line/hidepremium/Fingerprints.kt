@@ -7,7 +7,7 @@ import app.morphe.patcher.string
  * `b13.l.h()Z` — a sibling accessor in the LYP premium facade impl
  * (`com.linecorp.line.lyppremium.impl.LypPremiumFacadeImpl`, obfuscated `b13.l`). Anchored on the
  * globally-unique, non-obfuscated string `"LITE_ENJOY"` to locate the (fully obfuscated) facade
- * class. We do NOT patch `h()`; from the class we read `z()` to resolve the market-availability
+ * class. We do NOT patch `h()`. From the class we read `z()` to resolve the market-availability
  * config gate `e13.a.d()` and force it false. Obfuscated types (`b13.l`, `e13.a`, `t13.q`) drift
  * between versions, so we never hardcode them.
  */
@@ -25,9 +25,9 @@ internal object PremiumFacadeFingerprint : Fingerprint(
  *
  * That string is not globally unique — it also appears in the worker helper
  * `com.linecorp.line.premium.backup.impl.common.worker.a.a()V` — so the `(String, Z)Unit`
- * signature is pinned to disambiguate; the two enclosing methods share nothing else.
+ * signature is pinned to disambiguate. The two enclosing methods share nothing else.
  *
- * We do NOT patch `h()`; we only need its `definingClass` to reach the premium-backup
+ * We do NOT patch `h()`. We only need its `definingClass` to reach the premium-backup
  * availability gate `ic4.d.j()` (see the patch). `vc4.k0`, `vc4.a0` and `ic4.d` are all
  * obfuscated and drift between versions, so none of them is hardcoded.
  */
