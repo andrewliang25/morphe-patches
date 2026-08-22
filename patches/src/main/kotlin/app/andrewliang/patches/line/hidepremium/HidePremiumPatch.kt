@@ -106,23 +106,23 @@ val hidePremiumPatch = bytecodePatch(
         )
 
         // Third lever: the Home tab upsell module. The Home tab shows one server-driven list of
-        // typed modules, and the LYP recommendation is the module of type
-        // "HomeTabLypRecommendation" (m52.a0$n0, payload m52.y). The master lever does not reach
-        // it. Its renderer ac2.k and its view model ac2.n read no premium gate, so the module
-        // paints whenever the server sends it — even with the market gate false.
+        // typed modules. The LYP recommendation is the module of type "HomeTabLypRecommendation"
+        // (m52.a0$n0, payload m52.y). The master lever does not hide it. Its renderer ac2.k and
+        // its view model ac2.n read no premium gate. As a result the tab shows the module
+        // whenever the server sends it, and a false market gate changes nothing.
         //
-        // So drop it from the list instead of flipping another gate. The list is the first ctor
-        // argument (field `a`) of the Compose state x72.h$a, and every build path goes to that
-        // constructor. One literal comparison needs no extension code, so this patch stays free
-        // of extensions.
+        // Thus this patch removes the module from the list. It does not flip another gate. The
+        // list is the first ctor argument (field `a`) of the Compose state x72.h$a. Every build
+        // path goes to that constructor. One literal comparison needs no extension code, so this
+        // patch declares no extension.
         //
         // The loop lives in a new method, x72.h$a.filterPremiumModules. If a patch injects a loop
         // with a backward branch inline, the loop corrupts the layout of an existing method. ART
         // then throws a VerifyError.
         //
         // "Hide Home modules" and "Hide Home content feed" prepend the same call shape at the
-        // same index. All three are pure List -> List filters on p1, thus the patch that applies
-        // last runs first, and the result is the same in any order.
+        // same index. All three are pure List -> List filters on p1. Thus the patch that applies
+        // last runs first, and the result is the same in every order.
         val homeState = mutableClassDefBy(HOME_STATE)
         val filter = MutableMethod(
             ImmutableMethod(

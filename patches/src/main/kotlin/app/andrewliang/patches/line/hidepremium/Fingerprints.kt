@@ -42,12 +42,12 @@ internal object PremiumBackupFacadeFingerprint : Fingerprint(
 /**
  * `x72.h$a.<init>(List<m52.z>, ...)` — the constructor of the Home Compose UI state. The state
  * holds the module list that the tab shows, in field `a`, the first ctor argument. The Home LYP
- * upsell module reaches the tab in that list, and the master premium lever does not stop it: the
- * module renderer `ac2.k` and its view model `ac2.n` read no premium gate at all.
+ * upsell module comes to the tab in that list. The master premium lever does not hide it,
+ * because the module renderer `ac2.k` and its view model `ac2.n` read no premium gate.
  *
  * This object is a third copy of the same fingerprint, after `hidehomemodules` and
- * `hidehomefeed`. Each patch keeps its own copy, because the three are independent and the user
- * can apply any one of them alone. All three prepend a `List -> List` filter call at index 0 of
+ * `hidehomefeed`. Each patch keeps its own copy, because the three patches are independent. The
+ * user can apply each one alone. All three prepend a `List -> List` filter call at index 0 of
  * this constructor. The order does not matter (see HidePremiumPatch).
  */
 internal object HomeStateCtorFingerprint : Fingerprint(
