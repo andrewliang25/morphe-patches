@@ -1,4 +1,4 @@
-package app.andrewliang.patches.line.hidehomemodules
+package app.andrewliang.patches.line.hidehomefeed
 
 import app.andrewliang.patches.shared.Constants.COMPATIBILITY_LINE
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
@@ -10,31 +10,34 @@ import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter
 
 private const val HOME_STATE = "Lx72/h\$a;"
-private const val FILTER_NAME = "filterHomeModules"
+private const val FILTER_NAME = "filterHomeFeed"
 private const val FILTER_DESC = "(Ljava/util/List;)Ljava/util/List;"
 
 @Suppress("unused")
-val hideHomeModulesPatch = bytecodePatch(
-    name = "Hide Home modules",
-    description = "Hides clutter modules on the Home tab: the recommended stickers and content " +
-        "section, the real-time hot-topics (即時夯話題) block, and the ad modules. A separate " +
-        "patch hides the content feed below the friends list.",
+val hideHomeFeedPatch = bytecodePatch(
+    name = "Hide Home content feed",
+    description = "Removes the content feed below the friends list on the Home tab. The feed " +
+        "shows LINE NEWS posts, official account posts, live cards, content units, and ranking " +
+        "units. The friends list, the service icons, and the other Home modules do not change.",
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_LINE)
 
     extendWith("extensions/extension.mpe")
 
-    // The rendered Home feed is a List<m52.z> (each z.e a typed m52.a0 module) stored as the
-    // first ctor arg (field `a`) of the Compose state x72.h$a. Filter that list to drop
-    // modules whose z.e.getType() is blocklisted.
+    // Same mechanism as "Hide Home modules", and on the same list. The Home feed is a
+    // List<m52.z>. Each element holds a typed m52.a0 module in field z.e. The list is the first
+    // ctor argument (field `a`) of the Compose state x72.h$a. This patch filters the list and
+    // drops each module whose z.e.getType() belongs to the server content feed. Every type in
+    // that feed starts with "HomeFeed" — see the HomeFeed extension.
     //
-    // The filtering loop is a new method x72.h$a.filterHomeModules (backward-branching loops
-    // corrupt an existing method's layout when injected inline -> VerifyError). We then inject
-    // a branchless call at the top of x72.h$a.<init> to replace p1 (the list) with its
-    // filtered copy before it's stored. One constructor covers every feed build path + copies.
+    // The loop lives in a new method, x72.h$a.filterHomeFeed. If a patch injects a loop with a
+    // backward branch inline, the loop corrupts the layout of an existing method. ART then
+    // throws a VerifyError. At the top of x72.h$a.<init> the patch injects a call with no
+    // branch. The call replaces p1 (the list) with the filtered copy before the constructor
+    // stores it. One constructor covers every feed build path and every state copy.
     //
-    // "Hide Home content feed" prepends the same call shape at the same index. Both are pure
+    // "Hide Home modules" prepends the same call shape at the same index. Both are pure
     // List -> List filters on p1. Thus the patch that applies second runs first, and the
     // result is the same either way.
     execute {
@@ -71,7 +74,7 @@ val hideHomeModulesPatch = bytecodePatch(
                 iget-object v3, v2, Lm52/z;->e:Lm52/a0;
                 invoke-interface {v3}, Lm52/a0;->getType()Ljava/lang/String;
                 move-result-object v3
-                invoke-static {v3}, Lapp/andrewliang/extension/HomeModules;->shouldHide(Ljava/lang/String;)Z
+                invoke-static {v3}, Lapp/andrewliang/extension/HomeFeed;->shouldHide(Ljava/lang/String;)Z
                 move-result v3
                 if-nez v3, :loop
                 invoke-virtual {v0, v2}, Ljava/util/ArrayList;->add(Ljava/lang/Object;)Z
@@ -81,8 +84,9 @@ val hideHomeModulesPatch = bytecodePatch(
             """,
         )
 
-        // 2. At the top of x72.h$a.<init>, replace the list param (p1) with its filtered copy
-        //    before it is stored. Branchless (invoke + move-result), reuses p1 (`.locals 0`).
+        // 2. At the top of x72.h$a.<init>, replace the list parameter (p1) with the filtered
+        //    copy before the constructor stores it. The call has no branch (invoke +
+        //    move-result) and it reuses p1 (`.locals 0`).
         HomeStateCtorFingerprint.method.addInstructions(
             0,
             """
