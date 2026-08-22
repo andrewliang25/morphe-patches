@@ -16,29 +16,30 @@ private const val FILTER_DESC = "(Ljava/util/List;)Ljava/util/List;"
 @Suppress("unused")
 val hideHomeFeedPatch = bytecodePatch(
     name = "Hide Home content feed",
-    description = "Removes the recommended content feed below the friends list on the Home tab " +
-        "— LINE NEWS and official-account post cards, live cards, and the content and ranking " +
-        "units. The friends list, the service icons and the rest of the Home tab are unaffected.",
+    description = "Removes the content feed below the friends list on the Home tab. The feed " +
+        "shows LINE NEWS posts, official account posts, live cards, content units, and ranking " +
+        "units. The friends list, the service icons, and the other Home modules do not change.",
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_LINE)
 
     extendWith("extensions/extension.mpe")
 
-    // Same mechanism as "Hide Home modules", on the same list: the rendered Home feed is a
-    // List<m52.z> (each z.e a typed m52.a0 module) stored as the first ctor arg (field `a`) of
-    // the Compose state x72.h$a. Filter that list to drop modules whose z.e.getType() belongs to
-    // the server-driven content feed (every such type starts with "HomeFeed" — see the HomeFeed
-    // extension).
+    // Same mechanism as "Hide Home modules", and on the same list. The Home feed is a
+    // List<m52.z>. Each element holds a typed m52.a0 module in field z.e. The list is the first
+    // ctor argument (field `a`) of the Compose state x72.h$a. This patch filters the list and
+    // drops each module whose z.e.getType() belongs to the server content feed. Every type in
+    // that feed starts with "HomeFeed" — see the HomeFeed extension.
     //
-    // The filtering loop is a new method x72.h$a.filterHomeFeed (backward-branching loops corrupt
-    // an existing method's layout when injected inline -> VerifyError). We then inject a
-    // branchless call at the top of x72.h$a.<init> to replace p1 (the list) with its filtered copy
-    // before it's stored. One constructor covers every feed build path + copies.
+    // The loop lives in a new method, x72.h$a.filterHomeFeed. If a patch injects a loop with a
+    // backward branch inline, the loop corrupts the layout of an existing method. ART then
+    // throws a VerifyError. At the top of x72.h$a.<init> the patch injects a call with no
+    // branch. The call replaces p1 (the list) with the filtered copy before the constructor
+    // stores it. One constructor covers every feed build path and every state copy.
     //
-    // "Hide Home modules" prepends the same shape of call at the same index. Both are pure
-    // List -> List filters on p1, so whichever patch applies second simply runs first — the
-    // result is identical either way.
+    // "Hide Home modules" prepends the same call shape at the same index. Both are pure
+    // List -> List filters on p1. Thus the patch that applies second runs first, and the
+    // result is the same either way.
     execute {
         // 1. Add the static filter helper method to x72.h$a.
         val cls = mutableClassDefBy(HOME_STATE)
@@ -83,8 +84,9 @@ val hideHomeFeedPatch = bytecodePatch(
             """,
         )
 
-        // 2. At the top of x72.h$a.<init>, replace the list param (p1) with its filtered copy
-        //    before it is stored. Branchless (invoke + move-result), reuses p1 (`.locals 0`).
+        // 2. At the top of x72.h$a.<init>, replace the list parameter (p1) with the filtered
+        //    copy before the constructor stores it. The call has no branch (invoke +
+        //    move-result) and it reuses p1 (`.locals 0`).
         HomeStateCtorFingerprint.method.addInstructions(
             0,
             """

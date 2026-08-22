@@ -16,11 +16,11 @@ import java.util.Set;
  *   HomePerformanceAd          = performance ad modules in the feed
  *   FLEX                       = 即時夯話題 (real-time hot topics) and the bottom promo/ad block
  *
- * AdModel is blocklisted on static evidence only (it is backed by the GcsAdModuleViewData /
- * GcsAdMeta server models, so it is an ad module) — it never appeared in the device capture, so
- * it is unverified rather than confirmed, and harmless if the server never sends it.
+ * AdModel is in the blocklist on static evidence only. The GcsAdModuleViewData and GcsAdMeta
+ * server models back it, thus it is an ad module. But it did not appear in the device capture,
+ * so it is not confirmed. If the server never sends AdModel, the entry does no harm.
  *
- * The content feed below the friends list is a separate patch — see HomeFeed.
+ * A separate patch hides the content feed below the friends list. See HomeFeed.
  */
 public final class HomeModules {
 
@@ -32,7 +32,7 @@ public final class HomeModules {
         HIDDEN.add("HomeContentsRecommendation");
         HIDDEN.add("HomePerformanceAd");
         HIDDEN.add("FLEX");
-        // Unverified on device — see the note above.
+        // Not confirmed on device. See the class comment.
         HIDDEN.add("AdModel");
     }
 

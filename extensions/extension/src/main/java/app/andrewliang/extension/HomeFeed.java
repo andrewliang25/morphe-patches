@@ -3,30 +3,31 @@ package app.andrewliang.extension;
 /**
  * Helper for the "Hide Home content feed" LINE patch.
  *
- * LINE's Home tab renders a server-driven list of typed modules (m52.a0, each with a stable
- * getType() string), held as the module list of the Compose state x72.h$a. The patch iterates
- * that list in injected smali and drops modules this helper flags — the extension only makes
- * the String decision (it cannot reference the obfuscated LINE module classes).
+ * The LINE Home tab shows one server-driven list of typed modules. Each module is an m52.a0
+ * with a stable getType() string. The list is the module list of the Compose state x72.h$a.
+ * The patch iterates that list in injected smali and drops the modules that this helper flags.
+ * The extension makes the String decision only, because it cannot reference the obfuscated
+ * LINE module classes.
  *
- * Everything below the friends list — the infinite-scrolling card stack — is one server feed
- * whose module types all start with "HomeFeed" (network models GcsHomeFeed*). On LINE 26.11.0
- * that is 14 types:
- *   HomeFeedPost                    = an official-account / LINE NEWS post card
- *   HomeFeedLiveSingle              = the OA_LIVE variant of the above
+ * The card stack below the friends list is one server feed, and it scrolls without end. The
+ * type of every module in this feed starts with "HomeFeed" (network models GcsHomeFeed*). On
+ * LINE 26.11.0 there are 14 types:
+ *   HomeFeedPost                    = an official account / LINE NEWS post card
+ *   HomeFeedLiveSingle              = the OA_LIVE variant of HomeFeedPost
  *   HomeFeedMatomeSingle/-Carousel  = AI-digest ("matome") news cards
  *   HomeFeedUnitBigVisual, -Grid, -Ranking, -ShortFormGrid, -Single, -SingleAndGrid
- *                                   = the content-unit card layouts, each wrapping posts
+ *                                   = the content-unit card layouts, each one holds posts
  *   HomeFeedDefaultPageError, HomeFeedDefaultPageLoading, HomeFeedError, HomeFeedSeedPostError
- *                                   = that feed's error / spinner placeholders
+ *                                   = the error and spinner placeholders of the same feed
  *
- * Matching on the prefix rather than the 14 literals is deliberate: the server rotates between
- * card variants (and between regions — a Taiwan account renders none of these, a Japanese one
- * renders them), so a literal list would reopen the hole on the next rotation. The error and
- * loading placeholders are included on purpose, so no orphan spinner or error shell is left
- * behind where the cards were.
+ * This helper tests the prefix and not the 14 literal strings. The server rotates between card
+ * variants, and it sends different variants to different regions. A Taiwan account gets none
+ * of these modules, but a Japanese account gets them. Thus a literal list does not cover the
+ * next rotation. The prefix also matches the error and loading types, so no empty spinner or
+ * error card stays on the tab.
  *
- * The Home *modules* above the feed (recommended stickers/content, hot topics, ads) are a
- * different patch — see HomeModules.
+ * The Home modules above the feed are a different patch. See HomeModules for the recommended
+ * stickers, the hot topics and the ads.
  */
 public final class HomeFeed {
 

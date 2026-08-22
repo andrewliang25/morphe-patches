@@ -3,15 +3,15 @@ package app.andrewliang.patches.line.hidehomefeed
 import app.morphe.patcher.Fingerprint
 
 /**
- * `x72.h$a.<init>(List<m52.z>, ...)` — the constructor of the Home Compose UI state that holds
- * the rendered module list (stored into field `a`, the first ctor arg). Every feed build path
- * (the v52.g / v52.j assemblers, and state copies) funnels through this constructor, so
- * filtering the list argument here covers the whole rendered feed in one place.
+ * `x72.h$a.<init>(List<m52.z>, ...)` — the constructor of the Home Compose UI state. The state
+ * holds the module list that the tab shows, in field `a`, the first ctor argument. Every feed
+ * build path goes to this constructor: the v52.g and v52.j assemblers, and the state copies.
+ * One filter on the list argument here thus covers the whole feed.
  *
- * Deliberately a copy of `hidehomemodules`' fingerprint of the same method rather than a shared
- * object: the two patches are independent and either can be applied alone. They both prepend a
- * `List -> List` filter call at index 0 of this constructor, which composes in any order (see
- * HideHomeFeedPatch).
+ * This object is a copy of the fingerprint in `hidehomemodules` for the same method, and not a
+ * shared object. The two patches are independent, and the user can apply either one alone. Both
+ * prepend a `List -> List` filter call at index 0 of this constructor. The order does not matter
+ * (see HideHomeFeedPatch).
  */
 internal object HomeStateCtorFingerprint : Fingerprint(
     definingClass = "Lx72/h\$a;",
