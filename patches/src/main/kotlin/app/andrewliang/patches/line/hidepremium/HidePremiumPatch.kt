@@ -41,6 +41,13 @@ val hidePremiumPatch = bytecodePatch(
     // accessor resolves e13.a.d() with no drifting name hardcoded: z() is the only parameterless
     // ()Z facade method with exactly two invoke-virtuals (`return H().d()`), and its 2nd call is
     // <config>.d() — the class + method to neuter.
+    //
+    // This patch has three levers. It resolves every fingerprint and every lookup BEFORE the first
+    // addInstructions, because the patcher does not undo a partial execute. If a later lookup
+    // throws, the Manager reports the patch as failed but the earlier lever still ships. The user
+    // then gets a half-disabled premium. Nothing in the Manager shows this state, and nothing
+    // undoes it. The Compose-state ctor of the third lever is the most drift-prone lookup, so it
+    // must resolve before the first mutation.
     execute {
         val facade = mutableClassDefBy(PremiumFacadeFingerprint.method.definingClass)
 
@@ -61,14 +68,6 @@ val hidePremiumPatch = bytecodePatch(
                 method.returnType == "Z" &&
                 method.parameterTypes.isEmpty()
         }
-
-        marketGate.addInstructions(
-            0,
-            """
-                const/4 v0, 0x0
-                return v0
-            """,
-        )
 
         // Flipping d() alone leaves a state LINE never ships: premium "unavailable" while the
         // premium chat-BACKUP flag (ic4.d.j(), a separate server config via vc4.a0 ->
@@ -96,15 +95,6 @@ val hidePremiumPatch = bytecodePatch(
                 } == true
         }
 
-        // `.locals 0`, so p0 is the only register — and it is dead after the immediate return.
-        backupGate.addInstructions(
-            0,
-            """
-                const/4 p0, 0x0
-                return p0
-            """,
-        )
-
         // Third lever: the Home tab upsell module. The Home tab shows one server-driven list of
         // typed modules. The LYP recommendation is the module of type "HomeTabLypRecommendation"
         // (m52.a0$n0, payload m52.y). The master lever does not hide it. Its renderer ac2.k and
@@ -116,14 +106,33 @@ val hidePremiumPatch = bytecodePatch(
         // path goes to that constructor. One literal comparison needs no extension code, so this
         // patch declares no extension.
         //
-        // The loop lives in a new method, x72.h$a.filterPremiumModules. If a patch injects a loop
-        // with a backward branch inline, the loop corrupts the layout of an existing method. ART
-        // then throws a VerifyError.
-        //
         // "Hide Home modules" and "Hide Home content feed" prepend the same call shape at the
         // same index. All three are pure List -> List filters on p1. Thus the patch that applies
         // last runs first, and the result is the same in every order.
         val homeState = mutableClassDefBy(HOME_STATE)
+        val homeStateCtor = HomeStateCtorFingerprint.method
+
+        // Every lookup is resolved. The patch mutates from this point.
+        marketGate.addInstructions(
+            0,
+            """
+                const/4 v0, 0x0
+                return v0
+            """,
+        )
+
+        // `.locals 0`, so p0 is the only register — and it is dead after the immediate return.
+        backupGate.addInstructions(
+            0,
+            """
+                const/4 p0, 0x0
+                return p0
+            """,
+        )
+
+        // The loop lives in a new method, x72.h$a.filterPremiumModules. If a patch injects a loop
+        // with a backward branch inline, the loop corrupts the layout of an existing method. ART
+        // then throws a VerifyError.
         val filter = MutableMethod(
             ImmutableMethod(
                 HOME_STATE,
@@ -170,7 +179,7 @@ val hidePremiumPatch = bytecodePatch(
         // At the top of x72.h$a.<init>, replace the list parameter (p1) with the filtered copy
         // before the constructor stores it. The call has no branch (invoke + move-result) and it
         // reuses p1 (`.locals 0`).
-        HomeStateCtorFingerprint.method.addInstructions(
+        homeStateCtor.addInstructions(
             0,
             """
                 invoke-static {p1}, $HOME_STATE->$FILTER_NAME$FILTER_DESC
