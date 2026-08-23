@@ -17,8 +17,8 @@ val hideAttachMenuExtraToolsPatch = bytecodePatch(
     // Every server-driven attach service is rendered by the shared class hg1.d, shown only when its
     // per-item gate f(...) returns true. hg1.d is the sole renderer of these services, so forcing
     // its f() to unconditionally return false drops the entire set — with no dependency on any
-    // server channel id (the reason a single-service patch can't be stable). p0 is `this`;
-    // clobbering it is fine since we return immediately.
+    // server channel id (the reason a single-service patch cannot be stable). p0 is `this`;
+    // clobbering it is fine because we return immediately.
     execute {
         AttachMenuServiceGateFingerprint.method.addInstructions(
             0,

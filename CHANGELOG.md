@@ -1,3 +1,25 @@
+## [1.8.0-dev.3](https://github.com/andrewliang25/morphe-patches/compare/v1.8.0-dev.2...v1.8.0-dev.3) (2026-08-23)
+
+### 🐛 Bug Fixes
+
+* stop the Home tab refetch loop that "Hide Home content feed" starts ([5eea7c3](https://github.com/andrewliang25/morphe-patches/commit/5eea7c3535bbb46839042f63941135ce29ef8ee2)), closes [#69](https://github.com/andrewliang25/morphe-patches/issues/69)
+
+## [1.8.0-dev.2](https://github.com/andrewliang25/morphe-patches/compare/v1.8.0-dev.1...v1.8.0-dev.2) (2026-08-22)
+
+### 🐛 Bug Fixes
+
+* resolve every hidepremium lookup before the first mutation ([68d9778](https://github.com/andrewliang25/morphe-patches/commit/68d97783d064c72d31b269e1109eff2ee0e6d48f))
+
+## [1.8.0-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v1.7.0...v1.8.0-dev.1) (2026-08-22)
+
+### 🐛 Bug Fixes
+
+* hide the Home tab LYP upsell under "Disable LINE Premium" ([#71](https://github.com/andrewliang25/morphe-patches/issues/71)) ([d4362b3](https://github.com/andrewliang25/morphe-patches/commit/d4362b3b54929c9e90584120d09e6e190353e5bd)), closes [#70](https://github.com/andrewliang25/morphe-patches/issues/70)
+
+### ✨ New Features
+
+* add "Hide Home content feed" patch (issue [#69](https://github.com/andrewliang25/morphe-patches/issues/69)) ([6bcb05b](https://github.com/andrewliang25/morphe-patches/commit/6bcb05bd54e86be115d0f01567c39bdc9bead29f)), closes [#15](https://github.com/andrewliang25/morphe-patches/issues/15)
+
 ## [1.7.0](https://github.com/andrewliang25/morphe-patches/compare/v1.6.1...v1.7.0) (2026-08-20)
 
 ### ✨ New Features

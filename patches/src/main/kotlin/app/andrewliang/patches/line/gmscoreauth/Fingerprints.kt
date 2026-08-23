@@ -98,7 +98,7 @@ internal object AuthUtilConstantsFingerprint : Fingerprint(
  *
  * Not on the `getToken` path, which binds by ComponentName (see [AuthUtilConstantsFingerprint]),
  * but it is the generic auth binder and was part of the build confirmed working on device.
- * Retained for that reason; trimming it is untested.
+ * Retained for that reason. Trimming it is untested.
  */
 internal object AuthServiceActionFingerprint : Fingerprint(
     returnType = "Ljava/lang/String;",

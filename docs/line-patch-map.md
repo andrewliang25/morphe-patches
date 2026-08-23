@@ -6,7 +6,7 @@ Reference notes for authoring LINE (`jp.naver.line.android`) patches, distilled 
 > ⚠️ **Obfuscation drift.** Names like `hg1.d`, `az0.q`, `d00.z`, `ne1.y0$c`, `fg1.a$b`, `r51.a`
 > are R8-obfuscated and **change between LINE versions**. The concepts and anchoring strategies are
 > durable; re-confirm every descriptor against the decompiled smali on a version bump. Prefer
-> anchors obfuscation can't touch: Kotlin **enum-constant names** (`CALENDAR`, `GIFT`), **string
+> anchors obfuscation cannot touch: Kotlin **enum-constant names** (`CALENDAR`, `GIFT`), **string
 > literals**, **resource ids**.
 
 ---
@@ -65,14 +65,14 @@ true:
 1. **Static local tiles** — one `hg1.r` subclass each, constructed inline in `gg1.e.r()`.
 2. **Server-driven services** — a runtime-fetched list (`r11.d.c()` → `List<r51.a>`); each entry
    becomes one `hg1.d` (the single shared "ChatAppButtonType" class), built in the loop at
-   `gg1/e.smali:827`. If the list isn't cached yet it returns `[]` and kicks off an async fetch,
+   `gg1/e.smali:827`. If the list is not cached yet it returns `[]` and kicks off an async fetch,
    then re-renders.
 
 ### Item gates (`hg1.r` / `hg1.a`)
 
 `hg1.r.f(Lgi1/b;Lfg1/a;Lhg1/a$a;)Z` is the visibility gate. It shows an item only when: the chat
 type is in the item's allowed set **AND** `j(Lgi1/b;)Z` (per-type availability) **AND** `k(...)`
-**AND** `l(...)` all pass. So **forcing `j()` false hides a static tile**; forcing `f()` false hides
+**AND** `l(...)` all pass. So **forcing `j()` false hides a static tile**. Forcing `f()` false hides
 whatever class owns that `f()`.
 
 ### Static tiles (LINE 26.11.0)
@@ -107,13 +107,13 @@ icons and destinations all come from the server payload, **not** from local reso
 - **Hide one service (fragile — avoid):** a single service is identifiable only by its LINE service
   **channel id** (Schedule/create-event = `"1655112642"` real / `"1651805621"` beta, in enum
   `jg1.a$a.SCHEDULE` → `et1.s.g.SCHEDULE`). Channel ids are server-assigned and can change, so such a
-  patch can't be pinned to an APK version. Prefer the category gate.
+  patch cannot be pinned to an APK version. Prefer the category gate.
 
 ---
 
 ## LINE Calendar vs Events vs Message scheduler — three distinct features
 
-Easy to conflate; they are separate features with separate entry points, gates, and destinations.
+Easy to conflate. They are separate features with separate entry points, gates, and destinations.
 
 **Calendar** (native LINE Calendar; strings `line_calendar_*`; feature gate interface `jp0.d`, impl
 `pp0.g`). Five in-messenger entry points, all removed by **"Hide calendar buttons"**:
@@ -177,15 +177,15 @@ single slot. Two rules follow:
   the branch's trailing `goto`, so the slot stays empty, as stock LINE does when the gate is on.
 - **Anchor each patch on its own constants only.** The tab patches run in arbitrary order against one
   method and each fingerprint resolves *after* earlier mutations, so anchoring on a constant another
-  patch removes breaks the match. (Hence Hide Shopping tab avoids `TIMELINE` and `MINI`/`WALLET`; see
+  patch removes breaks the match. (Thus Hide Shopping tab avoids `TIMELINE` and `MINI`/`WALLET`; see
   also `hidevoomtab/Fingerprints.kt`.)
 
 **A missing tab is safe everywhere.** Tab→index lookups are `Math.max(list.indexOf(...), 0)`, clamping
-to Home (`jp/naver/line/android/activity/main/c.java`); `x66.d.a` only emits a `VoomSecondDepth`
+to Home (`jp/naver/line/android/activity/main/c.java`). `x66.d.a` only emits a `VoomSecondDepth`
 telemetry event and `qy4.f0` only writes the `ADDITIONAL_MAIN_TAB` pref. The layout carries a view per
 tab (`xy7.g` → `R.id.bnb_*`), so an absent entry never renders.
 
-**The commerce tabs are region-gated, so they can't be device-tested from TW** —
+**The commerce tabs are region-gated, so they cannot be device-tested from TW** —
 `function.maintab.commercetab` is server-pushed and off outside JP. Local proof stopped at
 disassembly: both pairs gone, `if-eqz`/`goto` skeletons and the `SQUARE`/`TIMELINE` pairs intact,
 whole-dex branch-offset sweep clean, all four tab patches coexisting under the full bundle. Then
@@ -194,6 +194,181 @@ whole-dex branch-offset sweep clean, all four tab patches coexisting under the f
 **A region-gated patch needs a pre-release and a tester in the region — plan for it.** Land on `dev`,
 point the reporter at the auto-published pre-release tag, and hold the `dev → main` merge for a
 screenshot. That is the only step separating "the instructions are gone" from "the tab is gone".
+
+---
+
+## Home tab modules
+
+The Home tab renders a single server-driven `List<m52.z>`. Everything on the tab is one of these
+modules — the friends list, the service icons, the ads, and the whole content feed below the friends
+list. Three patches filter that list: *Hide Home modules*, *Hide Home content feed*, and
+*Disable LINE Premium*. If you change this surface, update all three call sites.
+
+**The chain.** `v52.g.a(Ls52/i;Lm52/m0;)` assembles the list from the GCS response (one giant
+`packed-switch` over the payload oneof; **jadx fails on this method** — `Method not decompiled` — so
+read `apktool/smali_classes9/v52/g.smali`; the `FLEX` arm is separate, at `v52/g.smali:5748` and
+`jadx/sources/v52/j.java:191`). The list is stored as the first ctor arg (field `a`) of the Compose
+state `x72.h$a`, and rendered at `v72/c2.java:296-300` via `r72.d(z.f229498a, z.f229502e.getType())`.
+
+**Where to filter: `x72.h$a.<init>(List, Z×5, String, Long, Long, I, Z)`, index 0.** Every build path
+and every state copy funnels through this constructor, so one branchless
+`invoke-static {p1}` + `move-result-object p1` covers the whole tab. Two rules, both learned the hard
+way:
+
+- **The loop must live in a new method.** A backward-branching loop injected into an existing method
+  corrupts the branch layout into a runtime `VerifyError`. Add
+  `x72.h$a.filterHomeModules` / `filterHomeFeed` / `filterPremiumModules` with
+  `mutableClassDefBy(...).methods.add(...)` and inject only the call.
+- **All three patches prepend at index 0, and that is safe.** Each one is a pure `List → List`
+  filter on `p1`. Thus the patch that applies last runs first. The dex confirms it: the ctor starts
+  with the `invoke-static` + `move-result-object v1` pairs chained, then the original
+  `Object.<init>` + `iput-object v1 → field a`.
+- The earlier target `i52.c.e` built only the Friends sub-tab list (a single
+  `FriendsSubTabFriendsList`), not the feed — confirmed via on-device logging.
+
+### Module type inventory (LINE 26.11.0) — 45 types
+
+`m52.a0` is a marker interface with one member, `getType() : String`. 43 implementations are nested
+in `m52/a0.java`; **two are top-level and easy to miss** (`m52.c0`, `m52.d0`).
+
+| `getType()` | Class | Surface | Status |
+|---|---|---|---|
+| `HomeContentsRecommendation` | `a0$s` | recommended stickers / content | **Hide Home modules** (device-confirmed) |
+| `HomePerformanceAd` | `a0$j0` | performance ads in the feed | **Hide Home modules** (device-confirmed) |
+| `FLEX` | `a0$f` | 即時夯話題 hot topics **and** the bottom promo/ad block | **Hide Home modules** (device-confirmed) |
+| `AdModel` | `a0$a` | generic ad module (`GcsAdModuleViewData` / `GcsAdMeta`) | **Hide Home modules** (static evidence only — never seen on device) |
+| `HomeFeedPost` | `a0$z` | OA / LINE NEWS post card | **Hide Home content feed** |
+| `HomeFeedLiveSingle` | `a0$w` | the `OA_LIVE` variant | **Hide Home content feed** |
+| `HomeFeedMatomeSingle` / `-Carousel` | `a0$y` / `a0$x` | AI-digest ("matome") news cards | **Hide Home content feed** |
+| `HomeFeedUnitBigVisual` / `-Grid` / `-Ranking` / `-ShortFormGrid` / `-Single` / `-SingleAndGrid` | `a0$b0`–`a0$g0` | content-unit layouts, each wrapping posts | **Hide Home content feed** |
+| `HomeFeedDefaultPageError` / `-DefaultPageLoading` / `HomeFeedError` / `HomeFeedSeedPostError` | `a0$t` / `a0$u` / `a0$v` / `a0$a0` | that feed's error & spinner placeholders | **Hide Home content feed** |
+| `FriendsSubTabFriendsList`, `-AllAlbum`, `-Calendar`, `-LatestNotifications`, `-RecentlyUpdatedProfiles` | `a0$i`, `a0$g`, `a0$h`, `a0$j`, `a0$k` | the friends list and its sub-tabs | kept |
+| `HomeSocialGraph`, `HomeRecentlyProfileUpdate`, `HomeActivityFriendList`, `GlobalHomeFriendList` | `a0$m0`, `a0$k0`, `a0$r`, `a0$o` | friend updates / profiles | kept |
+| `HomeServiceList`, `GlobalHomeServiceSection`, `SquareJoinedChatList`, `HomeNotificationHub` | `a0$l0`, `a0$p`, `a0$q0`, `a0$i0` | service icons, OpenChat list, notification hub | kept |
+| `HomeTopBanner`, `SafetyCheckBanner`, `HomeLimitedNetworkModeBanner` | `a0$o0`, `a0$p0`, `a0$h0` | banners (not identified as ads) | kept |
+| `GlobalHomePageError`, `GlobalHomeError`, `GlobalHomePageLoading` | `a0$l`, `a0$n`, `a0$m` | whole-tab error / loading | kept |
+| `CommerceTwTabFriendshipGifts`, `-GreetingBanners`, `-QuickPolls`, `-Shortcuts` | `a0$b`–`a0$e` | the TW commerce tab | kept |
+| `HomeActivityCard` | `a0$q` | recommendation surface (`contentList` / `extraContentList`) | **not blocked** — no device evidence |
+| `GcsHomeActivityHybridContentCard` | `m52.d0` (top-level) | the hybrid variant of the above | **not blocked** — no device evidence |
+| `HomeTabLypRecommendation` | `a0$n0` | LYP premium upsell | **Disable LINE Premium** (third lever, no device evidence — see `line-premium-map.md`) |
+| `GcsDummyHybridModule` | `m52.c0` (top-level) | dev/dummy, no renderer | kept |
+
+**Take this table from jadx, never from a smali grep.** 17 of the 43 nested classes are Kotlin
+singletons whose `getType()` returns a `static final` field, so a grep for the literal nearest
+`getType` silently reports a *neighbouring* method's string. `a0$m` is the trap: `getType()` returns
+`"GlobalHomePageLoading"` while its `toString()` says `"GlobalHomeDefaultPageLoading"`.
+
+### Why the content feed is matched by prefix
+
+Every type in the feed below the friends list starts with `HomeFeed` (network models `GcsHomeFeed*`,
+including `GcsHomeFeedScrollAffordance` — it is an infinite scroller). The server rotates between card
+variants, so a literal list reopens the hole on the next rotation. The extension tests
+`type.startsWith("HomeFeed")` instead. The error and loading placeholders are included on purpose, so
+no orphan spinner or error shell is left where the cards were.
+
+That covers the *module* spinners. It does not cover the page footer spinner, because that spinner
+is not a module. The section that follows covers it.
+
+**No `function.*` config gate exists for this feed.** `function.hometab.*`, `function.line_home.*` and
+`function.my_home.*` carry no feed switch, so filtering the module list is the only cheap mechanism —
+this is not a "force the gate false" surface.
+
+### Filtering a paged list starts a refetch loop — the second and third levers
+
+**The general lesson, before the detail: LINE measures the page *after* our filter runs.** When you
+remove items from a paged surface, the change thus feeds back into the pager. Every future
+list-filtering patch must check whether the surface pages. A patch that does not check ships a
+silent refetch loop. `hidehomefeed` needed two levers more than the filter. The reporter of issue
+ #69 found the first one on `v1.8.0-dev.2`.
+
+**`x72.h$a` is `PageData`.** The ctor is
+`(List, Z, Z, Z, Z, Z, String, Long, Long, I, Z)` and holds, in order: `modules`, `isPageReady`,
+`isPageRefreshing`, `isError`, `isPullToRefreshLoading`, **`isLoadingMore`**, `orderRequestId`,
+`expiredTimeMillis`, `pageUpdatedTimeMillis`, `revision`, `isSafeMode`. The `toString()` of the
+class names every field, thus it gives the order. Cross-check that order against the four consumers
+(`v72/q.java`, `v72/r.java`, `v72/s.java`, `v72/t.java`). **Re-check this order on a version bump.**
+The patch writes ctor parameter 6 by position.
+
+**LINE has no empty state.** `GcsModuleListViewDataFacade.viewDataFlow` (`v72/u.java`) reduces
+`PageData` to `v72.n`:
+
+```java
+if (any x in list has f333354g != 0) return new n.a(revision, list, delayedIsLoadingMore); // Content
+if (isError) return n.b;                                                                   // Error
+return delayedIsPageRefreshing ? n.d : n.c;                                                // Loading : Idle
+```
+
+`x.f333354g` counts the sub-items of the module. "Shows nothing" and "still loads" are thus the
+same state to LINE. The renderer `v72/x0.java` makes lazy-list items from that state. `n.d` becomes
+a whole-page spinner (line 142). Inside `n.a`, an `isLoadingMoreContent` adds the `q2.LOADING_MORE`
+footer (line 291).
+
+**The pager trigger** is `v72/m1.java:81` — `lastVisibleIndex + 6 >= itemCount`, gated on
+`isPageReady`. A tab with no feed is short, thus this condition stays true always. One place reads
+the trigger: `v72/o1.java:38`
+(`GcsPageState$observeEventsForLoadingModuleContent$1`), which calls `d2.B1(shouldLoadMore)`.
+
+**The fetch** is `v72.h2.B1(Z)V` (`v72/h2.java:44`), the one implementation of `B1` that does work.
+`v72/o1.java:38` is its only caller in the app. Each fetch returns feed modules, and the filter
+discards them. The item count does not grow, thus the next fetch starts. The server sends an endless
+feed, so the `i0Var.f229286b` ("no more pages") guard is never true.
+
+| Lever | Site | Injection |
+|---|---|---|
+| 1. filter the list | `x72.h$a.<init>` index 0 | `invoke-static filterHomeFeed` + `move-result-object p1` |
+| 2. hide the footer | same block | `const/4 p6, 0x0` (p6 = `isLoadingMore`, `.locals 0`, 12 registers, so v6) |
+| 3. stop the pager | `v72.h2.B1(Z)V` index 0 | `return-void` |
+
+**Lever 3 is safe because LINE ships an empty `B1` of its own.** `b82/z.java` implements `v72.d2`
+with every method empty, `B1` included. An empty `B1` is thus a state that LINE itself builds. Only
+load-more goes through `B1`. The initial load, the pull-to-refresh and the visibility are separate
+interface methods (`P4`, `R2`, `Q1`, `L`, `r5`, `w6`, `n4`).
+
+**Anchor lever 3 on shape, never on the drift-prone name `B1`.** Use `returnType = "V"`,
+`parameters = ["Z"]`, plus `fieldAccess(type = "Lx72/h;")` and `checkCast("Lm52/i0;")`. On LINE
+26.11.0 that combination matches one method in the whole APK. A sweep of every `.smali` confirms it.
+
+Lever 3 prevents the spinner on its own, but lever 2 stays. Lever 2 costs one instruction on a
+fingerprint that the patch already owns. Field `f` has one reader, thus lever 2 cannot break
+anything else.
+
+### The feed is region-driven — plan for a remote tester
+
+Issue #69 (JP) reported LINE NEWS cards surviving every ad patch. The cards are `HomeFeedPost`,
+identified by `GcsHomeFeedPost.platform{type ∈ {OA_POST, YOUTUBE, LINE_NEWS, LIVE_PREVIEW}, name}` (the
+`carview! / LINE NEWS` header pair), `home_post_desc_linenews` = "LINE NEWS"
+(`values-ja/strings.xml:5218`), `lineNewsContent{title, imageUrl}`, `createdTime`, `likeReaction` (the
+きになる pill) and `home_post_menu_accounthide` (the ⋮ menu). Renderer `ze2.h extends l72.g<a0.z>`.
+
+They were never blocked because PR #15 locked the blocklist to what a **Taiwan** account renders —
+PR #14's `MorpheHomeModules` logcat showed `size=8` with **no** `HomeFeed*` type at all. Same lesson as
+the commerce tabs: a region-gated surface needs a pre-release and a tester in the region.
+
+**Diagnostic recipe** (from PR #11, revert before shipping): log every type at filter entry under tag
+`MorpheHomeModules`, then `adb logcat -c && adb logcat -s MorpheHomeModules`. No lines = the filter
+never ran; `ENTER` with no per-type lines = empty list at that point; per-type lines = the real strings.
+
+### Finer discriminators, if a type string is ever too coarse
+
+`m52.z` carries more than the payload: `f229498a` = module id (for example
+`home-feed-module_home-feed-default-page-loading`; **LINE itself filters on it** at `an2/d.java:75`),
+`f229499b` = module name, `f229500c`/`f229501d` = timestamps, `f229502e` = the `m52.a0` payload,
+`f229503f` = ACI gate enum `m52.m0` (`DISABLED` / `ACI_REQUIRED` / `ALWAYS`), `f229504g` = upstream
+request id, `f229505h` = global service key, `f229506i` = render kind (`FLEX` / `NATIVE` / `HYBRID`).
+Inside the `HomeFeedUnit*` payloads there is also `type: m52.l0` (`AUTO` / `PACKAGED` / `KEYWORD` /
+`FITTED` / `MANUAL`) and `contentType: m52.k0` (`MASS` / `CLUSTER` / `PERSONAL`).
+
+Renderers subclass `l72.g<T>` / `r72.b<T>` and register a `KClass`, so the renderer confirms a type
+actually paints: `a0$z`→`ze2/h.java`, `a0$x`→`mg2/h.java`, `a0$y`→`ng2/g.java`, `a0$s`→`tg2/n.java`,
+`a0$j0`→`ec2/f.java`, `a0$f`→`d62/r.java`, `a0$m0`→`f30/b.java`, `a0$l0`→`b30/b.java`,
+`a0$n0`→`ac2/k.java`, `m52.d0`→`sd2/i.java`.
+
+### Values that drift on a version bump
+
+`x72.h$a` (state class + ctor signature), `m52.z` field `e`, `m52.a0` and every `a0$*` letter suffix,
+the assembler `v52.g`, the consumer `v72.c2`. The **type strings themselves are server contract** and
+have been stable; re-run the jadx sweep over `m52/a0.java` to re-audit the `HomeFeed*` family, in case
+LINE adds a wanted module under that prefix.
 
 ---
 
@@ -216,7 +391,7 @@ unsent messages* carry extension code.
 
 ## LINE Pay intake & the "Redirect LINE Pay" patch
 
-**Why redirect instead of disable:** the messenger can't run its own Pay flow on a re-signed build
+**Why redirect instead of disable:** the messenger cannot run its own Pay flow on a re-signed build
 (the bundled VKey/V-Guard check fails — see `CLAUDE.md`). The patch (still packaged
 `line.disablepay`, object `disablePayPatch`) forwards the payment to the user's separately-installed
 **standalone LINE Pay app** — unpatched, so integrity passes — then closes the in-app Pay screen. A
@@ -240,7 +415,7 @@ merchant "LINE Pay" link  (line:// or https://line.me/R/…)
   (obfuscated `sv3.n`) for the real `https://web-pay.line.me/…` URL before loading it in a WebView.
 - `web-pay.line.me` / `web-tw-pay.line.me` / `/R/iab` are **not** literals in the APK or manifest —
   those hosts are server config. So an `ACTION_VIEW` for `https://web-tw-pay.line.me/R/iab?…` fired
-  from inside LINE is not caught by the messenger; it resolves to the standalone app.
+  from inside LINE is not caught by the messenger. It resolves to the standalone app.
 
 ### The redirect
 
@@ -255,7 +430,7 @@ The extension (`app/andrewliang/extension/LinePayRedirect.java`) reads the inten
   known-good web-pay url). Rebuilds
   `https://web-pay.line.me/web/payment/waitPreLogin?transactionReserveId=<reserveId>&locale=zh-TW_LP`.
 - an already-resolved `web-pay.line.me` url — used as-is.
-- anything else (e.g. `line://pay/main`) — no reserve id → **no redirect**, the activity just
+- anything else (for example `line://pay/main`) — no reserve id → **no redirect**, the activity just
   `finish()`es (a loop guard: never wrap a link that would round-trip back to the messenger).
 
 then fires
@@ -265,7 +440,7 @@ https://web-tw-pay.line.me/R/iab?url=<urlencoded inner web-pay url>
 ```
 
 with `FLAG_ACTIVITY_NEW_TASK`, swallowing all exceptions so `finish()` always runs. A token-free
-breadcrumb is logged under logtag **`AndrewLinePay`**; the single-use reserve id deliberately is not.
+breadcrumb is logged under logtag **`AndrewLinePay`**. The single-use reserve id deliberately is not.
 
 **Device-confirmed (LINE 26.11.0):** tapping a merchant "LINE Pay" button
 (`http://line.me/R/pay/payment/<reserveId>`) reaches **`PayLaunchActivity`** with
@@ -273,7 +448,7 @@ breadcrumb is logged under logtag **`AndrewLinePay`**; the single-use reserve id
 and the reconstruction opened the standalone app on the transaction. The `PayLiffActivity` hook is
 kept as defensive coverage for the `lpUsage=STANDALONE` route; if a future version routes there with
 no usable web url in the intent, reuse LINE's `r7()` resolver (anchor on the stable `"lpUsage"` /
-`"STANDALONE"` literals and read the obfuscated `l5()`/`r7()` descriptors from the matches — don't
+`"STANDALONE"` literals and read the obfuscated `l5()`/`r7()` descriptors from the matches — do not
 hardcode `sv3.n`, which drifts).
 
 ---
@@ -343,7 +518,7 @@ copying it and letting LINE tombstone the original — preserves its real `serve
 forwarding and reactions keep working on the kept message.
 
 The guard is located **by instruction shape** (no-arg `Z` call → `move-result` → `if-eqz` → `goto`) and
-the `SQLiteDatabase` field reference is read from the method's own bytecode, since `i38.c`, its `h()`
+the `SQLiteDatabase` field reference is read from the method's own bytecode, because `i38.c`, its `h()`
 and `g38.f3.b` all drift. The two register reads are anchored rather than scanned blind: the message id
 must be a field of the same row object the guard reads its receiver off, and the `SQLiteDatabase` holder
 register must carry a `check-cast` to the field's own owner before the guard (this method has a *second*
@@ -376,9 +551,9 @@ draw the notice twice.
 > 34 MB photo arrived at 24 MP instead of 1.64 MP, via five sites across two send paths plus an
 > extension), and then deliberately dropped.** Recorded so nobody re-derives it. Why it was dropped:
 >
-> - **Coverage can't match the promise.** It fixed the chatroom `+` / photo-strip flow only. Album is
+> - **Coverage cannot match the promise.** It fixed the chatroom `+` / photo-strip flow only. Album is
 >   unfixable without inflating every album upload (no "Original" button, below), share-to-LINE is a
->   third path never traced, and a user can't tell which entry point they used. A patch that silently
+>   third path never traced, and a user cannot tell which entry point they used. A patch that silently
 >   applies to some sends invites bug reports.
 > - **Maintenance is a re-investigation, not a fingerprint refresh.** Four fingerprints, one on a
 >   synthetic Kotlin lambda (`th1.t$c$b`) that reshuffles whenever its enclosing method changes — and
@@ -487,12 +662,12 @@ gallery-picker path and were never device-verified.
 The extension re-derived the same `>= 20 MB || >= 100 MP` test the sites removed and returned `null`
 otherwise, leaving every already-working case untouched — notably a 50 MP / 10 MB JPEG, which must
 keep being copied byte for byte. Output was bounded to 24 MP via `inSampleSize` plus
-`inScaled`/`inDensity`/`inTargetDensity`; the density scaler matters because `inSampleSize` alone
+`inScaled`/`inDensity`/`inTargetDensity`. The density scaler matters because `inSampleSize` alone
 quantises a 126 MP source to ~7.9 MP. Rotation was baked into the pixels rather than written as an
 EXIF tag, matching every other LINE encoder on this path.
 
 **Rotation must come from LINE, not from EXIF.** `c1.f(dVar, fVar, uri, Integer rotation)` hands
-the *same* `Integer` to `c1.p` (the standard variant, hence the thumbnail and OBS's `/preview`) and to
+the *same* `Integer` to `c1.p` (the standard variant, so the thumbnail and OBS's `/preview`) and to
 the `y0` lambda. Both prefer it and fall back to the file's EXIF (`c1.d(uri)`, an `ExifInterface`
 "Orientation" read) only when it is `null`. So the patch passed the lambda's `Ljava/lang/Integer;`
 capture (`y0.c`) in with EXIF as fallback only: deriving from EXIF unconditionally leaves the original
@@ -518,7 +693,7 @@ types were hardcoded.
 Freeing the incoming-call ringtone from LINE's four bundled tones / paid Melody Shop tones is
 **technically patchable**: the decision is entirely client-side and the playback layer already accepts
 an arbitrary `Uri`. Nothing shipped — the reason is product value, not feasibility, see
-[Why nothing shipped](#why-nothing-shipped). Recorded so it isn't re-derived.
+[Why nothing shipped](#why-nothing-shipped). Recorded so it is not re-derived.
 
 ### The choke point
 
@@ -550,7 +725,7 @@ then `setAudioAttributes(USAGE_NOTIFICATION_RINGTONE)`, `setLooping(true)`, `pre
 
 This is what makes it patchable: the URI is opened **inside LINE's process**, never handed to the
 system NotificationManager, so the cross-process permission problems that sink the Google sign-in
-limitation don't apply. (Message *notification* sounds are a separate system — ordinary Android
+limitation do not apply. (Message *notification* sounds are a separate system — ordinary Android
 notification channels, already customisable in system Settings.)
 
 ### What actually limits users today
@@ -565,7 +740,7 @@ int, `k97.m.m()` → `vb7.c.m()` → `t().G0().l().e()`:
 | `2` | fall through to the region switch below |
 
 Only when it is `2` does region matter (`s87.i.a()`), and the premium branches additionally require
-`a.b()` — all three of `k97.m.s()` / `.f()` / `.r()` non-empty, i.e. the premium-service URLs are
+`a.b()` — all three of `k97.m.s()` / `.f()` / `.r()` non-empty, that is the premium-service URLs are
 configured:
 
 | Region | Provider | Ringtone setting visible? |
@@ -576,7 +751,7 @@ configured:
 | everywhere else | `DEFAULT` | **no** |
 
 Only MUSIC / MELODY / FRIEND_MELODY set `exposeExternalSetting = true`, which is what makes the
-"Ringtones & ringback tones" entry appear. `DEFAULT` hardcodes `ue7.a.RING_1`; `EMBEDDED` resolves
+"Ringtones & ringback tones" entry appear. `DEFAULT` hardcodes `ue7.a.RING_1`. `EMBEDDED` resolves
 through `ge7.c.e(m87.h.RING)`, reading the *legacy* melody prefs and falling back to `RING_1` when
 empty. **So outside JP/TH/TW there is no ringtone choice in the UI at all** — not even among the four
 bundled tones, reachable only under JP's `MUSIC` provider (it alone reads the `cf7.m` prefs). The
@@ -590,7 +765,7 @@ back to `RING_1`. Head-injecting `be7.c.a` sits ahead of all of this.
 
 ### Tone inventory and storage
 
-`ue7.a` is the bundled-tone enum; ids take the form `android.resource:///<id>`.
+`ue7.a` is the bundled-tone enum. Ids take the form `android.resource:///<id>`.
 
 | Constant | `res/raw` | Title |
 |---|---|---|
@@ -600,7 +775,7 @@ back to `RING_1`. Head-injecting `be7.c.a` sits ahead of all of this.
 | `RING_4` | `ring` | Telephone ring |
 | `RINGBACK_1` | `lineapp_ringback_16k` | — |
 
-Two parallel storage systems, both **encrypted** and therefore not readable from an extension:
+Two parallel storage systems, both **encrypted**, and so not readable from an extension:
 
 - **Current** — `jp.naver.voip.ringtone` via `cf7.m` (keys `ringToneUri`, `ringToneName`,
   `ringToneResourceTypeId`, `ringToneDecodedUriFlag`; accessors `cf7.p.a` / `cf7.p.b`). Built by
@@ -696,10 +871,10 @@ identity login (it also carries `apple_login_code_result_key`), shared by Google
 
 ### Path 1 is not patchable
 
-LINE asks the platform for a credential; `system_server` enumerates registered providers and picks
+LINE asks the platform for a credential. `system_server` enumerates registered providers and picks
 Google's `…credman.service.GoogleIdService`. LINE never names Play Services, so there is **no package,
 action or string in the APK to rewrite**, and MicroG-RE implements the *GMS* Credentials API but not
-`android.service.credentials.CredentialProviderService`, so it can't be offered as a provider either.
+`android.service.credentials.CredentialProviderService`, so it cannot be offered as a provider either.
 Device log:
 
 ```
@@ -732,8 +907,8 @@ previous stopped failing. Expect the same if it regresses: fix one, re-test, fin
 **Site 2 needs code, not a string.** `setSelectedAccountName` resolves the picked name by scanning
 `AccountManager.getAccountsByType(type)`, which can never work for a GmsCore account: since Android 8
 an authenticator controls account **visibility**, and GmsCore grants it on its first `setAuthToken` —
-i.e. *after* a token, which needs the account to resolve first. The scan returns empty, both fields
-stay null, and LINE re-prompts forever. The patch builds the `Account` directly from the name; the
+that is, *after* a token, which needs the account to resolve first. The scan returns empty, both fields
+stay null, and LINE re-prompts forever. The patch builds the `Account` directly from the name. The
 scan only ever existed to turn a name into an `Account`.
 
 Guard **both** null and empty string, branching into the original body: LINE calls
@@ -747,7 +922,7 @@ a search for `""` matched nothing.
 **only the package half**: MicroG-RE ships `applicationId app.revanced.android.gms` but keeps
 `namespace com.google.android.gms`, so its `<service android:name=".auth.GetToken">` really is the
 class `com.google.android.gms.auth.GetToken` inside the `app.revanced` package. Rewriting the class
-name too binds a component that doesn't exist — LINE shows a generic access error with **nothing in
+name too binds a component that does not exist — LINE shows a generic access error with **nothing in
 the log**, because no service starts.
 
 Everything else keeps talking to real Play Services — Maps, location sharing, ML Kit, FCM, anything
@@ -786,7 +961,7 @@ The order is the trap. `PackageUtils.getAndCheckPackage()` spoofs the caller's *
 - If the spoofed package is absent, `getPackageInfo` throws and the code falls back to
   `KNOWN_GOOGLE_PACKAGES` (Google's apps only) → `client_sig` goes out **null**. This is why the
   ReVanced flow works for YouTube/Photos and would not for LINE.
-- Therefore the patch **must keep LINE's package name**. The rename the YouTube/Photos GmsCore
+- Thus the patch **must keep LINE's package name**. The rename the YouTube/Photos GmsCore
   patches perform would silently defeat the override.
 - GmsCore targets **SDK 29**, so package-visibility filtering does not apply to it. A
   `targetSdk 30+` app needs a `<queries>` entry to see it at all.
@@ -820,8 +995,8 @@ needed anyway — real Play Services is installed, so the "GMS missing" checks n
 
 **Extend the unsend window.** The client windows (`j51.a.o` free, `.p` premium) are UX pre-filters fed
 by server config (`function.chatroom.message.unsend.timelimit`, `.premium.timelimit`). `unsendMessage`
-carries only `(seq, messageId)`; the server decides, with a dedicated `TalkException` code
-`MESSAGE_NOT_DESTRUCTIBLE(71)` (`cb8.m9`) handled at `ne1.o2` / `ne1.b2` → *"You can't unsend this
+carries only `(seq, messageId)`. The server decides, with a dedicated `TalkException` code
+`MESSAGE_NOT_DESTRUCTIBLE(71)` (`cb8.m9`) handled at `ne1.o2` / `ne1.b2` → *"You cannot unsend this
 message as too much time has passed."* Widening the client window only re-shows the menu item and
 produces that toast. (`hidepremiumunsend` narrows it for the same reason.)
 

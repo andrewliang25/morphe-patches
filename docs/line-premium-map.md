@@ -5,8 +5,8 @@ Reference notes on how **LINE Yahoo Premium (LYP)** feature-gating works in LINE
 `app/andrewliang/patches/shared/Constants.kt`). Companion to `docs/line-patch-map.md`.
 
 > ⚠️ **Obfuscation drift.** Names like `b13.l`, `z03.b`, `t13.i/k/n/b/q` are R8-obfuscated and
-> **change between LINE versions**; re-confirm every descriptor on a version bump. Prefer anchors
-> obfuscation can't touch: **string literals** (`"LITE_ENJOY"`), framework types
+> **change between LINE versions**. Re-confirm every descriptor on a version bump. Prefer anchors
+> obfuscation cannot touch: **string literals** (`"LITE_ENJOY"`), framework types
 > (`Ljava/lang/Boolean;`, `Lkotlin/coroutines/Continuation;`), Thrift op-name literals.
 
 ---
@@ -21,7 +21,7 @@ Reference notes on how **LINE Yahoo Premium (LYP)** feature-gating works in LINE
    that re-verifies entitlement independently. The client status is a read-model, not the gate.
 
 **Net:** a blanket "unlock premium" is not achievable. Flipping the client gate can at most surface UI or
-enable purely-local behavior; server-delivered or authorized content stays enforced.
+enable purely-local behavior. Server-delivered or authorized content stays enforced.
 
 ---
 
@@ -41,9 +41,9 @@ current `LypUserStatus` **is** `Subscribed` (`instance-of Lt13/i$b;`) **AND** pr
 
 | Accessor | Returns | Role | Caller count |
 |---|---|---|---|
-| `u(Feature, Continuation)` | boxed `Boolean` | per-feature boolean gate | ~18 (e.g. `SUBPROFILE`, `MESSAGE_EDIT`, backup/gallery/migration) |
+| `u(Feature, Continuation)` | boxed `Boolean` | per-feature boolean gate | ~18 (for example `SUBPROFILE`, `MESSAGE_EDIT`, backup/gallery/migration) |
 | `s(Feature, Continuation)` | `t13.k` | per-feature status object (`k.a()Z` = "is restricted/not offered") | dominant path for `APP_ICON`, `FONT` |
-| `A(Feature, Continuation)` | `t13.n` | per-feature params object | e.g. `APP_ICON`, `FONT` |
+| `A(Feature, Continuation)` | `t13.n` | per-feature params object | for example `APP_ICON`, `FONT` |
 | `o()` | `t13.i` (`LypUserStatus`) | synchronous raw status read; callers do their own `instanceof i$b` | 38 |
 | `a(Continuation)` | `t13.i` | suspend raw status read | 33 |
 | `q()` | `StateFlow<t13.i>` | reactive status | — |
@@ -111,7 +111,7 @@ non-obfuscated class refs inside `b13.l` (`LypPremiumSubscriptionActivity`,
 ## Unlocking is not viable (tested)
 
 Forcing the client gate `b13.l.u(Feature) -> Boolean` to `true` was built and **tested on device — it
-unlocks nothing**, confirming the analysis. That experimental patch was **dropped**. Why it can't work:
+unlocks nothing**, confirming the analysis. That experimental patch was **dropped**. Why it cannot work:
 
 - Features gated through the object-returning `s()`/`A()` accessors (`APP_ICON`, `FONT`) or read straight
   off raw status via `o()`/`a()` are never reached by a `u()` flip, and forcing `s()`/`A()` to a boolean
@@ -125,11 +125,11 @@ So the practical direction is **hiding** premium, not unlocking it.
 
 ## Disabling premium (this bundle: `Disable LINE Premium`)
 
-Since premium can't be unlocked, `Disable LINE Premium` **hides every premium surface** — upsell
+Because premium cannot be unlocked, `Disable LINE Premium` **hides every premium surface** — upsell
 popups/banners, badges/locks, the "LINE Premium" settings page and its entry rows, the subscribe/manage
 flows — by forcing LINE's own market-availability flag off.
 
-**Master lever:** `e13.a.d()Z` (`return a().W()`, i.e. `jw4.i1.W()`) — the config bit meaning "LYP
+**Master lever:** `e13.a.d()Z` (`return a().W()`, that is `jw4.i1.W()`) — the config bit meaning "LYP
 premium is available in this market". The facade reads it three ways that **all cascade from `d()`**:
 
 | Facade read | Derivation | Effect when `d()` = false | Consumers |
@@ -148,14 +148,14 @@ server flags that ship enabled alongside `d()`. One of each combined into a cras
 [Second lever](#second-lever-the-premium-backup-flag-required).
 
 **Premium-scoped:** `e13.a.d()` has only 4 direct callers, all in the premium module. The shared
-underlying `jw4.i1.W()` is read directly by 6 non-premium features (profile, etc.) — those are
+underlying `jw4.i1.W()` is read directly by 6 non-premium features (profile, and more) — those are
 **not** touched (the patch neuters `e13.a.d()`, not `i1.W()`).
 
 **Anchoring (nothing obfuscated hardcoded):** find facade `b13.l` via the unique `"LITE_ENJOY"` string,
 then its `z()` accessor — uniquely the parameterless `()Z` with exactly two `invoke-virtual`s
 (`return H().d()`; siblings `h()`/`y()`/`B()` have four) — and take the 2nd call's `MethodReference` to
 resolve `e13.a.d()` at apply time. Verified on 26.11.0: only `e13.a.d()` is rewritten (to
-`const/4 v0,0x0` / `return v0`); the facade is untouched.
+`const/4 v0,0x0` / `return v0`). The facade is untouched.
 
 **Not covered / follow-up:** a secondary market bit `jw4.m2…a().U().O()` gates a couple of surfaces
 (album promo, app-icon seasonal) independently of `e13.a.d()`. If any premium surface survives on
@@ -165,7 +165,7 @@ LINE version.
 ### Second lever: the premium-backup flag (required)
 
 **Symptom:** on a patched build, **Settings ▸ Chats** threw and bounced back to Home. Stock is fine;
-reproduced on both Standard (re-signed) and Root Mount, i.e. signing-independent. Caused by
+reproduced on both Standard (re-signed) and Root Mount, that is signing-independent. Caused by
 `Disable LINE Premium` alone.
 
 **Chain** (all verified against decompiled 26.11.0):
@@ -191,16 +191,16 @@ every sibling null-guards (`ux4/a0.java:73`, `ux4/d0.java:89`, `ux4/c0.java:123,
 `if (num != null) … getDrawable(num.intValue())`). The other two `px4.c1` badge rows are fine: Settings ▸
 Friends by inspection (provider `p05.b` returns the constant `R.drawable.lyp_premium_label`), and
 Settings ▸ Albums **by device test** — its provider `::providePremiumBadgeResId`
-(`settings/albums/a.java:237`) is nullable with an obfuscated target, so it couldn't be read statically,
-but that screen opened fine on the *unfixed* build, i.e. with the market gate already off. That is the
+(`settings/albums/a.java:237`) is nullable with an obfuscated target, so it could not be read statically,
+but that screen opened fine on the *unfixed* build, that is with the market gate already off. That is the
 exact triggering condition, so the Albums provider never returns null here and there is no second null
-source. **Don't re-investigate it.**
+source. **Do not re-investigate it.**
 
 **Fix (shipped, device-confirmed 2026-08-20 on LINE 26.11.0):** also force the premium-backup gate
 `ic4.d.j()` (impl `vc4.k0.j()`) to `false`. The gate is used **complementarily** in the settings UI —
 `chats/a.java:880` shows the premium row on `j()`, `chats/a.java:303` shows the ordinary **"Back up chat
 history"** row on `!j()` — so `false` hides the crashing row *and* restores a working non-premium backup
-entry (a `px4.i1`, not a badge row, so it can't reach `getDrawable`). All 8 call sites
+entry (a `px4.i1`, not a badge row, so it cannot reach `getDrawable`). All 8 call sites
 (`j25/u2.java:1388,1619,1817`, `lz4/t.java:216,242`, `chats/a.java:303,730,880`) are premium-vs-classic
 backup UI gating, so `false` degrades cleanly everywhere — device-checked: Settings ▸ Chats opens with
 the ordinary backup row, and every other settings screen (main list, Albums, Friends) is unaffected.
@@ -214,9 +214,46 @@ selected **by shape**, not by its drift-prone name: of `k0`'s three `()Z` method
 `invoke-virtual`; `r()` opens with an `iget-object` of a `Lkotlin/Lazy;` read via `invoke-interface`).
 `j()` is `.locals 0`, so the injection writes `p0`.
 
+### Third lever: the Home tab upsell module (required for the Home tab)
+
+The master lever does not reach the LYP upsell on the **Home tab**. The Home tab shows one
+server-driven `List<m52.z>` of typed modules, and this upsell is the module of type
+**`HomeTabLypRecommendation`** (`m52.a0$n0`, payload `m52.y`, renderer `ac2.k`, view model `ac2.n`).
+
+**Why the gate flip misses it:** nothing on that render path reads a premium gate. `ac2.k` and
+`ac2.n` reference neither the facade `b13.l` nor the market config `e13.a`, so the module paints
+whenever the server sends it — market gate false or not. The server decides whether to send it, and
+the client renders what arrives.
+
+**What the patch does:** it drops the module from the list instead of flipping another gate. That
+also keeps the lesson from the Settings ▸ Chats crash — a gate flipped without its siblings produced
+a state LINE never ships, whereas an absent module is a state the tab already handles (every module
+in the list is optional).
+
+The filter goes on `x72.h$a.<init>(List, Z×5, String, Long, Long, I, Z)`, at index 0: a new method
+`x72.h$a.filterPremiumModules(List)List`, plus a branchless `invoke-static {p1}` +
+`move-result-object p1` call. Notes on that surface:
+
+- **The loop must live in a new method.** A loop with a backward branch injected inline corrupts the
+  layout of an existing method, and ART then throws a `VerifyError`.
+- **One literal comparison needs no extension.** The type string is compared in smali, with the
+  literal as the receiver of `String.equals`, so a null type is safe. This patch stays free of
+  extension code.
+- **Three patches prepend at that same index** — this one, `Hide Home modules` and
+  `Hide Home content feed`. All three are pure `List -> List` filters on `p1`, so the patch that
+  applies last runs first and the result is the same in any order. Verified in the dex: the three
+  `invoke-static` + `move-result-object v1` pairs chain, then the original `Object.<init>` and
+  `iput-object v1` into field `a`.
+
+The full Home module inventory (45 types) is in `line-patch-map.md`, section "Home tab modules".
+
+**Not confirmed on device.** This is a static finding: the type never appeared in the on-device Home
+module capture from a Taiwan account (8 modules, no `HomeTabLypRecommendation`). The module list is
+region-driven and server-driven, so this needs a tester whose account gets the upsell.
+
 ### Known survivors: premium unsend upsells (patch `Hide premium unsend upsells`)
 
-Two premium-unsend surfaces read config directly, bypassing `e13.a.d()`, so the master lever doesn't
+Two premium-unsend surfaces read config directly, bypassing `e13.a.d()`, so the master lever does not
 hide them — a supplementary patch does:
 
 - **"Unsend discreetly" button** in `UnsendMessageLdsDialog.onViewCreated` (shown only for the
@@ -225,12 +262,12 @@ hide them — a supplementary patch does:
   on the unique string id `0x7f150bff`: (a) force the guarding `instance-of` false so `n3()`/`o3()`
   take the hide branch; (b) `setVisibility(GONE)` on the green button `r3()` inside its
   `if (r3() != null)` guard. `r3()` exists only in the silent dialog —
-  `NormalUnsendMessageLdsDialog.r3()` returns `null` — so this can't affect the ordinary dialog, and
+  `NormalUnsendMessageLdsDialog.r3()` returns `null` — so this cannot affect the ordinary dialog, and
   the silent dialog keeps its working "Unsend" (`p3()`) and "Close" (`m3()`) buttons.
 - **"How to unsend discreetly" promo link** built in the `wi1.j4` constructor, gated on
   `ne1.k2.a(i1.W() && i1.X(), …) == SUPPORTED_CHAT`. `i1.W()` is the shared bit `e13.a.d()` wraps,
   read here directly (one of the 7 non-`e13.a` `i1.W()` readers). Anchored via the unique promo
-  string id `0x7f150bf8` → class `wi1.j4`; the `k2.a` first argument is forced false so the link
+  string id `0x7f150bf8` → class `wi1.j4`. The `k2.a` first argument is forced false so the link
   handler stays null. Obfuscated `Lne1/k2;` drifts — re-verify on version bump.
 - **"Unsend" menu item for messages past the free window** — the biggest upsell ("Give yourself more
   time to delete messages you sent") is reached only by tapping the long-press "Unsend" item on a
@@ -243,4 +280,4 @@ hide them — a supplementary patch does:
   unsend within ~1h is unaffected. Anchored on `fieldAccess(Lj51/a;, p)` (the target read) + the
   readable enum `Lj51/c;->PREMIUM_UNSEND_MESSAGE` (disambiguator; obfuscated `Lj51/a;`/`Lj51/c;`/`p`/`o`
   drift — re-verify on version bump). Note: a premium subscriber applying the bundle also loses 1h–7d
-  unsend; for a non-premium user nothing is lost (those messages were never free-unsendable anyway).
+  unsend. For a non-premium user nothing is lost (those messages were never free-unsendable anyway).

@@ -13,7 +13,7 @@ import com.android.tools.smali.dexlib2.Opcode
  * false hides both, leaving the ordinary "Unsend / Close" dialog intact — its action buttons are
  * separate views.
  *
- * The literal `0x7f150bff` is globally unique; `opcode(INSTANCE_OF)` avoids pinning the drift-prone
+ * The literal `0x7f150bff` is globally unique. `opcode(INSTANCE_OF)` avoids pinning the drift-prone
  * inner-class name `…$a$c`.
  */
 internal object UnsendDiscreetlyButtonFingerprint : Fingerprint(
@@ -27,7 +27,7 @@ internal object UnsendDiscreetlyButtonFingerprint : Fingerprint(
  * Locates `wi1.j4` via the globally-unique "How to unsend discreetly" promo-link string id
  * (`0x7f150bf8`). Its constructor builds the promo link only when
  * `ne1.k2.a(i1.W() && i1.X(), …) == SUPPORTED_CHAT`, so forcing that first argument false leaves the
- * link handler null. The literal pins only the obfuscated class; the `k2.a` call site is then found
+ * link handler null. The literal pins only the obfuscated class. The `k2.a` call site is then found
  * by scanning it.
  */
 internal object UnsendPromoLinkFingerprint : Fingerprint(
@@ -44,7 +44,7 @@ internal object UnsendPromoLinkFingerprint : Fingerprint(
  * yourself more time" upsell in `oe1.c0.a`; past ~7 days the gate fails and no item is added.
  *
  * The premium-window read (`fieldAccess Lj51/a;->p`) is the instruction to rewrite; the readable enum
- * member `Lj51/c;->PREMIUM_UNSEND_MESSAGE` disambiguates the method, since only `y0$y.a` accesses
+ * member `Lj51/c;->PREMIUM_UNSEND_MESSAGE` disambiguates the method, because only `y0$y.a` accesses
  * both. Re-verify all three obfuscated descriptors (`Lj51/a;`, `Lj51/c;`, fields `p`/`o`) on a
  * version bump.
  */

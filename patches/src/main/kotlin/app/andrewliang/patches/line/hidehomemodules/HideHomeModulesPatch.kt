@@ -16,8 +16,9 @@ private const val FILTER_DESC = "(Ljava/util/List;)Ljava/util/List;"
 @Suppress("unused")
 val hideHomeModulesPatch = bytecodePatch(
     name = "Hide Home modules",
-    description = "Hides three modules from the Home tab: the recommended stickers and content " +
-        "section, the real-time hot-topics (即時夯話題) block, and the Home feed ads.",
+    description = "Hides clutter modules on the Home tab: the recommended stickers and content " +
+        "section, the real-time hot-topics (即時夯話題) block, and the ad modules. A separate " +
+        "patch hides the content feed below the friends list.",
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_LINE)
@@ -31,7 +32,11 @@ val hideHomeModulesPatch = bytecodePatch(
     // The filtering loop is a new method x72.h$a.filterHomeModules (backward-branching loops
     // corrupt an existing method's layout when injected inline -> VerifyError). We then inject
     // a branchless call at the top of x72.h$a.<init> to replace p1 (the list) with its
-    // filtered copy before it's stored. One constructor covers every feed build path + copies.
+    // filtered copy before it is stored. One constructor covers every feed build path + copies.
+    //
+    // "Hide Home content feed" prepends the same call shape at the same index. Both are pure
+    // List -> List filters on p1. Thus the patch that applies second runs first, and the
+    // result is the same either way.
     execute {
         // 1. Add the static filter helper method to x72.h$a.
         val cls = mutableClassDefBy(HOME_STATE)

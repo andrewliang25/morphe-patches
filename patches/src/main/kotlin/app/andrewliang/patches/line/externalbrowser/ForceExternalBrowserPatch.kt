@@ -15,8 +15,8 @@ val forceExternalBrowserPatch = bytecodePatch(
 
     // Overwrite the OpenUriActivity$a mode parameter (p3) with EXTERNAL_WITHOUT_CUSTOMTABS at
     // method entry, so the web-URL branch routes into LINE's own native external-browser path.
-    // p3 is only read afterward by a null-check (our constant is non-null) and the mode
-    // switch; non-web URLs skip the switch, so they're unaffected. No coroutine, no extension.
+    // After that, only a null-check reads p3 (our constant is non-null) and the mode switch
+    // reads it. Non-web URLs skip the switch, so they do not change. No coroutine, no extension.
     execute {
         OpenUriIntentBuilderFingerprint.method.addInstructions(
             0,

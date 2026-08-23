@@ -47,14 +47,14 @@ private fun generatePatchList(version: String, patches: Set<Patch<*>>) {
             default = patch.default,
             dependencies = patch.dependencies.map { it.javaClass.simpleName },
             // Map each Compatibility to a JsonCompatibility object with full metadata.
-            // Patches with null compatiblePackages are universal (apply to any app).
+            // A patch with null compatiblePackages is universal and applies to any app.
             compatiblePackages = patch.compatibility?.map { compat ->
                 JsonCompatibility(
                     packageName = compat.packageName!!,
                     name = compat.name,
                     description = compat.description,
                     apkFileType = compat.apkFileType?.name,
-                    // Format as #RRGGBB string for readability; null if not set
+                    // Format as a #RRGGBB string for readability. Null if it is not set.
                     appIconColor = compat.appIconColor?.let { "#%06X".format(it) },
                     signatures = compat.signatures,
                     targets = compat.targets.map { target ->

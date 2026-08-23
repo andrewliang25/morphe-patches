@@ -10,7 +10,7 @@ import app.morphe.patcher.methodCall
  * list banner view and addViews it into the host FrameLayout (p1). Hiding that host once at
  * construction collapses the empty banner strip regardless of the banner's visibility state
  * (the previous `dispatchDraw` hook never fired while the strip was an empty placeholder).
- * `rb0/e` is obfuscated; anchored on the class + the non-obfuscated FrameLayout/`u0` params.
+ * `rb0/e` is obfuscated. Anchored on the class + the non-obfuscated FrameLayout/`u0` params.
  */
 internal object SmartChannelControllerFingerprint : Fingerprint(
     definingClass = "Lrb0/e;",
