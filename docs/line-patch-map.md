@@ -266,9 +266,71 @@ variants, so a literal list reopens the hole on the next rotation. The extension
 `type.startsWith("HomeFeed")` instead. The error and loading placeholders are included on purpose, so
 no orphan spinner or error shell is left where the cards were.
 
+That covers the *module* spinners. It does not cover the page footer spinner, because that spinner
+is not a module. The section that follows covers it.
+
 **No `function.*` config gate exists for this feed.** `function.hometab.*`, `function.line_home.*` and
 `function.my_home.*` carry no feed switch, so filtering the module list is the only cheap mechanism —
 this is not a "force the gate false" surface.
+
+### Filtering a paged list starts a refetch loop — the second and third levers
+
+**The general lesson, before the detail: LINE measures the page *after* our filter runs.** When you
+remove items from a paged surface, the change thus feeds back into the pager. Every future
+list-filtering patch must check whether the surface pages. A patch that does not check ships a
+silent refetch loop. `hidehomefeed` needed two levers more than the filter. The reporter of issue
+ #69 found the first one on `v1.8.0-dev.2`.
+
+**`x72.h$a` is `PageData`.** The ctor is
+`(List, Z, Z, Z, Z, Z, String, Long, Long, I, Z)` and holds, in order: `modules`, `isPageReady`,
+`isPageRefreshing`, `isError`, `isPullToRefreshLoading`, **`isLoadingMore`**, `orderRequestId`,
+`expiredTimeMillis`, `pageUpdatedTimeMillis`, `revision`, `isSafeMode`. The `toString()` of the
+class names every field, thus it gives the order. Cross-check that order against the four consumers
+(`v72/q.java`, `v72/r.java`, `v72/s.java`, `v72/t.java`). **Re-check this order on a version bump.**
+The patch writes ctor parameter 6 by position.
+
+**LINE has no empty state.** `GcsModuleListViewDataFacade.viewDataFlow` (`v72/u.java`) reduces
+`PageData` to `v72.n`:
+
+```java
+if (any x in list has f333354g != 0) return new n.a(revision, list, delayedIsLoadingMore); // Content
+if (isError) return n.b;                                                                   // Error
+return delayedIsPageRefreshing ? n.d : n.c;                                                // Loading : Idle
+```
+
+`x.f333354g` counts the sub-items of the module. "Shows nothing" and "still loads" are thus the
+same state to LINE. The renderer `v72/x0.java` makes lazy-list items from that state. `n.d` becomes
+a whole-page spinner (line 142). Inside `n.a`, an `isLoadingMoreContent` adds the `q2.LOADING_MORE`
+footer (line 291).
+
+**The pager trigger** is `v72/m1.java:81` — `lastVisibleIndex + 6 >= itemCount`, gated on
+`isPageReady`. A tab with no feed is short, thus this condition stays true always. One place reads
+the trigger: `v72/o1.java:38`
+(`GcsPageState$observeEventsForLoadingModuleContent$1`), which calls `d2.B1(shouldLoadMore)`.
+
+**The fetch** is `v72.h2.B1(Z)V` (`v72/h2.java:44`), the one implementation of `B1` that does work.
+`v72/o1.java:38` is its only caller in the app. Each fetch returns feed modules, and the filter
+discards them. The item count does not grow, thus the next fetch starts. The server sends an endless
+feed, so the `i0Var.f229286b` ("no more pages") guard is never true.
+
+| Lever | Site | Injection |
+|---|---|---|
+| 1. filter the list | `x72.h$a.<init>` index 0 | `invoke-static filterHomeFeed` + `move-result-object p1` |
+| 2. hide the footer | same block | `const/4 p6, 0x0` (p6 = `isLoadingMore`, `.locals 0`, 12 registers, so v6) |
+| 3. stop the pager | `v72.h2.B1(Z)V` index 0 | `return-void` |
+
+**Lever 3 is safe because LINE ships an empty `B1` of its own.** `b82/z.java` implements `v72.d2`
+with every method empty, `B1` included. An empty `B1` is thus a state that LINE itself builds. Only
+load-more goes through `B1`. The initial load, the pull-to-refresh and the visibility are separate
+interface methods (`P4`, `R2`, `Q1`, `L`, `r5`, `w6`, `n4`).
+
+**Anchor lever 3 on shape, never on the drift-prone name `B1`.** Use `returnType = "V"`,
+`parameters = ["Z"]`, plus `fieldAccess(type = "Lx72/h;")` and `checkCast("Lm52/i0;")`. On LINE
+26.11.0 that combination matches one method in the whole APK. A sweep of every `.smali` confirms it.
+
+Lever 3 prevents the spinner on its own, but lever 2 stays. Lever 2 costs one instruction on a
+fingerprint that the patch already owns. Field `f` has one reader, thus lever 2 cannot break
+anything else.
 
 ### The feed is region-driven — plan for a remote tester
 

@@ -23,8 +23,13 @@ package app.andrewliang.extension;
  * This helper tests the prefix and not the 14 literal strings. The server rotates between card
  * variants, and it sends different variants to different regions. A Taiwan account gets none
  * of these modules, but a Japanese account gets them. Thus a literal list does not cover the
- * next rotation. The prefix also matches the error and loading types, so no empty spinner or
- * error card stays on the tab.
+ * next rotation. The prefix also matches the error and loading module types, so no empty error
+ * card and no module spinner stays on the tab.
+ *
+ * The prefix does not cover the page footer spinner, because that spinner is not a module. The
+ * Home tab is a paged surface, and LINE measures the page after this filter runs. A tab with no
+ * feed is short. LINE thus asks for page after page, and this filter discards each one. The
+ * patch needs two levers more for that loop. See HideHomeFeedPatch.
  *
  * The Home modules above the feed are a different patch. See HomeModules for the recommended
  * stickers, the hot topics and the ads.
