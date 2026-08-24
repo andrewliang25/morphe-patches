@@ -372,6 +372,99 @@ LINE adds a wanted module under that prefix.
 
 ---
 
+## Ads — bundled SDKs, display coverage, and the parts not patched
+
+Audited on LINE 26.11.0, 2026-08-24. Issue #69 showed that a Taiwan account does not render
+every ad surface, so this audit asks one question. **Does the APK hold an ad that no patch
+covers?** The display answer is no. The parts that stay are below, with the reason for each.
+
+### Bundled ad and tracking SDKs
+
+| SDK | Package | State in the app |
+|---|---|---|
+| Google Mobile Ads (AdMob / AdManager) | `com.google.android.gms.ads` (`smali_classes6`, `smali_classes7`) | Starts by itself through the `MobileAdsInitProvider` content provider (`initOrder=100`), before LINE code runs. App id `ca-app-pub-6968037135561499~1985034154` |
+| LINE Ads SDK v1 (`Lad*`) | `com.linecorp.line.ladsdk` | Inventories `smartch`, `openchat`, `timeline` |
+| LINE Ads SDK v2 (`Lyad*`, LINE Yahoo Ads) | `com.linecorp.line.ladsdk.ui.v2` | The newer tier of the same SDK |
+| Yahoo Japan A-Cookie | `jp.co.yahoo.android.ads.acookie` | An ad identifier. Starts at every app launch in every region — see below |
+| Yahoo edgeAI | `jp.co.yahoo.android.edgeai` (122 classes) | Downloads and deploys on-device models (`LoadModelWorker`, CoreML, model endpoints) |
+
+### Display coverage is complete, and here is the proof
+
+Do not repeat this sweep from memory. Three checks together show that every ad **view** goes
+through a class that `hideadviews` hooks:
+
+- The Google ad view bases have four subclasses in the APK: `fl5/b` gives `fl5/c` and `fl5/d`,
+  and `f93/a` gives `f93/b` and `f93/c`. `fl5/e` and `fl5/f` extend `FrameLayout` directly.
+  Those six are exactly the six that the patch covers.
+- No other `View` subclass in the app names `AdManagerAdView` or `AdView`. The other classes
+  that name them (`al5/d`, `c93/g`, `fl5/a`, `fl5/g`, `f93/h`, `gl5/*`, `jl5/d`) are loaders,
+  view models, or coroutine lambdas, and not views.
+- Inside `ladsdk`, `LadAdView` and `LyadAdView` are the only lifecycle containers. Every other
+  class there (`LadPostHeaderView`, `LadSlotAssetRecyclerView`, the Lights views, and more) is
+  an asset view that lives inside one of the two containers.
+
+### Server-gated ad surfaces
+
+About 80 `function.*` keys gate an ad placement. The server sends these values per account, so
+a region cannot be read from the APK. The list matters because a Taiwan account renders only
+some of them:
+
+| Surface | Key prefix | Render path |
+|---|---|---|
+| Home tab Google banner | `function.hometab.ad_rc.*`, `function.hometab.ads.displayrate*` | Google view, covered |
+| Chats tab Google banner | `function.chattab.ad_rc.*` | Google view, covered |
+| Smart Channel | `function.chattab.smartch.*` | `Hide ad views` and `Remove banner ads` |
+| Album ads | `function.album.ad.*`, `function.moa.album.ad.*` | LAD inventory, covered |
+| Note ads | `function.note.ad.{list,end}_inventory_key` | LAD inventory, covered |
+| OpenChat header ads (4 places) | `function.square.{chatroom,note,thread_space,your_threads}.header_ad.*` | LAD or Google, covered |
+| OpenChat in-stream ads | `function.square.chatroom.integration_ad.*` | **not confirmed** |
+| Official Account talkroom ads | `function.official_account.talkroom_ad.*` | **not confirmed** |
+| Sticker keyboard promo banners | `function.sticker_keyboard.banner.*` | not covered, and not an ad SDK surface |
+
+### Investigated and deliberately not patched
+
+Each item below is patchable. None of them ships, because the gain is invisible and the risk is
+real. **Do not add these to `hideadviews`.** That patch is default-on and device-confirmed, and
+one more anchor that drifts makes the whole patch fail. A drifted anchor thus breaks a visible
+patch to protect something that no user can see.
+
+**The Yahoo A-Cookie startup task.** `s68/a` is `ACookieTask`, a `LineInitializationTask` that
+`o68/i` registers. The body of `f()` is one call to `YJACookieLibrary.init(context)`, with no
+region check and no config gate. `jb0/d` (tagged `"LAD-SDK"`) is a consumer.
+
+A `return-void` stops it. But `init` is not a flag. It resolves `wq7.a` to `tq7.a` to `rq7.j`,
+calls `j.d(context)`, moves a `"COOKIES"` SharedPreferences entry, and registers an
+`Application` lifecycle callback. Without it, `getValue()` and `getValueWithName()` read an
+`rq7.j` whose `SharedPreferences` field is null. That is the shape of the `hidepremium` crash:
+a value that was never null becomes null, and a consumer with no null guard fails. The
+consumers here are LAD SDK code. The gain is one identifier less, while LEGY, Firebase,
+Crashlytics, Sentry and the LINE analytics stay.
+
+**The AdMob content provider.** A manifest patch can remove `MobileAdsInitProvider`. Google
+Mobile Ads also starts on first use, thus the patch delays the start and does not stop it. The
+ad loaders (`al5/d`, `c93/g`, `gl5/*`, `fl5/a`) still run after the views are hidden. If they
+call an SDK that did not start, the patch adds a crash path and hides nothing new.
+
+**Yahoo edgeAI.** A bytecode patch does not make the APK smaller. If the models never load, a
+patch does nothing. If they do load, we do not know what reads them. There is no case either
+way.
+
+### Open, and waiting for a user report
+
+Two display surfaces do not resolve to `LadAdView`, to `LyadAdView`, or to one of the six
+Google wrappers. A Taiwan account renders neither, thus a device report must come first:
+
+- `function.square.chatroom.integration_ad.*` puts ads between the messages of an OpenChat
+  room. The key `embed_ad_interval_minutes` sets the interval.
+- `function.official_account.talkroom_ad.*` puts ads in an Official Account chat room. The
+  table `OfficialAccountTalkroomAdData` holds the data, and `w28` holds the schema. The
+  renderer is not identified.
+
+**Plan a patch when a user reports one of these, and not before.** The audit above is the
+starting point, so no one needs to sweep the APK again.
+
+---
+
 ## Shipped / proposed patches (this line of work)
 
 | Patch (name) | Package | Targets |
