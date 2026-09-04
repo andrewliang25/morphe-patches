@@ -1,49 +1,70 @@
 package app.andrewliang.patches.line.hidepremium
 
 import app.morphe.patcher.Fingerprint
-import app.morphe.patcher.string
+import app.morphe.patcher.fieldAccess
 
 /**
- * `b13.l.h()Z` — a sibling accessor in the LYP premium facade impl
- * (`com.linecorp.line.lyppremium.impl.LypPremiumFacadeImpl`, obfuscated `b13.l`). Anchored on the
- * globally-unique, non-obfuscated string `"LITE_ENJOY"` to locate the (fully obfuscated) facade
- * class. We do NOT patch `h()`. From the class we read `z()` to resolve the market-availability
- * config gate `e13.a.d()` and force it false. Obfuscated types (`b13.l`, `e13.a`, `t13.q`) drift
- * between versions, so we never hardcode them.
+ * `z73.k.z(PremiumStateBatchedSyncWorker$b)Object` — the premium-state sync entry point of the LYP
+ * premium facade impl (`com.linecorp.line.lyppremium.impl.LypPremiumFacadeImpl`, obfuscated
+ * `z73.k`). We do NOT patch it. It is matched because it both identifies the fully obfuscated
+ * facade class AND opens with the market-availability gate pair, so the patch reads the gate
+ * straight off this method:
+ *
+ *     invoke-virtual {p0}, Lz73/k;->D()La83/a;        # the config holder
+ *     invoke-virtual {v0}, La83/a;->d()Z              # the market gate  <- what we neuter
+ *     if-nez v0, :cond_0
+ *     sget-object p1, Lq83/a$a;->FEATURE_UNAVAILABLE:Lq83/a$a;
+ *
+ * Both anchors survive obfuscation: `PremiumStateBatchedSyncWorker` is name-kept because
+ * WorkManager instantiates it reflectively, and `FEATURE_UNAVAILABLE` is a Kotlin enum constant
+ * name. Only two methods in the APK take that parameter type — this one and the facade
+ * interface's abstract declaration, which has no body and so cannot satisfy an instruction
+ * filter. The obfuscated types (`z73.k`, `a83.a`, `q83.a$a`) are never hardcoded.
+ *
+ * Replaces an earlier anchor on the string `"LITE_ENJOY"` inside a `()Z` accessor. LINE 26.14.0
+ * deleted that accessor and moved the predicate into a suspend evaluator, so the old fingerprint
+ * matched nothing. This one matches 26.11.0 as well.
  */
 internal object PremiumFacadeFingerprint : Fingerprint(
-    returnType = "Z",
+    returnType = "Ljava/lang/Object;",
+    parameters = listOf(
+        "Lcom/linecorp/line/lyppremium/impl/worker/PremiumStateBatchedSyncWorker\$b;",
+    ),
     filters = listOf(
-        string("LITE_ENJOY"),
+        fieldAccess(name = "FEATURE_UNAVAILABLE"),
     ),
 )
 
 /**
- * `vc4.k0.h(String, Z)Unit` — a sibling in the premium-backup facade impl (`vc4.k0`, which
- * implements the premium-backup facade interface `ic4.d`). Anchored on the non-obfuscated
- * WorkManager unique-name `"PremiumBackupStatusSyncWorker"`.
- *
- * That string is not globally unique — it also appears in the worker helper
- * `com.linecorp.line.premium.backup.impl.common.worker.a.a()V` — so the `(String, Z)Unit`
- * signature is pinned to disambiguate. The two enclosing methods share nothing else.
+ * `bk4.k0.h(String, Z)Unit` — a sibling in the premium-backup facade impl (`bk4.k0`, which
+ * implements the premium-backup facade interface `nj4.d`).
  *
  * We do NOT patch `h()`. We only need its `definingClass` to reach the premium-backup
- * availability gate `ic4.d.j()` (see the patch). `vc4.k0`, `vc4.a0` and `ic4.d` are all
+ * availability gate `nj4.d.m()` (see the patch). `bk4.k0`, `bk4.z` and `nj4.d` are all
  * obfuscated and drift between versions, so none of them is hardcoded.
+ *
+ * Anchored on the descriptor plus `Lkotlin/Unit;->INSTANCE`, both framework types R8 never
+ * renames. `(String, Z)Lkotlin/Unit;` occurs exactly twice in the APK — here and the facade
+ * interface's abstract declaration, which has no body and so cannot satisfy an instruction
+ * filter.
+ *
+ * Replaces an earlier anchor on the string `"PremiumBackupStatusSyncWorker"`, which LINE 26.14.0
+ * extracted out of this method into the (now obfuscated) worker helper `al4.l.b(String, Z)V`,
+ * leaving `h()` a three-line delegate with no string of its own.
  */
 internal object PremiumBackupFacadeFingerprint : Fingerprint(
     returnType = "Lkotlin/Unit;",
     parameters = listOf("Ljava/lang/String;", "Z"),
     filters = listOf(
-        string("PremiumBackupStatusSyncWorker"),
+        fieldAccess(definingClass = "Lkotlin/Unit;", name = "INSTANCE"),
     ),
 )
 
 /**
- * `x72.h$a.<init>(List<m52.z>, ...)` — the constructor of the Home Compose UI state. The state
+ * `lb2.g$a.<init>(List<y82.j0>, ...)` — the constructor of the Home Compose UI state. The state
  * holds the module list that the tab shows, in field `a`, the first ctor argument. The Home LYP
  * upsell module comes to the tab in that list. The master premium lever does not hide it,
- * because the module renderer `ac2.k` and its view model `ac2.n` read no premium gate.
+ * because the module renderer and its view model read no premium gate.
  *
  * This object is a third copy of the same fingerprint, after `hidehomemodules` and
  * `hidehomefeed`. Each patch keeps its own copy, because the three patches are independent. The
@@ -51,7 +72,7 @@ internal object PremiumBackupFacadeFingerprint : Fingerprint(
  * this constructor. The order does not matter (see HidePremiumPatch).
  */
 internal object HomeStateCtorFingerprint : Fingerprint(
-    definingClass = "Lx72/h\$a;",
+    definingClass = "Llb2/g\$a;",
     name = "<init>",
     returnType = "V",
     parameters = listOf(

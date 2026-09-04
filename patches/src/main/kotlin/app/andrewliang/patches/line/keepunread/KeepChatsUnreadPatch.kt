@@ -14,7 +14,7 @@ val keepChatsUnreadPatch = bytecodePatch(
 ) {
     compatibleWith(COMPATIBILITY_LINE)
 
-    // ReadWorkerFingerprint resolves q33.e.d — the only caller of TalkServiceClient.j1 — which
+    // ReadWorkerFingerprint resolves na3.e.d — the only caller of TalkServiceClient.c1 — which
     // identifies the read-manager class. Both open-on-view and manual mark-as-read funnel
     // through that worker (local read + server receipt), but only the OPEN path reaches it via
     // the sibling wrapper b(String, String) (its sole caller is the auto-read-on-view

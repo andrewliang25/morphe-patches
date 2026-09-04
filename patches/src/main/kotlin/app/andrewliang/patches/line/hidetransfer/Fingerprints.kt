@@ -4,25 +4,25 @@ import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.fieldAccess
 
 /**
- * The "+" attach-menu **Transfer** tile (LINE Pay money transfer) is `hg1.k`, an `hg1.r` subclass.
- * Its constructor is the only method that READS the attach-item type constant `fg1.a$b.PAY`
+ * The "+" attach-menu **Transfer** tile (LINE Pay money transfer) is `yi1.j`, an `yi1.p` subclass.
+ * Its constructor is the only method that READS the attach-item type constant `wi1.b$b.PAY`
  * (`sget`); the enum's own `<clinit>` merely writes it (`sput`), and the constructor's parameter
- * list excludes that clinit. From the resolved constructor we take `definingClass` (`Lhg1/k;`) and
+ * list excludes that clinit. From the resolved constructor we take `definingClass` (`Lyi1/j;`) and
  * neuter the class's availability predicate `j(...)`.
  */
 internal object TransferAttachButtonFingerprint : Fingerprint(
     returnType = "V",
     parameters = listOf(
         "Ln/c;",
-        "Lac3/b;",
-        "Lmm3/c;",
-        "Lv01/c;",
-        "Lr11/b;",
-        "Lgg1/c;",
-        "Lna1/k;",
-        "Laf1/d3\$e;",
+        "Lwi3/b;",
+        "Lnt3/c;",
+        "Ll31/c;",
+        "Lh41/c;",
+        "Lxi1/b;",
+        "Lhd1/l;",
+        "Lxh1/v1\$g;",
     ),
     filters = listOf(
-        fieldAccess(definingClass = "Lfg1/a\$b;", name = "PAY"),
+        fieldAccess(definingClass = "Lwi1/b\$b;", name = "PAY"),
     ),
 )

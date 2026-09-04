@@ -19,7 +19,7 @@ object Constants {
         appIconColor = 0x06C755, // LINE brand green.
         targets = listOf(
             AppTarget(
-                version = "26.11.0",
+                version = "26.14.0",
             ),
         ),
     )

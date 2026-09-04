@@ -60,10 +60,10 @@ val hidePremiumUnsendPatch = bytecodePatch(
             dialogMethod.addInstructions(instanceOfMatch.index + 1, "const/16 v$reg, 0x0")
         }
 
-        // --- 2) "How to unsend discreetly" promo link (wi1.j4 constructor) ---
-        // The link handler is created only when `k2.a(i1.W() && i1.X(), …) == SUPPORTED_CHAT`.
+        // --- 2) "How to unsend discreetly" promo link (nl1.b5 constructor) ---
+        // The link handler is created only when `k2.a(i1.Z() && i1.a0(), …) == SUPPORTED_CHAT`.
         // Force k2.a's first argument (the W()&&X() result) to 0 so it returns non-SUPPORTED and
-        // the link stays null. k2.a is called exactly once in this class. Obfuscated `Lne1/k2;`
+        // the link stays null. k2.a is called exactly once in this class. Obfuscated `Lkh1/i2;`
         // drifts between versions (re-verify on version bump).
         val promoClass = mutableClassDefBy(UnsendPromoLinkFingerprint.method.definingClass)
         var promoPatched = false
@@ -71,7 +71,7 @@ val hidePremiumUnsendPatch = bytecodePatch(
             val methodInstructions = method.implementation?.instructions?.toList() ?: return@forEachMethod
             val callIndex = methodInstructions.indexOfFirst { instruction ->
                 val ref = (instruction as? ReferenceInstruction)?.reference as? MethodReference
-                ref?.definingClass == "Lne1/k2;" && ref.name == "a"
+                ref?.definingClass == "Lkh1/i2;" && ref.name == "a"
             }
             if (callIndex < 0) return@forEachMethod
             val firstArgReg = (methodInstructions[callIndex] as FiveRegisterInstruction).registerC
@@ -81,10 +81,10 @@ val hidePremiumUnsendPatch = bytecodePatch(
         if (!promoPatched) throw PatchException("unsend promo-link k2.a call not found in ${promoClass.type}")
 
         // --- 3) Remove the "Unsend" menu item for messages past the FREE unsend window ---
-        // ne1.y0$y.a adds the long-press "Unsend" item only if `sentTime + window >= now`. For
-        // premium-eligible chats `window` is the premium window (~7d, Lj51/a;->p), so the item
+        // kh1.x0$b0.a adds the long-press "Unsend" item only if `sentTime + window >= now`. For
+        // premium-eligible chats `window` is the premium window (~7d, Lc81/a;->p), so the item
         // survives for old messages and tapping it triggers the "Give yourself more time" upsell in
-        // oe1.c0.a. Rewrite that read to the FREE window (Lj51/a;->o, ~1h) so the gate uses the free
+        // UnsendLitePlanUpgradePopupFragment. Rewrite that read to the FREE window (Lc81/a;->o, ~1h) so the gate uses the free
         // window for all chats: the item then disappears past ~1h exactly like it already does past
         // 7d — no item, no upsell. Within ~1h, unsend still works (the item is still added and its
         // tap path is unchanged).
@@ -92,7 +92,7 @@ val hidePremiumUnsendPatch = bytecodePatch(
             val read = premiumWindowRead.instruction as TwoRegisterInstruction
             UnsendMenuAgeGateFingerprint.method.replaceInstruction(
                 premiumWindowRead.index,
-                "iget v${read.registerA}, v${read.registerB}, Lj51/a;->o:I",
+                "iget v${read.registerA}, v${read.registerB}, Lc81/a;->o:I",
             )
         }
     }
