@@ -91,3 +91,33 @@ internal object ContextMenuCalendarProviderFingerprint : Fingerprint(
         fieldAccess(definingClass = "Lc81/c;", name = "CALENDAR"),
     ),
 )
+
+/**
+ * `lb2.g$a.<init>(List<y82.j0>, ...)` — the constructor of the Home Compose UI state. Every GCS
+ * page state, including the Home tab's **Friends sub-tab**, funnels its rendered module list
+ * through this one constructor as the first argument (field `a`), so filtering the list here also
+ * covers the Friends sub-tab.
+ *
+ * The Friends sub-tab shows LINE Calendar as its own block, module type `FriendsSubTabCalendar`
+ * (`y82.k0$h`). That block is a 6th Calendar surface, and none of the five instruction-level
+ * levers above touch it: it is server-driven list data, not a statically-built button.
+ *
+ * This is a fourth copy of the same fingerprint, after `hidehomemodules`, `hidehomefeed` and
+ * `hidepremium`. Each patch keeps its own copy, because the four patches are independent and the
+ * user can apply any one alone. All four prepend a `List -> List` filter call at index 0 of this
+ * constructor, and each filter only drops its own module types, so the order does not matter.
+ */
+internal object HomeStateCtorFingerprint : Fingerprint(
+    definingClass = "Llb2/g\$a;",
+    name = "<init>",
+    returnType = "V",
+    parameters = listOf(
+        "Ljava/util/List;",
+        "Z", "Z", "Z", "Z", "Z",
+        "Ljava/lang/String;",
+        "Ljava/lang/Long;",
+        "Ljava/lang/Long;",
+        "I",
+        "Z",
+    ),
+)
