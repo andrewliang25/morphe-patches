@@ -1,9 +1,13 @@
 # LINE patch map & findings
 
 Reference notes for authoring LINE (`jp.naver.line.android`) patches, distilled from decompiling
-**LINE 26.11.0** (the version pinned in `app/andrewliang/patches/shared/Constants.kt`).
+**LINE 26.14.0** (the version pinned in `app/andrewliang/patches/shared/Constants.kt`).
 
-> ⚠️ **Obfuscation drift.** Names like `hg1.d`, `az0.q`, `d00.z`, `ne1.y0$c`, `fg1.a$b`, `r51.a`
+> Descriptors were remapped from 26.11.0 to 26.14.0 on 2026-09-03. Device-confirmation notes below
+> record the version each behaviour was *tested* on, which may still read 26.11.0; the descriptors
+> around them are 26.14.0.
+
+> ⚠️ **Obfuscation drift.** Names like `yi1.d`, `q11.q`, `z00.n`, `kh1.x0$c`, `wi1.b$b`, `k81.a`
 > are R8-obfuscated and **change between LINE versions**. The concepts and anchoring strategies are
 > durable; re-confirm every descriptor against the decompiled smali on a version bump. Prefer
 > anchors obfuscation cannot touch: Kotlin **enum-constant names** (`CALENDAR`, `GIFT`), **string
@@ -57,53 +61,53 @@ references.
 
 ## Chat "+" attach menu
 
-Built by **`gg1.e.r(boolean)`** (`smali_classes9/gg1/e.smali`; jadx `gg1/e.java`), the RecyclerView
+Built by **`xi1.c.r(boolean)`** (`smali_classes9/xi1/c.smali`; jadx `xi1/c.java`), the RecyclerView
 adapter for the attach grid (item layout `R.layout.chat_ui_attach_grid_item`). It concatenates two
-kinds of items into one `[Lhg1/a;` array, then keeps each only if `((hg1.a) item).f(...)` returns
+kinds of items into one `[Lyi1/a;` array, then keeps each only if `((yi1.a) item).f(...)` returns
 true:
 
-1. **Static local tiles** — one `hg1.r` subclass each, constructed inline in `gg1.e.r()`.
-2. **Server-driven services** — a runtime-fetched list (`r11.d.c()` → `List<r51.a>`); each entry
-   becomes one `hg1.d` (the single shared "ChatAppButtonType" class), built in the loop at
-   `gg1/e.smali:827`. If the list is not cached yet it returns `[]` and kicks off an async fetch,
+1. **Static local tiles** — one `yi1.p` subclass each, constructed inline in `xi1.c.r()`.
+2. **Server-driven services** — a runtime-fetched list (`h41.d.c()` → `List<k81.a>`); each entry
+   becomes one `yi1.d` (the single shared "ChatAppButtonType" class), built in the loop at
+   `xi1/c.smali:827`. If the list is not cached yet it returns `[]` and kicks off an async fetch,
    then re-renders.
 
-### Item gates (`hg1.r` / `hg1.a`)
+### Item gates (`yi1.p` / `yi1.a`)
 
-`hg1.r.f(Lgi1/b;Lfg1/a;Lhg1/a$a;)Z` is the visibility gate. It shows an item only when: the chat
-type is in the item's allowed set **AND** `j(Lgi1/b;)Z` (per-type availability) **AND** `k(...)`
+`yi1.p.f(Lxk1/b;Lwi1/b;Lyi1/a$a;)Z` is the visibility gate. It shows an item only when: the chat
+type is in the item's allowed set **AND** `j(Lxk1/b;)Z` (per-type availability) **AND** `k(...)`
 **AND** `l(...)` all pass. So **forcing `j()` false hides a static tile**. Forcing `f()` false hides
 whatever class owns that `f()`.
 
-### Static tiles (LINE 26.11.0)
+### Static tiles (LINE 26.14.0)
 
-| Tile (label) | Class | ctor type constant (`Lfg1/a$b;->…`) | `j()` availability |
+| Tile (label) | Class | ctor type constant (`Lwi1/b$b;->…`) | `j()` availability |
 |---|---|---|---|
-| Calendar (`line_calendar_plusmenu_calendar`) | `hg1.b` | `CALENDAR` | `return true` |
-| Message scheduler (`chat_plusmenu_button_scheduledmessages`) | `hg1.s` | `SCHEDULED_MESSAGE` | schedule-a-message composer |
-| Transfer / LINE Pay (`chathistory_attach_dialog_label_select_linepay`) | `hg1.k` | `PAY` | `contains(dl3.a.PAY)` |
-| LINE GIFT (`chathistory_attach_dialog_label_giftshop`) | `hg1.h` | `GIFT` | `contains(dl3.a.GIFT)` |
-| Files `hg1.g`, Contact `hg1.f`, Location `hg1.m`, Voice `hg1.t`, Keep `hg1.i`, PayPay `hg1.p`, Live talk `hg1.l`, LINE MUSIC `hg1.n` | — | (their own) | — |
+| Calendar (`line_calendar_plusmenu_calendar`) | `yi1.b` | `CALENDAR` | `return true` |
+| Message scheduler (`chat_plusmenu_button_scheduledmessages`) | `yi1.s` | `SCHEDULED_MESSAGE` | schedule-a-message composer |
+| Transfer / LINE Pay (`chathistory_attach_dialog_label_select_linepay`) | `yi1.j` | `PAY` | `contains(ds3.a.PAY)` |
+| LINE GIFT (`chathistory_attach_dialog_label_giftshop`) | `yi1.h` | `GIFT` | `contains(ds3.a.GIFT)` |
+| Files `yi1.g`, Contact `yi1.f`, Location `yi1.m`, Voice `yi1.t`, Keep `yi1.i`, PayPay `yi1.p`, Live talk `yi1.l`, LINE MUSIC `yi1.n` | — | (their own) | — |
 
 **To hide one static tile** (used by "Hide Transfer button", "Hide LINE GIFT button" and the Calendar
-`+` tile): anchor its ctor on the **unique read of its `fg1.a$b` type constant** — each constant is read
+`+` tile): anchor its ctor on the **unique read of its `wi1.b$b` type constant** — each constant is read
 in that one ctor only, and pinning the ctor's parameter list excludes the enum's `<clinit>` `sput` —
-then `mutableClassDefBy(fp.method.definingClass)`, select `j(Lgi1/b;)Z` by descriptor, and prepend
+then `mutableClassDefBy(fp.method.definingClass)`, select `j(Lxk1/b;)Z` by descriptor, and prepend
 `const/4 p0, 0x0` / `return p0`.
 
 ### Server-driven services — Poll, Reservation, Schedule, Ladder shuffle, …
 
-These come from the server (category `e38.a.EnumC2123a.MORE`, mapped `e38.a`→`r51.a` in `r11.e.c()`).
-`r51.a` (ChatAppViewData) = `{id, name, iconUrl, url, showNewBadge, availableChatTypes}` — labels,
+These come from the server (category `e38.a.EnumC2123a.MORE`, mapped `e38.a`→`k81.a` in `h41.e.c()`).
+`k81.a` (ChatAppViewData) = `{id, name, iconUrl, url, showNewBadge, availableChatTypes}` — labels,
 icons and destinations all come from the server payload, **not** from local resources. (The
 `chathistory_attach_dialog_label_poll/schedule/ladder_shuffle/reservation` strings still exist in
 `res/` but are **dead** — unreferenced by any smali.)
 
-- **Hide the whole category (stable):** every service is an `hg1.d`, built *only* in `gg1.e`, so forcing
-  **`hg1.d.f(Lgi1/b;Lfg1/a;Lhg1/a$a;)Z`** to `return false` drops them all at once with no dependency on
-  the drifting server payload. This is **"Hide attach menu extra tools"**. Anchor: `hg1.d.f` is the only
-  `f(...)Z` reading `Lr51/a;->f` (its `availableChatTypes` set), which separates it from the sibling
-  `f()` overrides in `hg1.a`/`hg1.r`.
+- **Hide the whole category (stable):** every service is an `yi1.d`, built *only* in `xi1.c`, so forcing
+  **`yi1.d.f(Lxk1/b;Lwi1/b;Lyi1/a$a;)Z`** to `return false` drops them all at once with no dependency on
+  the drifting server payload. This is **"Hide attach menu extra tools"**. Anchor: `yi1.d.f` is the only
+  `f(...)Z` reading `Lk81/a;->f` (its `availableChatTypes` set), which separates it from the sibling
+  `f()` overrides in `yi1.a`/`yi1.p`.
 - **Hide one service (fragile — avoid):** a single service is identifiable only by its LINE service
   **channel id** (Schedule/create-event = `"1655112642"` real / `"1651805621"` beta, in enum
   `jg1.a$a.SCHEDULE` → `et1.s.g.SCHEDULE`). Channel ids are server-assigned and can change, so such a
@@ -115,35 +119,35 @@ icons and destinations all come from the server payload, **not** from local reso
 
 Easy to conflate. They are separate features with separate entry points, gates, and destinations.
 
-**Calendar** (native LINE Calendar; strings `line_calendar_*`; feature gate interface `jp0.d`, impl
-`pp0.g`). Five in-messenger entry points, all removed by **"Hide calendar buttons"**:
+**Calendar** (native LINE Calendar; strings `line_calendar_*`; feature gate interface `or0.d`, impl
+`wr0.j`). Five in-messenger entry points, all removed by **"Hide calendar buttons"**:
 
 | Surface | Class / anchor | Hide technique |
 |---|---|---|
-| Chats-tab header button | `az0.q.CALENDAR` added to list `fb8.b` in `gw1.f.<init>` | remove the `sget CALENDAR` + following `add(...)` pair |
-| Chat-room top toolbar | `ed1.d0.a`, `ed1.g1.CALENDAR_BUTTON` (two add-sites) via `ed1.s1.g(...)` | remove both `sget CALENDAR_BUTTON` + `g(...)` pairs |
-| `+` attach tile | `hg1.b` (see attach-menu section) | force `j()` false |
-| Slide-out chat-menu "Calendar" row | `d00.o` (holds `f11.b`), opens native Calendar Activity via `jp0.g` | force the row's `isVisible` ctor arg (`d00.a.e`) false |
-| Message long-press "Calendar" | provider `ne1.y0$c.a(Context,v01.a,j51.a,Z)Lj51/c;` (reads `j51.c.CALENDAR`) | force it to `return null` |
+| Chats-tab header button | `q11.q.CALENDAR` added to list `ki8.b` in `qz1.f.<init>` | remove the `sget CALENDAR` + following `add(...)` pair |
+| Chat-room top toolbar | `ag1.d0.a`, `ag1.g1.CALENDAR_BUTTON` (two add-sites) via `ag1.s1.g(...)` | remove both `sget CALENDAR_BUTTON` + `g(...)` pairs |
+| `+` attach tile | `yi1.b` (see attach-menu section) | force `j()` false |
+| Slide-out chat-menu "Calendar" row | `z00.l` (holds `v31.b`), opens native Calendar Activity via `or0.g` | force the row's `isVisible` ctor arg (`z00.a.e`) false |
+| Message long-press "Calendar" | provider `kh1.x0$c.a(Context,l31.a,c81.a,Z)Lc81/c;` (reads `c81.c.CALENDAR`) | force it to `return null` |
 
 **Events** (chat-menu row, `chatmenu_mainlist_button_events`) — **one** entry point only. A generic
-`d00.z` row built in `ChatHistoryMenuFragment` (~the `d00.z.<init>` block using string `0x7f150dfa`
-+ icon `0x7f0807ce`), gated by the boolean field `Lyz/s4;->l:Z` (the sole UI read of that field).
+`z00.n` row built in `ChatHistoryMenuFragment` (~the `z00.n.<init>` block using string `0x7f150e87`
++ icon `0x7f0807ce`), gated by the boolean field `Lv00/o4;->l:Z` (the sole UI read of that field).
 Opens a **server-configured web page** (`settings.e$c.D`), not the native calendar. Removed by
-**"Hide Events button"** — because `d00.z` is shared by other rows, patch at the build site: replace
-the `iget-boolean … s4.l` (matched by `fieldAccess(Lyz/s4;,"l")` + `literal(0x7f150dfa)`) with a
+**"Hide Events button"** — because `z00.n` is shared by other rows, patch at the build site: replace
+the `iget-boolean … s4.l` (matched by `fieldAccess(Lv00/o4;,"l")` + `literal(0x7f150e87)`) with a
 `const 0` into the same register.
 
-**Message scheduler** ("send a message later"; `hg1.s`, strings `chat_scheduledmessages_*`) —
+**Message scheduler** ("send a message later"; `yi1.s`, strings `chat_scheduledmessages_*`) —
 unrelated to Calendar/Events; opens the scheduled-message composer (`yr1.a`/`xr1.b`). Not currently
 patched.
 
-### Chats-tab header button set (context for `az0.q`)
+### Chats-tab header button set (context for `q11.q`)
 
 The header button row (Chats tab, `com.linecorp.line.chattab.header.ChatTabHeaderStateImpl` =
-`gw1.f`) is built from the Kotlin enum **`az0.q`** (constants `AI_FRIEND, ALBUM, CALENDAR, OPEN_CHAT,
-PLUS_MENU` — names survive obfuscation). Buttons are `sget-object <az0.q const>` + `add(...)` into a
-`ListBuilder` `fb8.b`. A separate green-dot icon `Set` uses `fb8.j` and does **not** include
+`qz1.f`) is built from the Kotlin enum **`q11.q`** (constants `AI_FRIEND, ALBUM, CALENDAR, OPEN_CHAT,
+PLUS_MENU` — names survive obfuscation). Buttons are `sget-object <q11.q const>` + `add(...)` into a
+`ListBuilder` `ki8.b`. A separate green-dot icon `Set` uses `ki8.j` and does **not** include
 `CALENDAR`. To hide a header button, remove its `sget`+`add` pair (see "Hide calendar buttons" header
 row, and the sibling "Hide community button" which targets `OPEN_CHAT`).
 
@@ -171,7 +175,7 @@ enum is **not obfuscated**, so fingerprint on `returnType = "Ljava/util/List;"` 
 **`COMMERCE`, `COMMERCE_TW`, `SQUARE` and `TIMELINE` share one `if`/`else-if` chain**, competing for a
 single slot. Two rules follow:
 
-- **Remove the `sget`+`add` pair; never force the gate false.** Forcing `jw4.u.h()`
+- **Remove the `sget`+`add` pair; never force the gate false.** Forcing `g45.u.h()`
   (`CommerceTabConfiguration.isCommerceTabEnabled`) false falls *through* the chain and surfaces
   `SQUARE` or `TIMELINE` in the freed slot — a tab the user never had. Removing only the body leaves
   the branch's trailing `goto`, so the slot stays empty, as stock LINE does when the gate is on.
@@ -199,37 +203,51 @@ screenshot. That is the only step separating "the instructions are gone" from "t
 
 ## Home tab modules
 
-The Home tab renders a single server-driven `List<m52.z>`. Everything on the tab is one of these
+The Home tab renders a single server-driven `List<y82.j0>`. Everything on the tab is one of these
 modules — the friends list, the service icons, the ads, and the whole content feed below the friends
 list. Three patches filter that list: *Hide Home modules*, *Hide Home content feed*, and
 *Disable LINE Premium*. If you change this surface, update all three call sites.
 
-**The chain.** `v52.g.a(Ls52/i;Lm52/m0;)` assembles the list from the GCS response (one giant
+**The chain.** `v52.g.a(Ls52/i;Ly82/y0;)` assembles the list from the GCS response (one giant
 `packed-switch` over the payload oneof; **jadx fails on this method** — `Method not decompiled` — so
 read `apktool/smali_classes9/v52/g.smali`; the `FLEX` arm is separate, at `v52/g.smali:5748` and
 `jadx/sources/v52/j.java:191`). The list is stored as the first ctor arg (field `a`) of the Compose
-state `x72.h$a`, and rendered at `v72/c2.java:296-300` via `r72.d(z.f229498a, z.f229502e.getType())`.
+state `lb2.g$a`, and rendered at `jb2/c2.java:296-300` via `r72.d(z.f229498a, z.f229502e.getType())`.
 
-**Where to filter: `x72.h$a.<init>(List, Z×5, String, Long, Long, I, Z)`, index 0.** Every build path
+**Where to filter: `lb2.g$a.<init>(List, Z×5, String, Long, Long, I, Z)`, index 0.** Every build path
 and every state copy funnels through this constructor, so one branchless
 `invoke-static {p1}` + `move-result-object p1` covers the whole tab. Two rules, both learned the hard
 way:
 
 - **The loop must live in a new method.** A backward-branching loop injected into an existing method
   corrupts the branch layout into a runtime `VerifyError`. Add
-  `x72.h$a.filterHomeModules` / `filterHomeFeed` / `filterPremiumModules` with
+  `lb2.g$a.filterHomeModules` / `filterHomeFeed` / `filterPremiumModules` with
   `mutableClassDefBy(...).methods.add(...)` and inject only the call.
 - **All three patches prepend at index 0, and that is safe.** Each one is a pure `List → List`
   filter on `p1`. Thus the patch that applies last runs first. The dex confirms it: the ctor starts
   with the `invoke-static` + `move-result-object v1` pairs chained, then the original
   `Object.<init>` + `iput-object v1 → field a`.
-- The earlier target `i52.c.e` built only the Friends sub-tab list (a single
+- The earlier target `u82.c.e` built only the Friends sub-tab list (a single
   `FriendsSubTabFriendsList`), not the feed — confirmed via on-device logging.
 
-### Module type inventory (LINE 26.11.0) — 45 types
+### Module type inventory (LINE 26.14.0) — 48 types
 
-`m52.a0` is a marker interface with one member, `getType() : String`. 43 implementations are nested
-in `m52/a0.java`; **two are top-level and easy to miss** (`m52.c0`, `m52.d0`).
+`y82.k0` is a marker interface with one member, `getType() : String`. Most implementations are
+nested in `y82/k0.java`; **three are top-level and easy to miss** (`y82.m0`, `y82.n0`, `y82.o0`).
+
+The `Class` column below still carries the 26.11.0 nested-class letters (`a0$…`); the owning
+interface is now `y82.k0`, and the letters shifted with it (for example
+`HomeTabLypRecommendation` is `k0$q0`, was `a0$n0`). The `getType()` strings are the durable
+identifiers and all survive verbatim — the patches match on those, never on the letters.
+
+**Three types are new since 26.11.0** (45 → 48) and are *not* in any blocklist yet:
+`GlobalHomeRecommendedSticker`, `GlobalHomeLoungeHoroscope` and
+`GcsGlobalHomeActivityHybridContentCard` (top-level `y82.n0`). Nothing was removed. The first two
+look like **Hide Home modules** candidates if they render in any region — that needs a full
+hidden-vs-kept inventory and its own device pass before the blocklist widens.
+
+Regenerate this diff on a bump by extracting the `const-string` from every `getType()` in the
+classes referencing `Ly82/k0;` and comparing old tree to new.
 
 | `getType()` | Class | Surface | Status |
 |---|---|---|---|
@@ -249,9 +267,9 @@ in `m52/a0.java`; **two are top-level and easy to miss** (`m52.c0`, `m52.d0`).
 | `GlobalHomePageError`, `GlobalHomeError`, `GlobalHomePageLoading` | `a0$l`, `a0$n`, `a0$m` | whole-tab error / loading | kept |
 | `CommerceTwTabFriendshipGifts`, `-GreetingBanners`, `-QuickPolls`, `-Shortcuts` | `a0$b`–`a0$e` | the TW commerce tab | kept |
 | `HomeActivityCard` | `a0$q` | recommendation surface (`contentList` / `extraContentList`) | **not blocked** — no device evidence |
-| `GcsHomeActivityHybridContentCard` | `m52.d0` (top-level) | the hybrid variant of the above | **not blocked** — no device evidence |
+| `GcsHomeActivityHybridContentCard` | `y82.o0` (top-level) | the hybrid variant of the above | **not blocked** — no device evidence |
 | `HomeTabLypRecommendation` | `a0$n0` | LYP premium upsell | **Disable LINE Premium** (third lever, no device evidence — see `line-premium-map.md`) |
-| `GcsDummyHybridModule` | `m52.c0` (top-level) | dev/dummy, no renderer | kept |
+| `GcsDummyHybridModule` | `y82.m0` (top-level) | dev/dummy, no renderer | kept |
 
 **Take this table from jadx, never from a smali grep.** 17 of the 43 nested classes are Kotlin
 singletons whose `getType()` returns a `static final` field, so a grep for the literal nearest
@@ -281,16 +299,16 @@ list-filtering patch must check whether the surface pages. A patch that does not
 silent refetch loop. `hidehomefeed` needed two levers more than the filter. The reporter of issue
  #69 found the first one on `v1.8.0-dev.2`.
 
-**`x72.h$a` is `PageData`.** The ctor is
+**`lb2.g$a` is `PageData`.** The ctor is
 `(List, Z, Z, Z, Z, Z, String, Long, Long, I, Z)` and holds, in order: `modules`, `isPageReady`,
 `isPageRefreshing`, `isError`, `isPullToRefreshLoading`, **`isLoadingMore`**, `orderRequestId`,
 `expiredTimeMillis`, `pageUpdatedTimeMillis`, `revision`, `isSafeMode`. The `toString()` of the
 class names every field, thus it gives the order. Cross-check that order against the four consumers
-(`v72/q.java`, `v72/r.java`, `v72/s.java`, `v72/t.java`). **Re-check this order on a version bump.**
+(`jb2/q.java`, `jb2/r.java`, `jb2/s.java`, `jb2/t.java`). **Re-check this order on a version bump.**
 The patch writes ctor parameter 6 by position.
 
-**LINE has no empty state.** `GcsModuleListViewDataFacade.viewDataFlow` (`v72/u.java`) reduces
-`PageData` to `v72.n`:
+**LINE has no empty state.** `GcsModuleListViewDataFacade.viewDataFlow` (`jb2/w.java`) reduces
+`PageData` to `jb2.n`:
 
 ```java
 if (any x in list has f333354g != 0) return new n.a(revision, list, delayedIsLoadingMore); // Content
@@ -299,34 +317,34 @@ return delayedIsPageRefreshing ? n.d : n.c;                                     
 ```
 
 `x.f333354g` counts the sub-items of the module. "Shows nothing" and "still loads" are thus the
-same state to LINE. The renderer `v72/x0.java` makes lazy-list items from that state. `n.d` becomes
+same state to LINE. The renderer `jb2/x0.java` makes lazy-list items from that state. `n.d` becomes
 a whole-page spinner (line 142). Inside `n.a`, an `isLoadingMoreContent` adds the `q2.LOADING_MORE`
 footer (line 291).
 
-**The pager trigger** is `v72/m1.java:81` — `lastVisibleIndex + 6 >= itemCount`, gated on
+**The pager trigger** is `jb2/m1.java:81` — `lastVisibleIndex + 6 >= itemCount`, gated on
 `isPageReady`. A tab with no feed is short, thus this condition stays true always. One place reads
-the trigger: `v72/o1.java:38`
-(`GcsPageState$observeEventsForLoadingModuleContent$1`), which calls `d2.B1(shouldLoadMore)`.
+the trigger: `jb2/r1.java:38`
+(`GcsPageState$observeEventsForLoadingModuleContent$1`), which calls `h2.H1(shouldLoadMore)`.
 
-**The fetch** is `v72.h2.B1(Z)V` (`v72/h2.java:44`), the one implementation of `B1` that does work.
-`v72/o1.java:38` is its only caller in the app. Each fetch returns feed modules, and the filter
+**The fetch** is `jb2.m2.H1(Z)V` (`jb2/m2.java:44`), the one implementation of `H1` that does work.
+`jb2/r1.java:38` is its only caller in the app. Each fetch returns feed modules, and the filter
 discards them. The item count does not grow, thus the next fetch starts. The server sends an endless
 feed, so the `i0Var.f229286b` ("no more pages") guard is never true.
 
 | Lever | Site | Injection |
 |---|---|---|
-| 1. filter the list | `x72.h$a.<init>` index 0 | `invoke-static filterHomeFeed` + `move-result-object p1` |
+| 1. filter the list | `lb2.g$a.<init>` index 0 | `invoke-static filterHomeFeed` + `move-result-object p1` |
 | 2. hide the footer | same block | `const/4 p6, 0x0` (p6 = `isLoadingMore`, `.locals 0`, 12 registers, so v6) |
-| 3. stop the pager | `v72.h2.B1(Z)V` index 0 | `return-void` |
+| 3. stop the pager | `jb2.m2.H1(Z)V` index 0 | `return-void` |
 
-**Lever 3 is safe because LINE ships an empty `B1` of its own.** `b82/z.java` implements `v72.d2`
+**Lever 3 is safe because LINE ships an empty `B1` of its own.** `pb2/y.java` implements `jb2.h2`
 with every method empty, `B1` included. An empty `B1` is thus a state that LINE itself builds. Only
 load-more goes through `B1`. The initial load, the pull-to-refresh and the visibility are separate
 interface methods (`P4`, `R2`, `Q1`, `L`, `r5`, `w6`, `n4`).
 
 **Anchor lever 3 on shape, never on the drift-prone name `B1`.** Use `returnType = "V"`,
-`parameters = ["Z"]`, plus `fieldAccess(type = "Lx72/h;")` and `checkCast("Lm52/i0;")`. On LINE
-26.11.0 that combination matches one method in the whole APK. A sweep of every `.smali` confirms it.
+`parameters = ["Z"]`, plus `fieldAccess(type = "Llb2/g;")` and `checkCast("Ly82/t0;")`. On LINE
+26.14.0 that combination matches one method in the whole APK. A sweep of every `.smali` confirms it.
 
 Lever 3 prevents the spinner on its own, but lever 2 stays. Lever 2 costs one instruction on a
 fingerprint that the patch already owns. Field `f` has one reader, thus lever 2 cannot break
@@ -350,24 +368,24 @@ never ran; `ENTER` with no per-type lines = empty list at that point; per-type l
 
 ### Finer discriminators, if a type string is ever too coarse
 
-`m52.z` carries more than the payload: `f229498a` = module id (for example
+`y82.j0` carries more than the payload: `f229498a` = module id (for example
 `home-feed-module_home-feed-default-page-loading`; **LINE itself filters on it** at `an2/d.java:75`),
-`f229499b` = module name, `f229500c`/`f229501d` = timestamps, `f229502e` = the `m52.a0` payload,
-`f229503f` = ACI gate enum `m52.m0` (`DISABLED` / `ACI_REQUIRED` / `ALWAYS`), `f229504g` = upstream
+`f229499b` = module name, `f229500c`/`f229501d` = timestamps, `f229502e` = the `y82.k0` payload,
+`f229503f` = ACI gate enum `y82.y0` (`DISABLED` / `ACI_REQUIRED` / `ALWAYS`), `f229504g` = upstream
 request id, `f229505h` = global service key, `f229506i` = render kind (`FLEX` / `NATIVE` / `HYBRID`).
-Inside the `HomeFeedUnit*` payloads there is also `type: m52.l0` (`AUTO` / `PACKAGED` / `KEYWORD` /
-`FITTED` / `MANUAL`) and `contentType: m52.k0` (`MASS` / `CLUSTER` / `PERSONAL`).
+Inside the `HomeFeedUnit*` payloads there is also `type: y82.l0` (`AUTO` / `PACKAGED` / `KEYWORD` /
+`FITTED` / `MANUAL`) and `contentType: y82.k0` (`MASS` / `CLUSTER` / `PERSONAL`).
 
 Renderers subclass `l72.g<T>` / `r72.b<T>` and register a `KClass`, so the renderer confirms a type
 actually paints: `a0$z`→`ze2/h.java`, `a0$x`→`mg2/h.java`, `a0$y`→`ng2/g.java`, `a0$s`→`tg2/n.java`,
 `a0$j0`→`ec2/f.java`, `a0$f`→`d62/r.java`, `a0$m0`→`f30/b.java`, `a0$l0`→`b30/b.java`,
-`a0$n0`→`ac2/k.java`, `m52.d0`→`sd2/i.java`.
+`a0$n0`→`ac2/k.java`, `y82.o0`→`sd2/i.java`.
 
 ### Values that drift on a version bump
 
-`x72.h$a` (state class + ctor signature), `m52.z` field `e`, `m52.a0` and every `a0$*` letter suffix,
-the assembler `v52.g`, the consumer `v72.c2`. The **type strings themselves are server contract** and
-have been stable; re-run the jadx sweep over `m52/a0.java` to re-audit the `HomeFeed*` family, in case
+`lb2.g$a` (state class + ctor signature), `y82.j0` field `e`, `y82.k0` and every `a0$*` letter suffix,
+the assembler `v52.g`, the consumer `jb2.c2`. The **type strings themselves are server contract** and
+have been stable; re-run the jadx sweep over `y82/k0.java` to re-audit the `HomeFeed*` family, in case
 LINE adds a wanted module under that prefix.
 
 ---
@@ -393,11 +411,11 @@ covers?** The display answer is no. The parts that stay are below, with the reas
 Do not repeat this sweep from memory. Three checks together show that every ad **view** goes
 through a class that `hideadviews` hooks:
 
-- The Google ad view bases have four subclasses in the APK: `fl5/b` gives `fl5/c` and `fl5/d`,
-  and `f93/a` gives `f93/b` and `f93/c`. `fl5/e` and `fl5/f` extend `FrameLayout` directly.
+- The Google ad view bases have four subclasses in the APK: `et5/b` gives `et5/c` and `et5/d`,
+  and `dg3/a` gives `dg3/b` and `dg3/c`. `et5/e` and `et5/f` extend `FrameLayout` directly.
   Those six are exactly the six that the patch covers.
 - No other `View` subclass in the app names `AdManagerAdView` or `AdView`. The other classes
-  that name them (`al5/d`, `c93/g`, `fl5/a`, `fl5/g`, `f93/h`, `gl5/*`, `jl5/d`) are loaders,
+  that name them (`al5/d`, `c93/g`, `et5/a`, `et5/g`, `dg3/h`, `gl5/*`, `jl5/d`) are loaders,
   view models, or coroutine lambdas, and not views.
 - Inside `ladsdk`, `LadAdView` and `LyadAdView` are the only lifecycle containers. Every other
   class there (`LadPostHeaderView`, `LadSlotAssetRecyclerView`, the Lights views, and more) is
@@ -442,7 +460,7 @@ Crashlytics, Sentry and the LINE analytics stay.
 
 **The AdMob content provider.** A manifest patch can remove `MobileAdsInitProvider`. Google
 Mobile Ads also starts on first use, thus the patch delays the start and does not stop it. The
-ad loaders (`al5/d`, `c93/g`, `gl5/*`, `fl5/a`) still run after the views are hidden. If they
+ad loaders (`al5/d`, `c93/g`, `gl5/*`, `et5/a`) still run after the views are hidden. If they
 call an SDK that did not start, the patch adds a crash path and hides nothing new.
 
 **Yahoo edgeAI.** A bytecode patch does not make the APK smaller. If the models never load, a
@@ -470,12 +488,12 @@ starting point, so no one needs to sweep the APK again.
 | Patch (name) | Package | Targets |
 |---|---|---|
 | Hide calendar buttons | `line.hidecalendar` | the 5 Calendar surfaces above |
-| Hide Events button | `line.hideevents` | the `d00.z` Events chat-menu row |
-| Hide Transfer button | `line.hidetransfer` | `hg1.k` (`+` Transfer/LINE Pay tile) |
-| Hide LINE GIFT button | `line.hidegift` | `hg1.h` (`+` LINE GIFT tile) |
-| Hide attach menu extra tools | `line.hideattachmenutools` | all server-driven `hg1.d` services |
+| Hide Events button | `line.hideevents` | the `z00.n` Events chat-menu row |
+| Hide Transfer button | `line.hidetransfer` | `yi1.j` (`+` Transfer/LINE Pay tile) |
+| Hide LINE GIFT button | `line.hidegift` | `yi1.h` (`+` LINE GIFT tile) |
+| Hide attach menu extra tools | `line.hideattachmenutools` | all server-driven `yi1.d` services |
 | Redirect LINE Pay | `line.disablepay` | `PayLaunchActivity` / `PayLiffActivity` onCreate (see below) |
-| Keep unsent messages | `line.keepunsent` | `g38.b0.invoke` — the unsend DB write (see below) |
+| Keep unsent messages | `line.keepunsent` | `la8.x.invoke` — the unsend DB write (see below) |
 | Hide Shopping tab | `line.hideshoppingtab` | `COMMERCE` + `COMMERCE_TW` in `wy7.b.a()` (see above) |
 
 Each is an independent, `default = true`, user-facing `bytecodePatch` — one feature (or one feature's
@@ -490,12 +508,12 @@ unsent messages* carry extension code.
 **standalone LINE Pay app** — unpatched, so integrity passes — then closes the in-app Pay screen. A
 failed hand-off degrades to the old "just close" behavior.
 
-### How an external pay URL enters LINE (decompiled 26.11.0)
+### How an external pay URL enters LINE (decompiled 26.14.0)
 
 ```
 merchant "LINE Pay" link  (line:// or https://line.me/R/…)
   ► jp.naver.line.android.activity.schemeservice.LineSchemeServiceActivity   (EXPORTED router)
-  ► v98.d.d(...) dispatcher → pay handlers (gv3.j / on3.k / ru3.f)
+  ► ah8.d.d(...) dispatcher → pay handlers (gv3.j / on3.k / ru3.f)
   ► iv3.a.b(ctx, ao3.b)  → Intent(PayLaunchActivity, data=line://pay/…)      [not exported]
     iv3.a.c(...) / PayLiffActivity$a.a(...) → Intent(PayLiffActivity, extra "linepay.intent.extra.URI")
 ```
@@ -553,36 +571,52 @@ hardcode `sv3.n`, which drifts).
 ```
 OpType NOTIFIED_DESTROY_MESSAGE(65) / DESTROY_MESSAGE(64)   (Lcb8/ce;, Operation = Lcb8/de;)
   ► e98.c1.b(...)  (someone else unsent)   /   e98.r  (3-line subclass: your own unsend)
-  ► the g38.b0 lambda, run inside a chat_history transaction
+  ► the la8.x lambda, run inside a chat_history transaction
 ```
 
 Both ops funnel through the **same** lambda, so one patch site covers your own unsends too.
 
-**LINE does not delete the row for 1:1/group chats.** `Lg38/b0;->invoke(Ljava/lang/Object;)Ljava/lang/Object;`
-(`smali_classes4/g38/b0.smali`) rewrites `chat_history.type` to an `i38.c.UNSENT*` variant, NULLs
-`content`, `parameter`, `attachement_type` and the location columns via `h38.h0` →
-`Lh38/b;->g(SQLiteDatabase, Li38/k;, Lh38/h0;)I`, drops the message from the full-text-search index and
+**LINE does not delete the row for 1:1/group chats.** `Lla8/x;->invoke(Ljava/lang/Object;)Ljava/lang/Object;`
+(`smali_classes4/la8/x.smali`) rewrites `chat_history.type` to an `na8.c.UNSENT*` variant, NULLs
+`content`, `parameter`, `attachement_type` and the location columns via `ma8.h0` →
+`Lma8/b;->g(SQLiteDatabase, Lna8/k;, Lma8/h0;)I`, drops the message from the full-text-search index and
 deletes its `reactions` / `multiple_image_message_mapping` rows — all behind one guard:
 
 ```smali
+    check-cast v1, Lla8/b3;                   # the lambda's transaction-context parameter
+    ...
+    iget-object v3, v1, Lla8/b3;->b:Landroid/database/sqlite/SQLiteDatabase;
+    ...
     :cond_0
-    iget-object v6, v10, Li38/b;->g:Li38/c;   # v10 = the fetched row
-    iget-wide  v7, v10, Li38/b;->b:J          # message id (live at the guard)
-    invoke-virtual {v6}, Li38/c;->h()Z        # already an unsend tombstone?
-    move-result v6
-    if-eqz v6, :cond_1                        # no  -> destructive block
-    goto/16 :goto_c                           # yes -> skip, return the row unchanged
+    iget-object v9,  v13, Lna8/b;->g:Lna8/c;  # v13 = the fetched row
+    iget-wide  v10, v13, Lna8/b;->b:J         # message id (live at the guard)
+    invoke-virtual {v9}, Lna8/c;->g()Z        # already an unsend tombstone?
+    move-result v9
+    if-eqz v9, :cond_1                        # no  -> destructive block
+    goto/16 :goto_b                           # yes -> skip, return the row unchanged
 ```
 
-Forcing that register non-zero makes the unsend a **local no-op**. `Lg38/f3;` (the lambda's
+Forcing that register non-zero makes the unsend a **local no-op**. `Lla8/b3;` (the lambda's
 parameter, `v1`) carries the transaction's `SQLiteDatabase` in field `b`.
 
+**26.14.0 moved that field read.** On 26.11.0 the `SQLiteDatabase` `iget-object` sat *inside* the
+block the guard skips; R8 has since hoisted every `Lla8/b3;` field read into the method prologue,
+ahead of the guard. The patch therefore searches the **whole method** for it rather than only from
+the guard onwards. It still requires a dominating `check-cast` for the holder register, which is
+what rejects the method's other `SQLiteDatabase` read (`Lma8/t0;->a`, whose holder is reassigned
+without a cast). Both versions select the same instruction, because it is the first
+`SQLiteDatabase` read in the method either way.
+
+The guard itself needed **no** edit across the bump: it is found by instruction shape, so its
+rename (`na8.c.h()` → `na8.c.g()`) was absorbed for free. That is the argument for shape-based
+lookups over name-based ones.
+
 **OpenChat/Square is a different path and genuinely deletes**: `SquareEventType.NOTIFIED_DESTROY_MESSAGE(5)`
-→ `fp5.i` → `Lg38/q0;->m(Ljava/lang/String;Ljava/util/Set;)V` → `g38.f3.c(Set)` →
+→ `fp5.i` → `Lla8/n0;->m(Ljava/lang/String;Ljava/util/Set;)V` → `la8.b3.c(Set)` →
 `DELETE FROM chat_history WHERE id IN(...)`. Not covered by the patch.
 
 A third path covers messages unsent while offline: full sync / message-box restore reads
-`z58.b.c.KEY_UNSENT_MESSAGE` / `KEY_SILENTLY_UNSENT` from `contentMetadata` (`g38.q0`, `g38.x2`) and
+`z58.b.c.KEY_UNSENT_MESSAGE` / `KEY_SILENTLY_UNSENT` from `contentMetadata` (`la8.n0`, `la8.x2`) and
 stores the row already stripped — nothing local to keep.
 
 ### How the placeholder is rendered
@@ -591,16 +625,16 @@ stores the row already stripped — nothing local to keep.
 
 | Hop | Descriptor |
 |---|---|
-| cursor → content model | `Lh38/t;->e(Lcb8/q7;Ljp/naver/line/android/util/j;Lz58/b;)Li38/g;` — `UNSENT` builds `Li38/g$s$h0;` from `from_mid` |
-| content → UI model | `Lm11/b;->k(Li38/g$s;)Ll11/h;` → `Ll11/h$h0;` |
+| cursor → content model | `Lma8/t;->e(Lcb8/q7;Ljp/naver/line/android/util/j;Lz58/b;)Lna8/g;` — `UNSENT` builds `Lna8/g$s$h0;` from `from_mid` |
+| content → UI model | `Lm11/b;->k(Lna8/g$s;)Ll11/h;` → `Ll11/h$h0;` |
 | UI model → text | `Lcl1/c;->a(Landroid/content/Context;Ll11/h;Lo21/a;)Ljava/lang/CharSequence;` |
-| bubble decoration | `Lwi1/j4;->K0(...)` — appends the "How to unsend discreetly" link on *your own* unsends (suppressed by *Hide premium unsend upsells*) |
+| bubble decoration | `Lnl1/b5;->K0(...)` — appends the "How to unsend discreetly" link on *your own* unsends (suppressed by *Hide premium unsend upsells*) |
 
 Strings: `chathistory_message_format_unsent_receiver` (`0x7f150d65`, "%1$s unsent a message.") and
 `chathistory_message_format_unsent_sender` (`0x7f150d66`, "You unsent a message.") — chosen by
 comparing `from_mid` against your own mid.
 
-`Lh38/x;` (query builder) filters `UNSENT_SILENT` out of chat history entirely
+`Lma8/x;` (query builder) filters `UNSENT_SILENT` out of chat history entirely
 (`type NOT IN (...)`), which is how LYP "unsend discreetly" hides a row it still stores.
 
 ### What the patch does
@@ -611,15 +645,15 @@ copying it and letting LINE tombstone the original — preserves its real `serve
 forwarding and reactions keep working on the kept message.
 
 The guard is located **by instruction shape** (no-arg `Z` call → `move-result` → `if-eqz` → `goto`) and
-the `SQLiteDatabase` field reference is read from the method's own bytecode, because `i38.c`, its `h()`
-and `g38.f3.b` all drift. The two register reads are anchored rather than scanned blind: the message id
+the `SQLiteDatabase` field reference is read from the method's own bytecode, because `na8.c`, its `h()`
+and `la8.b3.b` all drift. The two register reads are anchored rather than scanned blind: the message id
 must be a field of the same row object the guard reads its receiver off, and the `SQLiteDatabase` holder
 register must carry a `check-cast` to the field's own owner before the guard (this method has a *second*
-`SQLiteDatabase` read, `h38.t0.a`, reusing register `v1` for a different type). Anything unresolvable —
+`SQLiteDatabase` read, `ma8.t0.a`, reusing register `v1` for a different type). Anything unresolvable —
 including a register past `v15`, where `iget`/`invoke` operands stop fitting — throws rather than
 applying a half-patch.
 
-The insert is skipped when the row is **already** a tombstone (`type IN (27, 28, 38)`, what `i38.c.h()`
+The insert is skipped when the row is **already** a tombstone (`type IN (27, 28, 38)`, what `na8.c.h()`
 covers). The injection sits ahead of the branch it flips, so it also runs where LINE's guard would have
 exited early: a redelivered unsend for a row tombstoned before the patch was installed, or one stripped
 by the offline `KEY_UNSENT_MESSAGE` path, which never reaches the guard at all. Both would otherwise
@@ -627,12 +661,12 @@ draw the notice twice.
 
 ### Values that drift on a version bump
 
-| Thing | 26.11.0 |
+| Thing | 26.14.0 |
 |---|---|
 | `chat_history` table (`a68.a`) | only `id` constrained (PK + autoincrement); all other columns nullable; `IDX_SERVER_ID` is **non-unique** |
 | sort columns | `IDX_CHAT_ID_ID_CREATED_TIME` = `chat_id` (eq) + `created_time`, `id` (sort) → ordering follows `created_time` |
 | `created_time` | `DATE_STRING` → a **TEXT** column of epoch millis, so `+1` needs a `CAST` round-trip |
-| `i38.c` db values | `MESSAGE` = 1, `UNSENT` = 27, `UNSENT_NO_MARK` = 28, `SQUARE_UNSENT_MESSAGE` = 35, `UNSENT_SILENT` = 38 — the extension hardcodes 27 (the type it writes) and 27/28/38 (`i38.c.h()`'s set, the rows it refuses to annotate) |
+| `na8.c` db values | `MESSAGE` = 1, `UNSENT` = 27, `UNSENT_NO_MARK` = 28, `SQUARE_UNSENT_MESSAGE` = 35, `UNSENT_SILENT` = 38 — the extension hardcodes 27 (the type it writes) and 27/28/38 (`na8.c.h()`'s set, the rows it refuses to annotate) |
 | `cb8.q7.NONE` | 0 (`attachement_type`) |
 | chat-list unread badge | `chat.message_count - chat.read_message_count` (`c23.d` columns, read in `z13.o`) — a stored counter pair, **not** a `count(*)` over `chat_history`, so the inserted placeholder cannot move it |
 
@@ -772,7 +806,7 @@ types were hardcoded.
 
 ### Values that drift on a version bump
 
-| Thing | 26.11.0 |
+| Thing | 26.14.0 |
 |---|---|
 | gates in `t73.k0.b0` | `0x1400000` (20 MB), `0x5f5e100` (100 MP) — also in `k0.X(Z)V` and `m63.n0.d()`, so pin the `(Ljava/util/ArrayList;)V` signature |
 | lambda anchor | `u13.y0` — the only class combining `ContentResolver.getType`, `MimeTypeMap.getMimeTypeFromExtension`, `BitmapFactory.decodeStream` and `Matrix.setRotate` |
@@ -899,7 +933,7 @@ filters = listOf(
 )
 ```
 
-Uniqueness verified against 26.11.0: only three methods in the APK carry **both** `instance-of`s —
+Uniqueness verified against 26.14.0: only three methods in the APK carry **both** `instance-of`s —
 `be7.c.a` (the target), `be7.q$d.e` (excluded by `STATIC`; it is `public final`) and
 `c97.m.a(Landroid/content/Context;Lb97/c;)Z` (excluded by `Uri.parse`). Filters are in program order:
 both `instance-of`s precede the MELODY branch's `Uri.parse`.
@@ -925,11 +959,11 @@ return `null` on failure so LINE keeps its own tone. Stock OEM ringtones
   they imported themselves (the `READ_MEDIA_AUDIO` note above).
 - **A real in-app picker** needs a new Activity, an `AndroidManifest.xml` patch, SAF plus a copy into
   LINE's private dir, and a settings-row injection into obfuscated declarative Kotlin (`l15.c`'s
-  `px4.b0` item list) whose host rows only exist in JP/TH/TW. Disproportionate to the payoff.
+  `m55.b0` item list) whose host rows only exist in JP/TH/TW. Disproportionate to the payoff.
 
 ### Values that drift on a version bump
 
-| Thing | 26.11.0 |
+| Thing | 26.14.0 |
 |---|---|
 | resolver | `be7.c.a`; result types `be7.a$a$a` / `be7.a$a$b` |
 | provider / region gate | `be7.q` (provider), `be7.r` (+ `exposeExternalSetting`), config via `k97.m.m()` |
@@ -1063,7 +1097,7 @@ Case matters: GmsCore's digest comes from `String.format("%02x")` and is sent ve
 `client_sig`, so the override is **lowercase** — the opposite of `fixpushnotifications`, which
 needs the same certificate UPPERCASE because LINE's `rl.h.b` uppercases for `X-Android-Cert`.
 
-### Class/anchor map (LINE 26.11.0)
+### Class/anchor map (LINE 26.14.0)
 
 | What | Descriptor | Notes |
 |---|---|---|
@@ -1086,10 +1120,10 @@ needed anyway — real Play Services is installed, so the "GMS missing" checks n
 
 ## Dead ends (investigated, not patchable)
 
-**Extend the unsend window.** The client windows (`j51.a.o` free, `.p` premium) are UX pre-filters fed
+**Extend the unsend window.** The client windows (`c81.a.o` free, `.p` premium) are UX pre-filters fed
 by server config (`function.chatroom.message.unsend.timelimit`, `.premium.timelimit`). `unsendMessage`
 carries only `(seq, messageId)`. The server decides, with a dedicated `TalkException` code
-`MESSAGE_NOT_DESTRUCTIBLE(71)` (`cb8.m9`) handled at `ne1.o2` / `ne1.b2` → *"You cannot unsend this
+`MESSAGE_NOT_DESTRUCTIBLE(71)` (`cb8.m9`) handled at `kh1.o2` / `kh1.b2` → *"You cannot unsend this
 message as too much time has passed."* Widening the client window only re-shows the menu item and
 produces that toast. (`hidepremiumunsend` narrows it for the same reason.)
 
