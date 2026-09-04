@@ -9,7 +9,7 @@ import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter
 
-private const val HOME_STATE = "Lx72/h\$a;"
+private const val HOME_STATE = "Llb2/g\$a;"
 private const val FILTER_NAME = "filterHomeModules"
 private const val FILTER_DESC = "(Ljava/util/List;)Ljava/util/List;"
 
@@ -25,20 +25,20 @@ val hideHomeModulesPatch = bytecodePatch(
 
     extendWith("extensions/extension.mpe")
 
-    // The rendered Home feed is a List<m52.z> (each z.e a typed m52.a0 module) stored as the
-    // first ctor arg (field `a`) of the Compose state x72.h$a. Filter that list to drop
+    // The rendered Home feed is a List<y82.j0> (each z.e a typed y82.k0 module) stored as the
+    // first ctor arg (field `a`) of the Compose state lb2.g$a. Filter that list to drop
     // modules whose z.e.getType() is blocklisted.
     //
-    // The filtering loop is a new method x72.h$a.filterHomeModules (backward-branching loops
+    // The filtering loop is a new method lb2.g$a.filterHomeModules (backward-branching loops
     // corrupt an existing method's layout when injected inline -> VerifyError). We then inject
-    // a branchless call at the top of x72.h$a.<init> to replace p1 (the list) with its
+    // a branchless call at the top of lb2.g$a.<init> to replace p1 (the list) with its
     // filtered copy before it is stored. One constructor covers every feed build path + copies.
     //
     // "Hide Home content feed" prepends the same call shape at the same index. Both are pure
     // List -> List filters on p1. Thus the patch that applies second runs first, and the
     // result is the same either way.
     execute {
-        // 1. Add the static filter helper method to x72.h$a.
+        // 1. Add the static filter helper method to lb2.g$a.
         val cls = mutableClassDefBy(HOME_STATE)
         val filter = MutableMethod(
             ImmutableMethod(
@@ -67,9 +67,9 @@ val hideHomeModulesPatch = bytecodePatch(
                 if-eqz v2, :done
                 invoke-interface {v1}, Ljava/util/Iterator;->next()Ljava/lang/Object;
                 move-result-object v2
-                check-cast v2, Lm52/z;
-                iget-object v3, v2, Lm52/z;->e:Lm52/a0;
-                invoke-interface {v3}, Lm52/a0;->getType()Ljava/lang/String;
+                check-cast v2, Ly82/j0;
+                iget-object v3, v2, Ly82/j0;->e:Ly82/k0;
+                invoke-interface {v3}, Ly82/k0;->getType()Ljava/lang/String;
                 move-result-object v3
                 invoke-static {v3}, Lapp/andrewliang/extension/HomeModules;->shouldHide(Ljava/lang/String;)Z
                 move-result v3
@@ -81,7 +81,7 @@ val hideHomeModulesPatch = bytecodePatch(
             """,
         )
 
-        // 2. At the top of x72.h$a.<init>, replace the list param (p1) with its filtered copy
+        // 2. At the top of lb2.g$a.<init>, replace the list param (p1) with its filtered copy
         //    before it is stored. Branchless (invoke + move-result), reuses p1 (`.locals 0`).
         HomeStateCtorFingerprint.method.addInstructions(
             0,

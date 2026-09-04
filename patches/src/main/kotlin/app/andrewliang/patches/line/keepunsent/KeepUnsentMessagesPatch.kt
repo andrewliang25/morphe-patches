@@ -32,24 +32,24 @@ val keepUnsentMessagesPatch = bytecodePatch(
 
     extendWith("extensions/extension.mpe")
 
-    // An incoming unsend is applied by the g38.b0 lambda, which rewrites chat_history.type to
-    // i38.c.UNSENT and NULLs content/parameter/attachement_type/locations, then drops the row from
+    // An incoming unsend is applied by the la8.x lambda, which rewrites chat_history.type to
+    // na8.c.UNSENT and NULLs content/parameter/attachement_type/locations, then drops the row from
     // the search index and deletes its reactions + multiple_image_message_mapping rows. All of
     // that hangs off one guard:
     //
-    //     invoke-virtual {v6}, Li38/c;->h()Z   # already an unsend tombstone?
+    //     invoke-virtual {v6}, Lna8/c;->g()Z   # already an unsend tombstone?
     //     move-result v6
     //     if-eqz v6, :cond_1                   # no  -> run the destructive block
     //     goto/16 :goto_c                      # yes -> skip it all, return the row unchanged
     //
     // Forcing the guard register non-zero always takes the "skip" branch, so the message survives
     // intact — text, media, reactions, search-index entry. LINE never learns it was recalled, so we
-    // insert our own i38.c.UNSENT (dbValue 27) row just below it, which the stock renderer draws as
+    // insert our own na8.c.UNSENT (dbValue 27) row just below it, which the stock renderer draws as
     // "<name> unsent a message." with correct sender naming and localisation (INSERT in the
     // extension).
     //
-    // The guard is located by instruction shape, not by name — i38.c and its h() drift — and the
-    // SQLiteDatabase field read (g38.f3.b) likewise comes from the method's own bytecode.
+    // The guard is located by instruction shape, not by name — na8.c and its g() drift — and the
+    // SQLiteDatabase field read (la8.b3.b) likewise comes from the method's own bytecode.
     execute {
         val method = UnsendMessageDbWriteFingerprint.method
         val instructions = method.implementation!!.instructions.toList()
@@ -70,7 +70,7 @@ val keepUnsentMessagesPatch = bytecodePatch(
 
         val guardRegister = (instructions[guardIndex + 1] as OneRegisterInstruction).registerA
 
-        // The fetched row (i38.b), taken from whatever the guard reads its receiver off. Anchoring on
+        // The fetched row (na8.b), taken from whatever the guard reads its receiver off. Anchoring on
         // it keeps the id search below from wandering: an `iget-wide` off the same object the guard
         // reads is the row's id, and sits in the same straight-line stretch, so its destination
         // register is live where we inject.
@@ -81,7 +81,7 @@ val keepUnsentMessagesPatch = bytecodePatch(
         } ?: throw PatchException("unsend: guard receiver read not found in ${method.definingClass}")
         val rowRegister = (instructions[rowReadIndex] as TwoRegisterInstruction).registerB
 
-        // The message id, read off that row between load and guard. Which of i38.b's longs it is
+        // The message id, read off that row between load and guard. Which of na8.b's longs it is
         // (local vs server id) does not matter — the extension's WHERE clause accepts either. On
         // 26.11.0 it is `b`, the server id.
         val messageIdRegister = ((rowReadIndex + 1) until guardIndex)
@@ -104,13 +104,18 @@ val keepUnsentMessagesPatch = bytecodePatch(
             (instruction as OneRegisterInstruction).registerA to type
         }.toMap()
 
-        // The transaction's SQLiteDatabase, read off the g38.f3 receiver inside the block we skip.
-        // Reuse that exact field reference and holder register rather than hardcoding g38.f3.b.
-        // The field reference travels safely (it is position-independent). The register number only
-        // does if the register provably holds the field's owner at the injection point, so require
-        // a dominating cast. That also rejects the second SQLiteDatabase read further down this
-        // method (h38.t0.a), which reuses the same register for a different type.
-        val databaseRead = (guardIndex until instructions.size).firstNotNullOfOrNull { index ->
+        // The transaction's SQLiteDatabase, read off the la8.b3 receiver. Reuse that exact field
+        // reference and holder register rather than hardcoding la8.b3.b. The field reference
+        // travels safely (it is position-independent). The register number only does if the
+        // register provably holds the field's owner at the injection point, so require a
+        // dominating cast. That also rejects the other SQLiteDatabase read in this method
+        // (ma8.t0.a), whose holder register is reassigned without a cast.
+        //
+        // Search the whole method, not just from the guard onwards: on 26.11.0 this read sat
+        // inside the block the guard skips, but on 26.14.0 R8 hoisted every la8.b3 field read
+        // into the prologue, ahead of the guard. Both versions select the same instruction,
+        // because it is the first SQLiteDatabase read in the method either way.
+        val databaseRead = instructions.indices.firstNotNullOfOrNull { index ->
             val reference = (instructions[index] as? ReferenceInstruction)?.reference as? FieldReference
             if (instructions[index].opcode != Opcode.IGET_OBJECT || reference?.type != SQLITE_DATABASE) {
                 return@firstNotNullOfOrNull null

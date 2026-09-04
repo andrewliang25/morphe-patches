@@ -23,7 +23,7 @@ internal object OpenUriIntentBuilderFingerprint : Fingerprint(
         "Landroid/content/Context;",
         "Landroid/net/Uri;",
         "Lcom/linecorp/browser/OpenUriActivity\$a;",
-        "Lv98/k;",
+        "Lah8/k;",
         "Z",
         "Ljava/lang/String;",
         "I",

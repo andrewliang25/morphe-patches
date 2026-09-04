@@ -24,7 +24,7 @@ private const val HIDE_SELF = """
     invoke-virtual {p0, v0}, Landroid/view/View;->setVisibility(I)V
 """
 
-// AdManager wrappers hide self after super <init>. fl5/e is `.locals 0`, so it reuses the dead
+// AdManager wrappers hide self after super <init>. et5/e is `.locals 0`, so it reuses the dead
 // defStyleAttr param p3 instead of v0.
 private const val HIDE_SELF_CTOR_V0 = """
     const/16 v0, 0x8
@@ -58,7 +58,7 @@ val hideAdViewsPatch = bytecodePatch(
         val adManagerWrappers = listOf(
             AdManagerBannerChatroomFingerprint to HIDE_SELF_CTOR_V0,
             AdManagerNativeChatroomFingerprint to HIDE_SELF_CTOR_V0,
-            AdManagerBannerGeneralFingerprint to HIDE_SELF_CTOR_P3, // fl5/e: .locals 0
+            AdManagerBannerGeneralFingerprint to HIDE_SELF_CTOR_P3, // et5/e: .locals 0
             AdManagerNativeGeneralFingerprint to HIDE_SELF_CTOR_V0,
             AdManagerBannerMinorRegionFingerprint to HIDE_SELF_CTOR_V0,
             AdManagerNativeMinorRegionFingerprint to HIDE_SELF_CTOR_V0,

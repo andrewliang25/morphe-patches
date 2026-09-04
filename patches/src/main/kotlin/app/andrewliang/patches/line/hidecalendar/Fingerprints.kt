@@ -12,17 +12,17 @@ import app.morphe.patcher.methodCall
  * an enum-constant name (`CALENDAR` / `CALENDAR_BUTTON`) or a resource id.
  */
 
-// The Chats-tab header button enum (`az0.q`). The constant names survive obfuscation.
-private const val BUTTON_ENUM = "Laz0/q;"
+// The Chats-tab header button enum (`q11.n`). The constant names survive obfuscation.
+private const val BUTTON_ENUM = "Lq11/n;"
 
-// The header button list is a `fb8/b`. Pinning the `add`'s definingClass separates it from the
+// The header button list is a `ki8/b`. Pinning the `add`'s definingClass separates it from the
 // green-dot icon set (ChatTabHeaderStateImpl$greenDotVisibleIconSet), which reads the same
-// constants but adds to `fb8/j` — without it the pair could match the green-dot method instead.
-private const val HEADER_LIST_ADD = "Lfb8/b;"
+// constants but adds to `ki8/j` — without it the pair could match the green-dot method instead.
+private const val HEADER_LIST_ADD = "Lki8/b;"
 
 /**
  * The Chats-tab header calendar button is added in the (obfuscated) ChatTabHeaderStateImpl
- * constructor as `sget-object <az0.q.CALENDAR>` + `add(...)`. That pair lands uniquely there — the
+ * constructor as `sget-object <q11.n.CALENDAR>` + `add(...)`. That pair lands uniquely there — the
  * enum's WhenMappings table reads the same constant but follows it with `ordinal()`. The sibling
  * OPEN_CHAT button is anchored the same way in `chatheaderbuttons`.
  */
@@ -34,60 +34,90 @@ internal object CalendarButtonFingerprint : Fingerprint(
 )
 
 /**
- * The "+" attach-menu calendar tile is `hg1.b` (CalendarButtonType). Matches its constructor — the
- * only method that READS `fg1.a$b.CALENDAR`. The sole other reference is the enum's own `<clinit>`
- * write, excluded by the constructor's parameter signature. `definingClass` (`Lhg1/b;`) then gives
+ * The "+" attach-menu calendar tile is `yi1.b` (CalendarButtonType). Matches its constructor — the
+ * only method that READS `wi1.b$b.CALENDAR`. The sole other reference is the enum's own `<clinit>`
+ * write, excluded by the constructor's parameter signature. `definingClass` (`Lyi1/b;`) then gives
  * the class whose availability predicate `j(...)` gets neutered.
  */
 internal object AttachMenuCalendarButtonFingerprint : Fingerprint(
     returnType = "V",
-    parameters = listOf("Ln/c;", "Lgg1/c;", "Lv01/c;", "Ljp0/d;", "Ljp0/g;"),
+    parameters = listOf("Ln/c;", "Lxi1/b;", "Ll31/c;", "Lor0/d;", "Lor0/g;"),
     filters = listOf(
-        fieldAccess(definingClass = "Lfg1/a\$b;", name = "CALENDAR"),
+        fieldAccess(definingClass = "Lwi1/b\$b;", name = "CALENDAR"),
     ),
 )
 
 /**
- * The chat-room top-toolbar calendar button is added inside `ed1.d0.a(...)` at two sites (one per
- * chat-type branch), each an `sget-object <ed1.g1.CALENDAR_BUTTON>` followed by the `ed1.s1.g(...)`
+ * The chat-room top-toolbar calendar button is added inside `ag1.e0.a(...)` at two sites (one per
+ * chat-type branch), each an `sget-object <ag1.i1.CALENDAR_BUTTON>` followed by the `ag1.t1.g(...)`
  * "add header button" call. Two `CALENDAR_BUTTON` filters pin this method — the only one reading the
- * constant twice — and yield both `sget-object` indices. (`ed1.u0$b` reads it once, so it cannot
+ * constant twice — and yield both `sget-object` indices. (`ag1.w0$b` reads it once, so it cannot
  * satisfy two filters.)
  */
 internal object ChatRoomToolbarCalendarButtonFingerprint : Fingerprint(
     returnType = "V",
     filters = listOf(
-        fieldAccess(definingClass = "Led1/g1;", name = "CALENDAR_BUTTON"),
-        fieldAccess(definingClass = "Led1/g1;", name = "CALENDAR_BUTTON"),
+        fieldAccess(definingClass = "Lag1/i1;", name = "CALENDAR_BUTTON"),
+        fieldAccess(definingClass = "Lag1/i1;", name = "CALENDAR_BUTTON"),
     ),
 )
 
 /**
- * The slide-out chat-menu "Calendar" row is `d00.o`. Its constructor loads the row's drawable
- * `R.drawable.chatmenu_ic_list_calendar` (0x7f0807cc) — a literal appearing in this class only —
- * then forwards its first boolean arg as the row's `isVisible` (`d00.a.e`) field. The menu builder
+ * The slide-out chat-menu "Calendar" row is `z00.l`. Its constructor loads the row's drawable
+ * `R.drawable.chatmenu_ic_list_calendar` (0x7f0807c1) — a literal appearing in this class only —
+ * then forwards its first boolean arg as the row's `isVisible` (`z00.a.e`) field. The menu builder
  * renders a row only when that field is true, so the arg is forced false.
  */
 internal object ChatMenuCalendarRowFingerprint : Fingerprint(
-    definingClass = "Ld00/o;",
+    definingClass = "Lz00/l;",
     name = "<init>",
     returnType = "V",
-    parameters = listOf("Z", "Lf11/b;", "Ld00/n1;"),
+    parameters = listOf("Z", "Lv31/b;", "Les0/m0;"),
     filters = listOf(
-        literal(0x7f0807cc),
+        literal(0x7f0807c1),
     ),
 )
 
 /**
- * The message long-press context menu asks each `ne1.y0` provider for a `j51.c` action (null =
- * hide). The calendar provider `ne1.y0$c.a(Context, v01.a, j51.a, Z)` reads `j51.c.CALENDAR` and
+ * The message long-press context menu asks each `kh1.x0` provider for a `c81.c` action (null =
+ * hide). The calendar provider `kh1.x0$c.a(Context, l31.a, c81.a, Z)` reads `c81.c.CALENDAR` and
  * returns that action or null. Return type + parameters + the `CALENDAR` read land uniquely on it,
- * and it is forced to return null. Builder-independent: covers every `qe1.a` consumer of the list.
+ * and it is forced to return null. Builder-independent: covers every `lh1.a` consumer of the list.
  */
 internal object ContextMenuCalendarProviderFingerprint : Fingerprint(
-    returnType = "Lj51/c;",
-    parameters = listOf("Landroid/content/Context;", "Lv01/a;", "Lj51/a;", "Z"),
+    returnType = "Lc81/c;",
+    parameters = listOf("Landroid/content/Context;", "Ll31/a;", "Lc81/a;", "Z"),
     filters = listOf(
-        fieldAccess(definingClass = "Lj51/c;", name = "CALENDAR"),
+        fieldAccess(definingClass = "Lc81/c;", name = "CALENDAR"),
+    ),
+)
+
+/**
+ * `lb2.g$a.<init>(List<y82.j0>, ...)` — the constructor of the Home Compose UI state. Every GCS
+ * page state, including the Home tab's **Friends sub-tab**, funnels its rendered module list
+ * through this one constructor as the first argument (field `a`), so filtering the list here also
+ * covers the Friends sub-tab.
+ *
+ * The Friends sub-tab shows LINE Calendar as its own block, module type `FriendsSubTabCalendar`
+ * (`y82.k0$h`). That block is a 6th Calendar surface, and none of the five instruction-level
+ * levers above touch it: it is server-driven list data, not a statically-built button.
+ *
+ * This is a fourth copy of the same fingerprint, after `hidehomemodules`, `hidehomefeed` and
+ * `hidepremium`. Each patch keeps its own copy, because the four patches are independent and the
+ * user can apply any one alone. All four prepend a `List -> List` filter call at index 0 of this
+ * constructor, and each filter only drops its own module types, so the order does not matter.
+ */
+internal object HomeStateCtorFingerprint : Fingerprint(
+    definingClass = "Llb2/g\$a;",
+    name = "<init>",
+    returnType = "V",
+    parameters = listOf(
+        "Ljava/util/List;",
+        "Z", "Z", "Z", "Z", "Z",
+        "Ljava/lang/String;",
+        "Ljava/lang/Long;",
+        "Ljava/lang/Long;",
+        "I",
+        "Z",
     ),
 )

@@ -15,8 +15,8 @@ val hideEventsButtonPatch = bytecodePatch(
 ) {
     compatibleWith(COMPATIBILITY_LINE)
 
-    // The Events row is a shared d00.z item built in ChatHistoryMenuFragment, gated by the boolean
-    // it loads from Lyz/s4;->l:Z right before the Events label; that value flows straight into the
+    // The Events row is a shared z00.n item built in ChatHistoryMenuFragment, gated by the boolean
+    // it loads from Lv00/o4;->l:Z right before the Events label; that value flows straight into the
     // row's isVisible ctor arg. Replace the `iget-boolean` (matched filter [0]) with a const 0 into
     // its own destination register, so only the Events row is dropped.
     execute {

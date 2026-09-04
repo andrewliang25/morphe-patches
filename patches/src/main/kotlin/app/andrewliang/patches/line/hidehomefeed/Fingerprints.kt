@@ -5,9 +5,9 @@ import app.morphe.patcher.checkCast
 import app.morphe.patcher.fieldAccess
 
 /**
- * `x72.h$a.<init>(List<m52.z>, ...)` — the constructor of the Home Compose UI state. The state
+ * `lb2.g$a.<init>(List<y82.j0>, ...)` — the constructor of the Home Compose UI state. The state
  * holds the module list that the tab shows, in field `a`, the first ctor argument. Every feed
- * build path goes to this constructor: the v52.g and v52.j assemblers, and the state copies.
+ * build path goes to this constructor: the feed assemblers, and the state copies.
  * One filter on the list argument here thus covers the whole feed.
  *
  * This object is a copy of the fingerprint in `hidehomemodules` for the same method, and not a
@@ -16,7 +16,7 @@ import app.morphe.patcher.fieldAccess
  * (see HideHomeFeedPatch).
  */
 internal object HomeStateCtorFingerprint : Fingerprint(
-    definingClass = "Lx72/h\$a;",
+    definingClass = "Llb2/g\$a;",
     name = "<init>",
     returnType = "V",
     parameters = listOf(
@@ -31,28 +31,28 @@ internal object HomeStateCtorFingerprint : Fingerprint(
 )
 
 /**
- * `v72.h2.B1(Z)V` — the "load more module content" action of the GCS page view model
- * (`com.linecorp.line.gcs.page.ui`, obfuscated `v72.h2`, which implements the page action
- * interface `v72.d2`). The method asks the page repository `x72.h` for the next feed page.
+ * `jb2.m2.H1(Z)V` — the "load more module content" action of the GCS page view model
+ * (`com.linecorp.line.gcs.page.ui`, obfuscated `jb2.m2`, which implements the page action
+ * interface `jb2.h2`). The method asks the page repository `lb2.g` for the next feed page.
  *
  * The patch makes this method return at once. The filter makes the Home tab short, thus LINE's
  * pager trigger (`lastVisibleIndex + 6 >= itemCount`) stays true. The app then asks for page
  * after page, and the filter discards each one. See HideHomeFeedPatch.
  *
- * The whole app calls `d2.B1` from one place: the pager observer
+ * The whole app calls `h2.H1` from one place: the pager observer
  * `GcsPageState$observeEventsForLoadingModuleContent$1`. LINE also ships an empty `d2` of its
- * own (`b82.z`, every method empty), thus an empty `B1` is a state that LINE builds itself.
+ * own (`pb2.y`, every method empty), thus an empty `H1` is a state that LINE builds itself.
  *
- * Anchored on shape, and not on the drift-prone name `B1`: the `(Z)V` signature, the read of
- * the `x72.h` repository field, and the cast of the page info to `m52.i0`. On LINE 26.11.0
+ * Anchored on shape, and not on the drift-prone name `H1`: the `(Z)V` signature, the read of
+ * the `lb2.g` repository field, and the cast of the page info to `y82.t0`. On LINE 26.11.0
  * that combination matches one method in the APK. This object never names the obfuscated
- * types `v72.h2`, `v72.d2` or `x72.r`.
+ * types `jb2.m2`, `jb2.h2` or `lb2.q`.
  */
 internal object LoadMoreContentFingerprint : Fingerprint(
     returnType = "V",
     parameters = listOf("Z"),
     filters = listOf(
-        fieldAccess(type = "Lx72/h;"),
-        checkCast("Lm52/i0;"),
+        fieldAccess(type = "Llb2/g;"),
+        checkCast("Ly82/t0;"),
     ),
 )
