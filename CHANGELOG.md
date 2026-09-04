@@ -1,3 +1,26 @@
+## [2.0.0-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v1.8.0...v2.0.0-dev.1) (2026-09-04)
+
+### ⚠ BREAKING CHANGES
+
+* The patch fingerprints use the obfuscated class and method
+names of 26.14.0. These names do not exist in 26.11.0. Update LINE to 26.14.0
+before you patch.
+
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
+
+### 🐛 Bug Fixes
+
+* hide the Friends sub-tab Calendar block ([60cabac](https://github.com/andrewliang25/morphe-patches/commit/60cabacab96f98786d95274b96c6759eec22a5fb))
+
+### ✨ New Features
+
+* hide new item badges ([d1bccdb](https://github.com/andrewliang25/morphe-patches/commit/d1bccdbff51f45f1e724d7dcce8a807924640de5))
+
+### 🚀 Updated App Support
+
+* drop support for LINE 26.11.0 ([ec5d7d5](https://github.com/andrewliang25/morphe-patches/commit/ec5d7d57d0dbc878291d0c7c15a70869097ae3dd))
+* re-anchor all LINE patches for 26.14.0 ([48ba2e1](https://github.com/andrewliang25/morphe-patches/commit/48ba2e1922263d8e082864ed1a0442756db8fdb0))
+
 ## [1.8.0](https://github.com/andrewliang25/morphe-patches/compare/v1.7.0...v1.8.0) (2026-08-23)
 
 ### 🐛 Bug Fixes

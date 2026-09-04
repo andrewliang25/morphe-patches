@@ -17,14 +17,14 @@ Morphe Manager to build a modified APK.
 ## 🩹 Patches list
 
 <!-- PATCHES_START EXPANDED -->
-> **[v1.8.0](https://github.com/andrewliang25/morphe-patches/releases/tag/v1.8.0)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;23 patches total
+> **[v2.0.0-dev.1](https://github.com/andrewliang25/morphe-patches/releases/tag/v2.0.0-dev.1)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;24 patches total
 <details open>
-<summary>📦 LINE&nbsp;&nbsp;•&nbsp;&nbsp;23 patches</summary>
+<summary>📦 LINE&nbsp;&nbsp;•&nbsp;&nbsp;24 patches</summary>
 <br>
 
 **🎯 Supported versions:**
 
-| 26.11.0 |
+| 26.14.0 |
 | :---: |
 
 | 💊&nbsp;Patch | 📜&nbsp;Description | ⚙️&nbsp;Options |
@@ -44,8 +44,9 @@ Morphe Manager to build a modified APK.
 | [Hide Wallet tab](#hide-wallet-tab) | Removes the Wallet (LINE Pay) tab from the main bottom navigation, in both the normal and mini-tab layouts. |  |
 | [Hide ad views](#hide-ad-views) | Hides the LINE display ad views. These are the LINE Ads SDK containers in the whole app, the chat-list Smart Channel banner, and the Google AdManager ads. |  |
 | [Hide attach menu extra tools](#hide-attach-menu-extra-tools) | Removes all the server-provided extra tools from the + attach menu in a chat room (Poll, Reservation, Schedule, Ladder shuffle, and more). The built-in tiles (camera, gallery, files, and contact) do not change. |  |
-| [Hide calendar buttons](#hide-calendar-buttons) | Removes every LINE Calendar button inside the messenger. One is in the Chats-tab header. The other four are in a chat room: the top toolbar, the + attach menu, the slide-out chat menu, and the message long-press menu. |  |
+| [Hide calendar buttons](#hide-calendar-buttons) | Removes every LINE Calendar surface inside the messenger. One is in the Chats-tab header. Four are in a chat room: the top toolbar, the + attach menu, the slide-out chat menu, and the message long-press menu. The last is the Calendar block in the Friends sub-tab of the Home tab. |  |
 | [Hide community button](#hide-community-button) | Removes the community (OpenChat) button from the top of the Chats tab header. |  |
+| [Hide new item badges](#hide-new-item-badges) | Hides the green dots and N badges that mark new items, on header buttons, tabs, menus, lists and settings rows. Unread message counts do not change. |  |
 | [Hide premium unsend upsells](#hide-premium-unsend-upsells) | Removes the LYP premium-unsend upsells that stay after "Disable LINE Premium". These are the "Unsend discreetly" button, the post-unsend promo link, and the expired-window unsend upsell. Ordinary unsend still works. |  |
 | [Keep chats unread](#keep-chats-unread) | When you open a 1:1 or group chat, LINE does not mark it read and sends no read receipt. If you use "Mark as read" or "Mark all as read", LINE marks the chat read and sends the receipt. |  |
 | [Keep unsent messages](#keep-unsent-messages) | Keeps unsent messages from 1:1 and group chats on your device instead of erasing them. This patch shows the usual "unsent a message" notice directly below the message that it kept. This patch does not apply to OpenChat. |  |
