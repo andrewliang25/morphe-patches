@@ -4,10 +4,10 @@ import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.methodCall
 
 /**
- * The 1:1/group read worker `q33.e.d(J, String, Z)` — it performs both the local read-state
+ * The 1:1/group read worker `na3.e.d(J, String, Z)` — it performs both the local read-state
  * update and the server read receipt (`sendChatChecked`). It is the ONLY method in the APK
- * that calls the non-obfuscated `TalkServiceClient.j1(...)`, which makes it a stable anchor to
- * locate the read-manager class `q33.e` (all of q33.e's names are obfuscated and have no
+ * that calls the non-obfuscated `TalkServiceClient.c1(...)`, which makes it a stable anchor to
+ * locate the read-manager class `na3.e` (all of na3.e's names are obfuscated and have no
  * string literals).
  *
  * We do not patch this worker (it is shared by manual mark-as-read). We only use it to find the
@@ -19,7 +19,7 @@ internal object ReadWorkerFingerprint : Fingerprint(
     filters = listOf(
         methodCall(
             definingClass = "Ljp/naver/line/android/thrift/client/TalkServiceClient;",
-            name = "j1",
+            name = "c1",
         ),
     ),
 )

@@ -9,7 +9,7 @@ import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter
 
-private const val HOME_STATE = "Lx72/h\$a;"
+private const val HOME_STATE = "Llb2/g\$a;"
 private const val FILTER_NAME = "filterHomeFeed"
 private const val FILTER_DESC = "(Ljava/util/List;)Ljava/util/List;"
 
@@ -26,14 +26,14 @@ val hideHomeFeedPatch = bytecodePatch(
     extendWith("extensions/extension.mpe")
 
     // Same mechanism as "Hide Home modules", and on the same list. The Home feed is a
-    // List<m52.z>. Each element holds a typed m52.a0 module in field z.e. The list is the first
-    // ctor argument (field `a`) of the Compose state x72.h$a. This patch filters the list and
+    // List<y82.j0>. Each element holds a typed y82.k0 module in field z.e. The list is the first
+    // ctor argument (field `a`) of the Compose state lb2.g$a. This patch filters the list and
     // drops each module whose z.e.getType() belongs to the server content feed. Every type in
     // that feed starts with "HomeFeed" — see the HomeFeed extension.
     //
-    // The loop lives in a new method, x72.h$a.filterHomeFeed. If a patch injects a loop with a
+    // The loop lives in a new method, lb2.g$a.filterHomeFeed. If a patch injects a loop with a
     // backward branch inline, the loop corrupts the layout of an existing method. ART then
-    // throws a VerifyError. At the top of x72.h$a.<init> the patch injects a call with no
+    // throws a VerifyError. At the top of lb2.g$a.<init> the patch injects a call with no
     // branch. The call replaces p1 (the list) with the filtered copy before the constructor
     // stores it. One constructor covers every feed build path and every state copy.
     //
@@ -49,9 +49,9 @@ val hideHomeFeedPatch = bytecodePatch(
     // saw that spinner on v1.8.0-dev.2.
     //
     // Two more levers correct this:
-    //   1. Stop the fetch. v72.h2.B1(Z) is the "load more module content" action, and one
+    //   1. Stop the fetch. jb2.m2.H1(Z) is the "load more module content" action, and one
     //      place in the app calls it. An immediate return ends the loop.
-    //   2. Hide the footer. x72.h$a ctor parameter 6 is isLoadingMore, and its one reader is
+    //   2. Hide the footer. lb2.g$a ctor parameter 6 is isLoadingMore, and its one reader is
     //      the LOADING_MORE footer item. Lever 1 keeps it false on its own. This lever costs
     //      one instruction on a fingerprint that the patch already owns. If lever 1 ever stops
     //      matching, this lever still hides the spinner.
@@ -63,7 +63,7 @@ val hideHomeFeedPatch = bytecodePatch(
         val homeStateCtor = HomeStateCtorFingerprint.method
         val loadMoreContent = LoadMoreContentFingerprint.method
 
-        // 1. Add the static filter helper method to x72.h$a.
+        // 1. Add the static filter helper method to lb2.g$a.
         val cls = mutableClassDefBy(HOME_STATE)
         val filter = MutableMethod(
             ImmutableMethod(
@@ -92,9 +92,9 @@ val hideHomeFeedPatch = bytecodePatch(
                 if-eqz v2, :done
                 invoke-interface {v1}, Ljava/util/Iterator;->next()Ljava/lang/Object;
                 move-result-object v2
-                check-cast v2, Lm52/z;
-                iget-object v3, v2, Lm52/z;->e:Lm52/a0;
-                invoke-interface {v3}, Lm52/a0;->getType()Ljava/lang/String;
+                check-cast v2, Ly82/j0;
+                iget-object v3, v2, Ly82/j0;->e:Ly82/k0;
+                invoke-interface {v3}, Ly82/k0;->getType()Ljava/lang/String;
                 move-result-object v3
                 invoke-static {v3}, Lapp/andrewliang/extension/HomeFeed;->shouldHide(Ljava/lang/String;)Z
                 move-result v3
@@ -106,7 +106,7 @@ val hideHomeFeedPatch = bytecodePatch(
             """,
         )
 
-        // 2. At the top of x72.h$a.<init>, replace the list parameter (p1) with the filtered
+        // 2. At the top of lb2.g$a.<init>, replace the list parameter (p1) with the filtered
         //    copy before the constructor stores it. The call has no branch (invoke +
         //    move-result) and it reuses p1 (`.locals 0`).
         //
@@ -115,7 +115,7 @@ val hideHomeFeedPatch = bytecodePatch(
         //    PageData(modules, isPageReady, isPageRefreshing, isError, isPullToRefreshLoading,
         //    isLoadingMore, orderRequestId, expiredTimeMillis, pageUpdatedTimeMillis, revision,
         //    isSafeMode). Parameter 6 is thus isLoadingMore, which the smali confirms:
-        //    `iput-boolean p6, p0, Lx72/h$a;->f:Z`. Field `f` has one reader in the app, the
+        //    `iput-boolean p6, p0, Llb2/g$a;->f:Z`. Field `f` has one reader in the app, the
         //    map that feeds the LOADING_MORE footer item, so a false value hides that spinner
         //    and changes nothing else. `.locals 0` and 12 registers put p6 at v6, which
         //    const/4 accepts.

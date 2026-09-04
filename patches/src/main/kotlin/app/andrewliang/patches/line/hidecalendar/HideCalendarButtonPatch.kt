@@ -21,16 +21,16 @@ val hideCalendarButtonPatch = bytecodePatch(
         val calendarSgetIndex = CalendarButtonFingerprint.instructionMatches.first().index
         CalendarButtonFingerprint.method.removeInstructions(calendarSgetIndex, 2)
 
-        // 2. Chat-room "+" attach menu: the CalendarButtonType (hg1.b) is shown only if its
-        //    availability predicate `j(gi1.b)Z` returns true (the attach-menu filter hg1.r.f
+        // 2. Chat-room "+" attach menu: the CalendarButtonType (yi1.b) is shown only if its
+        //    availability predicate `j(xk1.b)Z` returns true (the attach-menu filter yi1.p.f
         //    gates on it). Neuter that predicate to false. The item is then dropped by the
-        //    existing filter in gg1.e. Anchor via the constructor (the sole reader of the
-        //    fg1.a$b.CALENDAR enum constant), then select `j` by its unique descriptor.
+        //    existing filter in xi1.c. Anchor via the constructor (the sole reader of the
+        //    wi1.b$b.CALENDAR enum constant), then select `j` by its unique descriptor.
         val attachMenuCalendarClass =
             mutableClassDefBy(AttachMenuCalendarButtonFingerprint.method.definingClass)
         val availabilityMethod = attachMenuCalendarClass.methods.first { method ->
             method.returnType == "Z" &&
-                method.parameterTypes.map { it.toString() } == listOf("Lgi1/b;")
+                method.parameterTypes.map { it.toString() } == listOf("Lxk1/b;")
         }
         availabilityMethod.addInstructions(
             0,
@@ -40,8 +40,8 @@ val hideCalendarButtonPatch = bytecodePatch(
             """,
         )
 
-        // 3. Chat-room top toolbar: ed1.d0.a adds the button at two chat-type branches, each a
-        //    `sget-object CALENDAR_BUTTON` + following `ed1.s1.g(...)` add call. Remove both
+        // 3. Chat-room top toolbar: ag1.e0.a adds the button at two chat-type branches, each a
+        //    `sget-object CALENDAR_BUTTON` + following `ag1.t1.g(...)` add call. Remove both
         //    pairs. instructionMatches[0] = earlier site, [1] = later. Remove the higher index
         //    first so the earlier one stays valid.
         val toolbarMatches = ChatRoomToolbarCalendarButtonFingerprint.instructionMatches
@@ -50,13 +50,13 @@ val hideCalendarButtonPatch = bytecodePatch(
             removeInstructions(toolbarMatches[0].index, 2)
         }
 
-        // 4. Slide-out chat menu: the calendar row (d00.o) forwards its first ctor bool as the
-        //    row's isVisible field (d00.a.e). The menu builder only renders rows whose e is true.
+        // 4. Slide-out chat menu: the calendar row (z00.l) forwards its first ctor bool as the
+        //    row's isVisible field (z00.a.e). The menu builder only renders rows whose e is true.
         //    Force that bool false at method entry (p1 is the first param) so the row is filtered
         //    out.
         ChatMenuCalendarRowFingerprint.method.addInstructions(0, "const/4 p1, 0x0")
 
-        // 5. Message long-press menu: the calendar provider ne1.y0$c.a(...) returns a j51.c action
+        // 5. Message long-press menu: the calendar provider kh1.x0$c.a(...) returns a c81.c action
         //    or null (null = hide). Force it to return null. .locals 3 -> v0 is free.
         ContextMenuCalendarProviderFingerprint.method.addInstructions(
             0,

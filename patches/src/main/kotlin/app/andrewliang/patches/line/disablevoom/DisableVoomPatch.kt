@@ -19,7 +19,7 @@ val disableVoomPatch = bytecodePatch(
         VoomSchemeHandlerFingerprint.method.addInstructions(
             0,
             """
-                sget-object v0, Lv98/i;->b:Lv98/i${'$'}a;
+                sget-object v0, Lah8/i;->b:Lah8/i${'$'}a;
                 return-object v0
             """,
         )

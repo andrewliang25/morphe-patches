@@ -4,11 +4,11 @@ import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.fieldAccess
 import app.morphe.patcher.methodCall
 
-private const val BUTTON_ENUM = "Laz0/q;"
+private const val BUTTON_ENUM = "Lq11/n;"
 
 /**
  * The ChatTabHeaderStateImpl constructor (obfuscated) builds the Chats-tab header button set.
- * It adds each button to the button list as `sget-object <az0.q constant>` + `add(...)`. The
+ * It adds each button to the button list as `sget-object <q11.n constant>` + `add(...)`. The
  * button enum constant names (OPEN_CHAT, CALENDAR, …) are non-obfuscated, because Kotlin enum
  * names survive, so we anchor on them.
  *
@@ -18,12 +18,12 @@ private const val BUTTON_ENUM = "Laz0/q;"
  * anchors the Chats-tab header calendar button the same way. Thus the two patches do not depend
  * on each other and work in either order when both are on.
  */
-// The header button list is a `fb8/b` (the `add` calls target `Lfb8/b;`). Pinning the `add`'s
+// The header button list is a `ki8/b` (the `add` calls target `Lki8/b;`). Pinning the `add`'s
 // definingClass separates it from the green-dot icon set (ChatTabHeaderStateImpl
 // $greenDotVisibleIconSet), which reads the same OPEN_CHAT constant but adds to a different
-// list class (`fb8/j`). Without this pin, OPEN_CHAT + add could silently match the green-dot
+// list class (`ki8/j`). Without this pin, OPEN_CHAT + add could silently match the green-dot
 // method instead of the header builder.
-private const val HEADER_LIST_ADD = "Lfb8/b;"
+private const val HEADER_LIST_ADD = "Lki8/b;"
 
 internal object CommunityButtonFingerprint : Fingerprint(
     filters = listOf(

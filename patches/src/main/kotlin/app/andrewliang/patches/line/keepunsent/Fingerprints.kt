@@ -5,14 +5,14 @@ import app.morphe.patcher.string
 
 /**
  * The lambda that applies an incoming unsend to the local database — obfuscated
- * `g38.b0.invoke(Object)`, run inside a `chat_history` transaction by the
- * `NOTIFIED_DESTROY_MESSAGE`(65) / `DESTROY_MESSAGE`(64) op handlers (`e98.c1` / `e98.r`).
+ * `la8.x.invoke(Object)`, run inside a `chat_history` transaction by the
+ * `NOTIFIED_DESTROY_MESSAGE`(65) / `DESTROY_MESSAGE`(64) op handlers (`bh8.c1` / `bh8.r`).
  *
- * LINE does NOT delete the row here: it rewrites `chat_history.type` to an `i38.c.UNSENT*`
+ * LINE does NOT delete the row here: it rewrites `chat_history.type` to an `na8.c.UNSENT*`
  * variant and NULLs `content`, `parameter`, `attachement_type` and the location columns, then
  * drops the message from the full-text-search index and deletes its `reactions` and
  * `multiple_image_message_mapping` rows. Every one of those writes sits behind a single
- * "is this row already an unsend tombstone?" guard (`i38.c.h()`), which is what the patch flips.
+ * "is this row already an unsend tombstone?" guard (`na8.c.g()`), which is what the patch flips.
  *
  * Anchored on the four SQL table/where-clause string literals the method uses for its cleanup
  * deletes. They are non-obfuscated, appear in this exact program order, and this cluster of four
@@ -21,7 +21,7 @@ import app.morphe.patcher.string
  * The `Object invoke(Object)` signature additionally pins it to the Kotlin lambda itself.
  *
  * The strings are only used to *locate* the method — the guard is then found by instruction shape,
- * because `i38.c` and its `h()` are obfuscated and drift between LINE versions.
+ * because `na8.c` and its `g()` are obfuscated and drift between LINE versions.
  */
 internal object UnsendMessageDbWriteFingerprint : Fingerprint(
     returnType = "Ljava/lang/Object;",

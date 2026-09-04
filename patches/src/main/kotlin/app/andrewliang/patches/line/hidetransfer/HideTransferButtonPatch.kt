@@ -12,16 +12,16 @@ val hideTransferButtonPatch = bytecodePatch(
 ) {
     compatibleWith(COMPATIBILITY_LINE)
 
-    // The Transfer tile (hg1.k) is shown only if its availability predicate `j(gi1.b)Z` returns
-    // true (the attach-menu filter hg1.r.f gates on it). Neuter that predicate to false. The tile
-    // is then dropped by the existing filter in gg1.e. Anchor via the constructor (the sole reader
-    // of the fg1.a$b.PAY enum constant), then select `j` by its unique descriptor.
+    // The Transfer tile (yi1.j) is shown only if its availability predicate `j(xk1.b)Z` returns
+    // true (the attach-menu filter yi1.p.f gates on it). Neuter that predicate to false. The tile
+    // is then dropped by the existing filter in xi1.c. Anchor via the constructor (the sole reader
+    // of the wi1.b$b.PAY enum constant), then select `j` by its unique descriptor.
     execute {
         val transferClass =
             mutableClassDefBy(TransferAttachButtonFingerprint.method.definingClass)
         val availabilityMethod = transferClass.methods.first { method ->
             method.returnType == "Z" &&
-                method.parameterTypes.map { it.toString() } == listOf("Lgi1/b;")
+                method.parameterTypes.map { it.toString() } == listOf("Lxk1/b;")
         }
         availabilityMethod.addInstructions(
             0,
