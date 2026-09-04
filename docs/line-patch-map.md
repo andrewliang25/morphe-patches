@@ -1118,6 +1118,75 @@ hard-requires do **not** resolve against LINE: `GooglePlayUtilityFingerprint` (n
 `"Google Play Services not available"` match is a constructor in `gl.h`). For LINE neither is
 needed anyway — real Play Services is installed, so the "GMS missing" checks never trigger.
 
+## Watch list — surfaced in 26.14.0, not yet actionable
+
+Recorded 2026-09-03 during the 26.14.0 re-anchor, so nobody has to sweep the APK again.
+
+**How to re-check any entry:** resolve the string by **name** in `res/values/public.xml` to its id,
+then grep `smali*/` for that id. A hit means LINE has wired the feature up. Resource **ids drift
+every release; names do not** — always go through the name.
+
+### Staged — resources shipped, zero bytecode references
+
+These are built into `res/` but no smali references them, so they are waiting on a server flip or a
+later release. Nothing to patch today.
+
+| Feature | Strings (all dead in 26.14.0) | Why it matters when it ships |
+|---|---|---|
+| **Scroll preview** (chat list) | `chat_preview_desc_scrollpreview`, `chat_preview_banner_scrollpreview{labs,lyplite,lypstd,nonlypstd}`, `chat_chatlist_tooltip_scrollpreview{labs,lypstd,nonlypstd}` | A new chat-list feature tiered **four ways** (LINE Labs / LYP Lite / LYP Standard / non-LYP). The tier check is the thing to look at — if it is a local read of the market gate, `hidepremium` already moves it; if it is a server entitlement, it is another `INVALID_PREMIUM_STATUS` case. |
+| **LINE Calendar → standalone app cross-promo** | `line_calendar_apppromotion_link_morefeatures`, `line_calendar_apppromotion_popupdesc_eventlocation` | Would be a **6th Calendar surface** and belongs in *Hide calendar buttons*, which currently covers five. |
+| **Scheduled-message upsell** | `chat_scheduledmessages_popupdesc_upgradetosendasscheduled_misc`, `chat_scheduledmessages_toast_errorwithmembership_linep` | Upsell copy for the scheduled-message feature below. |
+
+### Live, but not yet verified against a patched build
+
+Three new premium upsell entry points that do **not** reference the premium facade (`Lx73/b;`), and
+whose immediate launch sites do not either — so it is unproven whether `hidepremium`'s market-gate
+cascade suppresses them. Their gate may sit further up the call chain; tracing it statically has poor
+returns compared with one look at a patched build.
+
+- `com/linecorp/line/chat/ui/impl/message/schedule/popup/ScheduledMessageLypSubscriptionPopupDialogFragment`
+- `com/linecorp/line/chat/ui/impl/premium/popup/onboarding/view/LypFeatureOnboardingPopupDialogFragment`
+- `com/linecorp/line/settings/labs/view/LineUserSettingLabPremiumIntroComposeView`
+
+**Visible symptom to look for:** an LYP feature-onboarding popup appearing on a build with
+*Disable LINE Premium* applied.
+
+For contrast, these new upsells **are** covered — each does a null-guarded facade read, so a false
+market gate takes the hide branch: `ChatVisualEndPageActivity` (photo-viewer premium banner),
+`LiteUpgradeEntryPopupActivity`, `MuteMessageLitePlanUpgradePopupFragment`, the Global Home
+file-expiration banners (`od2.k1`), and the backup upgrade banner (`d55.m`).
+
+### New Home module types — currently kept
+
+Three types are new in 26.14.0 and land in no blocklist (full inventory above). All three are
+**`GLOBALHOME`** tab modules, a different tab from `HOME`, so whether they render at all is
+region-dependent — check on device before widening the blocklist.
+
+| Type | Recommendation |
+|---|---|
+| `GlobalHomeRecommendedSticker` | **Candidate.** Global Home analogue of `HomeContentsRecommendation`, which *Hide Home modules* already hides — leaving this one is an inconsistency. |
+| `GlobalHomeLoungeHoroscope` | **Candidate.** New clutter module. |
+| `GcsGlobalHomeActivityHybridContentCard` | **Keep.** Analogue of `GcsHomeActivityHybridContentCard`, which is deliberately kept. |
+
+### Checked and clear in 26.14.0
+
+Confirmed unchanged, so no new coverage is needed — re-run these diffs on the next bump rather than
+assuming:
+
+- **Bottom-nav tabs:** 12 → 12, identical constants. No new tab.
+- **Attach-menu tiles:** 17 → 17, identical. No new tile.
+- **Ad surface:** no new LINE-side ad view. Only Google Mobile Ads internals moved
+  (`zzbyb` → `zzbym`, a new `com/google/android/gms/ads/…/hsdp` deep-link wrapper).
+- **Nullable premium badge (`Lq83/n;`):** all 63 field reads are null-guarded. The 32 that look
+  unguarded are inside `q83/n`'s own `equals`/`hashCode`/`toString`, where the holder is `this`.
+  So *Disable LINE Premium* adds no new `getDrawable(0)`-class crash risk beyond the known
+  Settings ▸ Chats one, which the backup-gate lever covers.
+- **Read receipts:** `DisabledManualReadReceiptViewModel` is new and sounds relevant, but it is a
+  40-line Square (OpenChat) component-graph stub that never touches `TalkServiceClient` or the
+  `na3.e` read manager. *Keep chats unread* is unaffected.
+
+---
+
 ## Dead ends (investigated, not patchable)
 
 **Extend the unsend window.** The client windows (`c81.a.o` free, `.p` premium) are UX pre-filters fed

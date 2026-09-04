@@ -121,6 +121,7 @@ Before patching any LINE "limit", establish **who decides**. A constraint LINE c
 |---|---|---|
 | Outbound photo compression | **client** — `u13.c1` resamples and JPEG-encodes locally; the server never sees the original | patchable, but **dropped**: one gate per entry point and only the chatroom flow was coverable |
 | Unsend time window | **server** — `unsendMessage` carries only `(seq, messageId)`; `MESSAGE_NOT_DESTRUCTIBLE(71)` comes back | not patchable |
+| Scheduled-message edit / reschedule (new in 26.14.0) | **server** — `fq1.a` is a server error-code enum: `MESSAGE_NOT_MODIFIABLE`, `MESSAGE_RESCHEDULE_UNAVAILABLE`, `INVALID_PREMIUM_STATUS`, plus three `MAX_*_EXCEEDED` quota codes | not patchable |
 | Video length / file size | **server** — client checks in `c81.b.c()` mirror an OBS ceiling (`EXCEED_FILE_MAX_SIZE`) | not usefully patchable |
 | LYP premium entitlements | **server** — account state; `hidepremium` only hides the upsells | not patchable |
 | Call ringtone selection | **client** — `be7.c.a` can return an arbitrary `Uri`, played by LINE's own `MediaPlayer` in-process (`xx.c`) | **patchable** — investigated, deliberately not shipped |
