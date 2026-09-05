@@ -27,8 +27,6 @@ before you patch.
 names of 26.14.0. These names do not exist in 26.11.0. Update LINE to 26.14.0
 before you patch.
 
-Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
-
 ### 🐛 Bug Fixes
 
 * hide the Friends sub-tab Calendar block ([60cabac](https://github.com/andrewliang25/morphe-patches/commit/60cabacab96f98786d95274b96c6759eec22a5fb))
