@@ -495,10 +495,11 @@ starting point, so no one needs to sweep the APK again.
 | Redirect LINE Pay | `line.disablepay` | `PayLaunchActivity` / `PayLiffActivity` onCreate (see below) |
 | Keep unsent messages | `line.keepunsent` | `la8.x.invoke` — the unsend DB write (see below) |
 | Hide Shopping tab | `line.hideshoppingtab` | `COMMERCE` + `COMMERCE_TW` in `wy7.b.a()` (see above) |
+| Fix location maps via GmsCore | `line.fixlocationmaps` | `fo/p.b` — the maps module context (see below) |
 
-Each is an independent, `default = true`, user-facing `bytecodePatch` — one feature (or one feature's
-full set of entry points) per patch. Most are instruction-level edits; *Redirect LINE Pay* and *Keep
-unsent messages* carry extension code.
+Each is an independent, `default = true`, user-facing `bytecodePatch` — one feature (or one
+feature's full set of entry points) per patch. Most are instruction-level edits. *Redirect LINE
+Pay*, *Keep unsent messages* and *Fix location maps* carry extension code.
 
 ## LINE Pay intake & the "Redirect LINE Pay" patch
 
@@ -1052,8 +1053,10 @@ class `com.google.android.gms.auth.GetToken` inside the `app.revanced` package. 
 name too binds a component that does not exist — LINE shows a generic access error with **nothing in
 the log**, because no service starts.
 
-Everything else keeps talking to real Play Services — Maps, location sharing, ML Kit, FCM, anything
-Pay touches — so the "Play Services missing" checks a wholesale GmsCore patch must defeat never fire.
+Everything else keeps talking to real Play Services — ML Kit, FCM, anything Pay touches — so the
+"Play Services missing" checks a wholesale GmsCore patch must defeat never fire. Maps is the one
+other surface that can be moved, by its own opt-in patch and through a different mechanism
+(`DynamiteModule`, not a GMS client) — see "Location maps" below.
 
 Also required and easy to forget: a `<queries>` entry for GmsCore (LINE is `targetSdk 30+`, so without
 it every lookup fails as "package not found"), and **not** renaming LINE's package (below).
@@ -1117,6 +1120,151 @@ hard-requires do **not** resolve against LINE: `GooglePlayUtilityFingerprint` (n
 `MetadataValueReader` string LINE does not ship) and `ServiceCheckFingerprint` (LINE's only
 `"Google Play Services not available"` match is a constructor in `gl.h`). For LINE neither is
 needed anyway — real Play Services is installed, so the "GMS missing" checks never trigger.
+
+## Location maps & the "Fix location maps via GmsCore" patch
+
+Reported as issue #92 ("share location doesn't work"). On a re-signed build every map draws as an
+empty grid. The current location is still found and can still be sent, and only the map is blank.
+A Root Mount install keeps LINE's signature, so it never shows the problem.
+
+### The third re-signing break, and the only one with no certificate fix
+
+| | Push notifications | Google sign-in | **Location maps** |
+|---|---|---|---|
+| What Google checks | the Firebase API key against the cert | the OAuth client against the cert | the Maps API key against the cert |
+| Who reports the cert | **LINE's own** bundled FIS code | Play Services | **Play Services** |
+| Error | `FisError: BAD CONFIG` | `UNREGISTERED_ON_API_CONSOLE` | `Authorization failure` |
+| Fix | rewrite the header (`fixpushnotifications`) | none | redirect the renderer |
+
+LINE ships only the Maps SDK v2 **thin client** — six stub classes under
+`com/google/android/gms/maps/` plus obfuscated delegates in `eo/` and `fo/`. The renderer is not in
+the APK. `fo/p.b` asks `DynamiteModule` for the maps module and gets a remote `Context`; `fo/p.c`
+then class-loads `com.google.android.gms.maps.internal.CreatorImpl` out of it. That renderer runs
+**inside LINE's process**, but it binds `com.google.android.gms.maps.auth.ApiTokenService` **in the
+Play Services process**, which reads LINE's real signing certificate from `PackageManager` and asks
+Google's server for a tile token.
+
+So the key is ours to change but the certificate is not: it is read in another process, and the
+decision is made server-side. This is the opposite of `fixpushnotifications`, where LINE's own code
+builds the `X-Android-Cert` header. **Nothing in LINE's dex reports the certificate, so no patch can
+correct it.** The API key itself sits at `res/values/strings.xml` (`google_maps_key`), reached from
+the manifest `com.google.android.geo.API_KEY` meta-data — a user-supplied key of their own would
+also work, but it costs each user a Google Cloud project with billing enabled, so no patch does that.
+
+### It is eight surfaces, not one
+
+Every layout that inflates a Maps view breaks together, which is why the report said "or sent to
+chat" — the message bubble looks broken too:
+
+| Layout | Surface |
+|---|---|
+| `select_location_activity.xml` (`SupportMapFragment`) | the location picker; `SelectLocationActivity` |
+| `location_viewer.xml` (`SupportMapFragment`) | full-screen viewer; `LocationViewerActivity` |
+| `chat_ui_row_send_msg_location.xml` (`MapView`) | outgoing location bubble in a chat |
+| `chat_ui_row_receive_msg_location.xml` (`MapView`) | incoming location bubble in a chat |
+| `note_post_media_location.xml`, `note_home_write_location_media_layout.xml` | Notes location posts |
+| `post_media_location.xml`, `timeline_write_location_media_layout.xml` | Timeline/VOOM location posts |
+
+All eight go through the one renderer, so one redirect fixes all of them.
+
+**Why "send current location" survives:** the fix comes from the framework
+`android.location.LocationManager` (wrapper `jp/naver/line/android/service/f`). LINE bundles **no**
+`FusedLocationProviderClient` — the `com.google.android.gms.location.*` classes it carries are value
+types only. Tiles and coordinates are independent paths, so one can fail while the other works.
+
+### What the patch does
+
+MicroG-RE added a Maps renderer **for exactly this redirect** (its PR #187; PR #219 then put all
+three renderers in one APK, selectable at runtime, and added a keyless **OpenFreeMap** fallback).
+Its `CreatorImpl` keeps the legacy fully-qualified name on purpose, because clients look it up by
+that name inside MicroG's classloader. The renderer validates no key and no signature.
+
+`fo/p.b(Context, eo/d$a)Landroid/content/Context;` is the one choke point — all three of its callers
+are inside `fo/p`. The patch prepends four instructions:
+
+```smali
+invoke-static { p0 }, Lapp/andrewliang/extension/LocationMaps;->getMapsContext(Landroid/content/Context;)Landroid/content/Context;
+move-result-object v0
+if-eqz v0, :original     # ExternalLabel bound to the original first instruction
+return-object v0
+```
+
+The extension returns MicroG-RE's context via
+`createPackageContext("app.revanced.android.gms", CONTEXT_INCLUDE_CODE | CONTEXT_IGNORE_SECURITY)`,
+or `null` when MicroG-RE is absent — and then the branch falls into the original body and LINE keeps
+using Play Services. **So the patch is a no-op without MicroG-RE**, never a new failure.
+
+Four things that made this safe, and are worth keeping:
+
+- **The package alone is not enough — load the class.** MicroG-RE only got a Maps renderer in
+  **7.0.0** (2026-09-01). An older build has the package but no `CreatorImpl`, and then
+  `createPackageContext` succeeds while `fo/p.c`'s `loadClass` throws `ClassNotFoundException`,
+  hits `:catch_2` and returns the `const/4 v0, 0x0` it set at the top — **null**. `fo/p.a` then
+  does `invoke-interface {v1}, Lfo/r;->d()I` inside a try that catches only `RemoteException`, so
+  the null renderer is an **uncaught NPE**: the patch would turn a blank map into a crash. This
+  matters because **6.1.4 is the version `gmscoreauth` documents** for chat backup, and it is
+  older than the renderer. The extension therefore loads `CreatorImpl` itself before it returns
+  the context, and returns `null` when the class is missing.
+- **`v0` is free at index 0.** The method is `.locals 1`, and its own first instruction is
+  `sget-object v0, Lfo/p;->a`, so nothing reads what the injection leaves in `v0`.
+- **The extension caches the miss as well as the hit.** LINE caches the module context in the
+  static `Lfo/p;->a`, and the early return skips that store. The injection also runs *before*
+  LINE's own cache check, so without a remembered miss every call would repeat a failing
+  `createPackageContext` and log a stack trace.
+- **`DynamiteModule` is left alone.** Its own `"com.google.android.gms"` literal
+  (`DynamiteModule.smali:1887` and `:2599`) is shared by every dynamite consumer — ads, vision,
+  ML Kit barcode/OCR/face, TFLite. Rewriting it would send all of them to MicroG-RE. Same trap as
+  `kl.d.E()` for the GMS clients: redirect the one call site, not the shared resolver.
+
+**Real Play Services must still be installed.** `fo/p.b` is not the first gate. `fo/p.a` — the
+entry point all three `eo/*` callers use — first runs `am/j.e(Context, 0xcc77c0)` (Play Services
+13.4) and throws `am.g` (`GooglePlayServicesNotAvailableException`) before `b` is ever reached.
+`am/j.e` looks for the literal package `com.google.android.gms`, which MicroG-RE does not claim. So
+on a de-Googled device that has only MicroG-RE, this patch does nothing and the map stays blank —
+silently, because `eo/d` catches `am.g`. The patch needs **both** real Play Services and MicroG-RE
+7.0.0+.
+
+**One LINE fallback is neutered, deliberately.** `fo/p.a`'s `:catch_1` handles
+`UnsatisfiedLinkError` by resetting `Lfo/p;->a` to null and calling `c(ctx, LEGACY)` to retry with
+the legacy renderer. The patched `b` ignores `p1` and returns the extension's own static cache, so
+that retry gets the same MicroG renderer. If MicroG's MapLibre native library ever fails to load,
+there is no second chance. Accepted: the alternative is a reset hook for a case no device has shown.
+
+**A risk that turned out to be already handled.** MicroG-RE declares a `ModuleDescriptor` for
+`maps_dynamite` only, while modern clients prefer `maps_core_dynamite`. LINE's own body already
+catches that failure and retries `maps_dynamite`, then falls back to `getRemoteContext` — so even a
+plain package redirect would have worked. Bypassing `DynamiteModule` avoids the question entirely.
+
+**Tradeoff:** tiles come from OpenFreeMap through MapLibre, so they do not look like Google Maps,
+there is no satellite view, and Street View is stubbed. Upstream microG rates this renderer "mostly"
+complete with minor glitches.
+
+The patch is `default = true`. It only does something when MicroG-RE is installed, so most users
+either get a working map or no change at all. **One group loses something:** a Root Mount user who
+installed MicroG-RE for chat backup already has working Google tiles, and this patch replaces them
+with OpenFreeMap ones. That user must turn the patch off.
+
+### Values that drift on a version bump
+
+| What | 26.14.0 | How to re-find it |
+|---|---|---|
+| Maps module loader | `fo/p.b(Context, eo/d$a)` | The four string anchors below all live in this method. |
+| Renderer creator loader | `fo/p.c(Context, eo/d$a)` | Loads `…maps.internal.CreatorImpl` by name. |
+| Renderer preference enum | `eo/d$a` (`LEGACY`) | Left unpinned by the fingerprint on purpose. |
+| Anchors (stable) | `com.google.android.gms.maps_legacy_dynamite`, `…maps_core_dynamite`, `…maps_dynamite`, `Unable to load maps module, maps container context is null` | These belong to Google's bundled Maps client, not to LINE, so they survive LINE's obfuscation. |
+| MicroG-RE package | `app.revanced.android.gms` | Namespace stays `com.google.android.gms`. |
+
+**Not yet device-confirmed.** Verified statically only: the fingerprint resolves against 26.14.0,
+the four injected instructions sit at index 0 with the branch bound to the original first
+instruction, both `.catch` ranges rebase correctly, and a whole-APK offset sweep (648,591 methods,
+14 dex files) is clean. Still to check on a device with MicroG-RE 7.1.0 installed:
+
+1. All four visible surfaces draw tiles, and the picker pans and repositions its pin.
+2. `logcat -s "Google Android Maps SDK"` no longer prints `Ensure that the following Android Key
+   exists`, and `logcat -s AndrewLineMaps` prints "Loading maps from MicroG-RE."
+3. **QR / barcode scanning still works** — this is what proves leaving `DynamiteModule` alone kept
+   ML Kit on real Play Services. The most important regression check.
+4. Without MicroG-RE installed, the build behaves exactly as an unpatched one (blank map, no crash).
 
 ## Watch list — surfaced in 26.14.0, not yet actionable
 

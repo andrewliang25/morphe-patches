@@ -97,6 +97,32 @@ Re-signing (Standard install) breaks push while the app is *fully closed*. Unlik
 - **Which cert:** `base.apk` uses APK Signature Scheme **v3.1 key rotation** (two certs) and `GET_SIGNATURES` returns the lineage-**root** one, so the patch injects the SDK 24–32 signer `89396DC419292473972813922867E6973D6F5C50`. Fallback if `BAD CONFIG` persists: the rotated SDK 33+ signer `6A2927D945AEA6571E1DA5566802F25045D367BD`. Re-derive both with `apksigner verify --print-certs base.apk` on a version bump — 26.14.0 carries the same v3.1 lineage, so both hashes are unchanged and this patch needed no edit.
 - **Verify:** disassemble `ct/c` — `const-string v$reg, "<sha1>"` must land in the `addRequestProperty` value register (`registerE`) right before the `X-Android-Cert` send. On device, `PersistedInstallation*.json` `Status` should flip `4 → 3` (REGISTERED). **The on-device flip is the real proof;** disassembly only shows the header was rewritten.
 
+### Re-signed builds & empty location maps (fixed by "Fix location maps via GmsCore")
+
+Third member of the re-signing family, and the one where **no certificate fix exists**. Full detail
+in `docs/line-patch-map.md` ("Location maps") — read it before touching this.
+
+- **Symptom:** every map draws as an empty grid on a re-signed build — picker, both chat bubbles,
+  viewer, Notes and Timeline posts (**eight layouts**). The GPS fix still works and can still be
+  sent, because it comes from the framework `LocationManager`, not Play Services.
+- **Why unfixable by certificate:** LINE ships only the Maps SDK v2 thin client. `fo/p.b` loads the
+  renderer out of Play Services via `DynamiteModule`; the renderer then binds `ApiTokenService`
+  **in the Play Services process**, which reads the real certificate itself. Contrast
+  `fixpushnotifications`, where LINE's own code builds the header — that is why one is patchable and
+  this is not.
+- **The fix:** hand `fo/p.b` MicroG-RE's context (`createPackageContext`), whose bundled MapLibre
+  renderer validates no key. MicroG-RE added Maps *for this redirect*. Returns `null` without
+  MicroG-RE, so the patch is a no-op rather than a new failure.
+- **Needs MicroG-RE 7.0.0+ AND real Play Services.** The renderer landed in 7.0.0, so the 6.1.4
+  that `gmscoreauth` documents has the package but no `CreatorImpl` — the extension loads that
+  class before it returns the context, because otherwise `fo/p.c` returns null and `fo/p.a` NPEs.
+  And `fo/p.a` gates on `am/j.e(Context, 0xcc77c0)` first, which only real Play Services satisfies.
+- **Do not** rewrite `DynamiteModule`'s own `"com.google.android.gms"` literal — it is shared with
+  ads, vision, ML Kit and TFLite. Redirect the one call site, as `gmscoreauth` does for `kl.d.E()`.
+- **Tradeoff:** OpenFreeMap tiles, no satellite view. `default = true`, and it only acts when
+  MicroG-RE is installed — so the one group that loses is a Root Mount user who installed MicroG-RE
+  for chat backup, whose working Google tiles get replaced. They must turn the patch off.
+
 ### Known limitation: Google account sign-in on re-signed builds
 
 Also documented user-facing as a "Known limitation" in `README.md` — update both together. Same *class* of cause as the FCM break (Google config pinned to LINE's official cert SHA-1) but a distinct mechanism, and only half fixable. Device-confirmed on LINE 26.11.0 / Android 16; not a patch bug. **Full investigation, anchors and the GmsCore route in `docs/line-patch-map.md` — read it before touching this; do not re-derive.**
