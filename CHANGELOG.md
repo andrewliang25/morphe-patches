@@ -1,3 +1,9 @@
+## [2.1.0](https://github.com/andrewliang25/morphe-patches/compare/v2.0.0...v2.1.0) (2026-09-07)
+
+### ✨ New Features
+
+* draw the location maps through GmsCore (issue [#92](https://github.com/andrewliang25/morphe-patches/issues/92)) ([e0a69fe](https://github.com/andrewliang25/morphe-patches/commit/e0a69fe31cb861811f92f8e4d2b8bd546acab212))
+
 ## [2.1.0-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v2.0.0...v2.1.0-dev.1) (2026-09-07)
 
 ### ✨ New Features
