@@ -86,6 +86,23 @@ Google Play Services. No patch can change this ([details](docs/line-patch-map.md
 This limitation does not affect chat-history backup. The *Fix chat backup sign-in via GmsCore*
 patch restores it through [MicroG-RE](https://github.com/MorpheApp/MicroG-RE).
 
+### LINE: maps show an empty grid (re-signed builds)
+
+**What:** On a patched **LINE** build, the maps on the location screens are empty. This covers the
+location picker, the location messages in a chat, and the location posts. You can still send your
+current location, and only the map is blank.
+
+**Why:** Google draws a map only for an API key that is registered under LINE's package name **and**
+its original signing certificate. A re-signed build changes that certificate. Google Play Services
+reports the certificate from its own process, so no patch can correct it
+([details](docs/line-patch-map.md)).
+
+**Workaround:** enable the *Fix location maps via GmsCore* patch. It draws the maps through
+[MicroG-RE](https://github.com/MorpheApp/MicroG-RE) **7.0.0 or later** instead, which is the first
+version with a map renderer. Google Play Services must still be installed. The tiles then come from OpenFreeMap,
+so they do not look like Google Maps. There is no satellite view. A **Root Mount** install keeps
+LINE's original signature and needs neither the patch nor MicroG-RE.
+
 ## 🙏 Special thanks
 
 - [@f870103](https://github.com/f870103) — lent a LINE account for tests, and found the redirect URL of the LINE Pay app.
