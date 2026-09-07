@@ -17,9 +17,9 @@ Morphe Manager to build a modified APK.
 ## 🩹 Patches list
 
 <!-- PATCHES_START EXPANDED -->
-> **[v2.0.0](https://github.com/andrewliang25/morphe-patches/releases/tag/v2.0.0)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;24 patches total
+> **[v2.1.0-dev.1](https://github.com/andrewliang25/morphe-patches/releases/tag/v2.1.0-dev.1)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;25 patches total
 <details open>
-<summary>📦 LINE&nbsp;&nbsp;•&nbsp;&nbsp;24 patches</summary>
+<summary>📦 LINE&nbsp;&nbsp;•&nbsp;&nbsp;25 patches</summary>
 <br>
 
 **🎯 Supported versions:**
@@ -32,6 +32,7 @@ Morphe Manager to build a modified APK.
 | [Disable LINE Premium](#disable-line-premium) | Hides all LINE Yahoo Premium (LYP) surfaces: the upsells, the badges, the Premium settings page, and the subscribe and manage flows. Premium chat backup changes to the ordinary chat-history backup. This patch unlocks nothing, because the server enforces premium. |  |
 | [Disable VOOM](#disable-voom) | VOOM deep links, shares, and notifications do nothing. If you open the standalone VOOM feed, it closes. Messaging and the other tabs do not change. |  |
 | [Fix chat backup sign-in via GmsCore](#fix-chat-backup-sign-in-via-gmscore) | Sends the Google account picker and the Drive token of chat-history backup through GmsCore. Backup and restore then work on a re-signed build. This patch needs MicroG-RE. It does not change how you sign in to a Google account. A Root Mount install does not need this patch. |  |
+| [Fix location maps via GmsCore](#fix-location-maps-via-gmscore) | Shows a map again on the location screens of a re-signed build. This covers the location picker, the location messages in a chat, and the location posts. The tiles come from OpenFreeMap and do not look like Google Maps. This patch needs MicroG-RE 7.0.0 or later. A Root Mount install does not need this patch. |  |
 | [Fix push notifications](#fix-push-notifications) | When LINE is fully closed, push notifications work again on a re-signed build. A Root Mount install does not need this patch. |  |
 | [Hide Events button](#hide-events-button) | Removes the "Events" row from the slide-out menu in a chat room. Events is a different feature from LINE Calendar, and it opens a server-hosted page. |  |
 | [Hide Home content feed](#hide-home-content-feed) | Removes the content feed below the friends list on the Home tab. The feed shows LINE NEWS posts, official account posts, live cards, content units, and ranking units. The friends list, the service icons, and the other Home modules do not change. |  |
