@@ -17,7 +17,7 @@ private const val CALENDAR_MODULE_TYPE = "FriendsSubTabCalendar"
 
 @Suppress("unused")
 val hideCalendarButtonPatch = bytecodePatch(
-    name = "Hide calendar buttons",
+    name = "[Chat] Hide calendar buttons",
     description = "Removes every LINE Calendar surface inside the messenger. One is in the " +
         "Chats-tab header. Four are in a chat room: the top toolbar, the + attach menu, the " +
         "slide-out chat menu, and the message long-press menu. The last is the Calendar block " +

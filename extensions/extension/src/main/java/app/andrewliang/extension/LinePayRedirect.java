@@ -8,7 +8,7 @@ import android.util.Log;
 import java.net.URLEncoder;
 
 /**
- * Helper for the "Redirect LINE Pay" patch.
+ * Helper for the "[General] Redirect LINE Pay" patch.
  *
  * LINE's messenger cannot run its own Pay flow on a re-signed/patched build (the bundled VKey
  * V-Guard integrity check fails), so instead of merely closing the Pay screen we forward the

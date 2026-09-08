@@ -6,7 +6,7 @@ import app.morphe.patcher.patch.bytecodePatch
 
 @Suppress("unused")
 val disableVoomPatch = bytecodePatch(
-    name = "Disable VOOM",
+    name = "[General] Disable VOOM",
     description = "VOOM deep links, shares, and notifications do nothing. If you open the " +
         "standalone VOOM feed, it closes. Messaging and the other tabs do not change.",
     default = true,

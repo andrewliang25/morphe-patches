@@ -127,9 +127,9 @@ So the practical direction is **hiding** premium, not unlocking it.
 
 ---
 
-## Disabling premium (this bundle: `Disable LINE Premium`)
+## Disabling premium (this bundle: `[Premium] Disable LINE Premium`)
 
-Because premium cannot be unlocked, `Disable LINE Premium` **hides every premium surface** — upsell
+Because premium cannot be unlocked, `[Premium] Disable LINE Premium` **hides every premium surface** — upsell
 popups/banners, badges/locks, the "LINE Premium" settings page and its entry rows, the subscribe/manage
 flows — by forcing LINE's own market-availability flag off.
 
@@ -185,7 +185,7 @@ LINE version.
 
 **Symptom:** on a patched build, **Settings ▸ Chats** threw and bounced back to Home. Stock is fine;
 reproduced on both Standard (re-signed) and Root Mount, that is signing-independent. Caused by
-`Disable LINE Premium` alone.
+`[Premium] Disable LINE Premium` alone.
 
 **Chain** (all verified against decompiled 26.14.0):
 
@@ -267,8 +267,8 @@ The filter goes on `lb2.g$a.<init>(List, Z×5, String, Long, Long, I, Z)`, at in
 - **One literal comparison needs no extension.** The type string is compared in smali, with the
   literal as the receiver of `String.equals`, so a null type is safe. This patch stays free of
   extension code.
-- **Three patches prepend at that same index** — this one, `Hide Home modules` and
-  `Hide Home content feed`. All three are pure `List -> List` filters on `p1`, so the patch that
+- **Three patches prepend at that same index** — this one, `[Home] Hide Home modules` and
+  `[Home] Hide Home content feed`. All three are pure `List -> List` filters on `p1`, so the patch that
   applies last runs first and the result is the same in any order. Verified in the dex: the three
   `invoke-static` + `move-result-object v1` pairs chain, then the original `Object.<init>` and
   `iput-object v1` into field `a`.
@@ -279,7 +279,7 @@ The full Home module inventory (45 types) is in `line-patch-map.md`, section "Ho
 module capture from a Taiwan account (8 modules, no `HomeTabLypRecommendation`). The module list is
 region-driven and server-driven, so this needs a tester whose account gets the upsell.
 
-### Known survivors: premium unsend upsells (patch `Hide premium unsend upsells`)
+### Known survivors: premium unsend upsells (patch `[Premium] Hide premium unsend upsells`)
 
 Two premium-unsend surfaces read config directly, bypassing `a83.a.d()`, so the master lever does not
 hide them — a supplementary patch does:

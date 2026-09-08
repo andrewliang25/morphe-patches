@@ -4,7 +4,7 @@ import android.content.Context;
 import android.util.Log;
 
 /**
- * Helper for the "Fix location maps via GmsCore" patch.
+ * Helper for the "[Fix] Restore location maps via MicroG-RE" patch.
  *
  * <p>LINE draws every map through the Google Maps Android SDK v2 <i>thin client</i>. The renderer
  * itself is not in LINE's APK: LINE asks {@code DynamiteModule} for
@@ -16,7 +16,7 @@ import android.util.Log;
  * LINE's API key, the token is refused, and every map renders as an empty grid.
  *
  * <p>Nothing in LINE's own bytecode reports that certificate, so it cannot be corrected the way
- * "Fix push notifications" rewrites the {@code X-Android-Cert} header. Instead this returns
+ * "[Fix] Restore push notifications" rewrites the {@code X-Android-Cert} header. Instead this returns
  * MicroG-RE's {@link Context}, whose bundled MapLibre/VTM renderer validates no key and no
  * signature. MicroG-RE added Maps support for exactly this redirect.
  *
