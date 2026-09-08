@@ -4,7 +4,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * Helper for the "Hide Home modules" LINE patch.
+ * Helper for the "[Home] Hide Home modules" LINE patch.
  *
  * LINE's Home tab renders a server-driven list of typed modules (m52.a0, each with a stable
  * getType() string), held as the module list of the Compose state x72.h$a. The patch iterates

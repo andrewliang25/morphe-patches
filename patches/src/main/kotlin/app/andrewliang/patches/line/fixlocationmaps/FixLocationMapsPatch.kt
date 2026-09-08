@@ -21,7 +21,7 @@ private const val EXTENSION_CLASS = "Lapp/andrewliang/extension/LocationMaps;"
  * fails as "package not found". Nameless, so it stays an internal dependency rather than a
  * separate entry in the Manager list.
  *
- * "Fix chat backup sign-in via GmsCore" adds the same entry, so the check before appending is what
+ * "[Fix] Restore chat backup sign-in via MicroG-RE" adds the same entry, so the check before appending is what
  * keeps the two patches from producing a duplicate when both are enabled.
  */
 private val fixLocationMapsManifestPatch = resourcePatch {
@@ -52,7 +52,7 @@ private val fixLocationMapsManifestPatch = resourcePatch {
 
 @Suppress("unused")
 val fixLocationMapsPatch = bytecodePatch(
-    name = "Fix location maps via GmsCore",
+    name = "[Fix] Restore location maps via MicroG-RE",
     description = "Shows a map again on the location screens of a re-signed build. This covers " +
         "the location picker, the location messages in a chat, and the location posts. The tiles " +
         "come from OpenFreeMap and do not look like Google Maps. This patch needs MicroG-RE " +
@@ -75,7 +75,7 @@ val fixLocationMapsPatch = bytecodePatch(
     //
     // Only this method moves. `DynamiteModule` holds its own "com.google.android.gms" literal, and
     // rewriting that would send ads, vision, ML Kit and TFLite to MicroG-RE as well — the same trap
-    // "Fix chat backup sign-in via GmsCore" avoids by overriding one client instead of the shared
+    // "[Fix] Restore chat backup sign-in via MicroG-RE" avoids by overriding one client instead of the shared
     // base class.
     execute {
         val method = MapsModuleContextFingerprint.method

@@ -144,7 +144,7 @@ private fun MutableMethod.visibilityCallsOn(isBadge: (FieldReference) -> Boolean
 
 @Suppress("unused")
 val hideNewBadgesPatch = bytecodePatch(
-    name = "Hide new item badges",
+    name = "[General] Hide new item badges",
     description = "Hides the green dots and N badges that mark new items, on header buttons, " +
         "tabs, menus, lists and settings rows. Unread message counts do not change.",
     default = true,

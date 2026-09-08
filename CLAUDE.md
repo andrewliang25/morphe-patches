@@ -87,7 +87,7 @@ From decompiling LINE 26.14.0 (detail in `work/decompiled-line-<ver>/NOTES-integ
 
 **Implication:** messaging patches are safe on a re-signed build. Defeating LINE Pay would mean neutralizing the VKey native library (out of scope). Anchor fingerprints on **string literals / non-obfuscated class names** — LINE obfuscates class and method names *including* `org.apache.thrift`'s, so a seemingly-stable framework type is not a safe anchor.
 
-### Re-signed builds & closed-app push notifications (fixed by "Fix push notifications")
+### Re-signed builds & closed-app push notifications (fixed by "[Fix] Restore push notifications")
 
 Re-signing (Standard install) breaks push while the app is *fully closed*. Unlike the Google sign-in limitation below, this **is** fixable in-APK — `patches/line/fixpushnotifications/`, device-confirmed on a re-signed LINE 26.11.0, descriptors re-anchored for 26.14.0.
 
@@ -97,7 +97,7 @@ Re-signing (Standard install) breaks push while the app is *fully closed*. Unlik
 - **Which cert:** `base.apk` uses APK Signature Scheme **v3.1 key rotation** (two certs) and `GET_SIGNATURES` returns the lineage-**root** one, so the patch injects the SDK 24–32 signer `89396DC419292473972813922867E6973D6F5C50`. Fallback if `BAD CONFIG` persists: the rotated SDK 33+ signer `6A2927D945AEA6571E1DA5566802F25045D367BD`. Re-derive both with `apksigner verify --print-certs base.apk` on a version bump — 26.14.0 carries the same v3.1 lineage, so both hashes are unchanged and this patch needed no edit.
 - **Verify:** disassemble `ct/c` — `const-string v$reg, "<sha1>"` must land in the `addRequestProperty` value register (`registerE`) right before the `X-Android-Cert` send. On device, `PersistedInstallation*.json` `Status` should flip `4 → 3` (REGISTERED). **The on-device flip is the real proof;** disassembly only shows the header was rewritten.
 
-### Re-signed builds & empty location maps (fixed by "Fix location maps via GmsCore")
+### Re-signed builds & empty location maps (fixed by "[Fix] Restore location maps via MicroG-RE")
 
 Third member of the re-signing family, and the one where **no certificate fix exists**. Full detail
 in `docs/line-patch-map.md` ("Location maps") — read it before touching this.

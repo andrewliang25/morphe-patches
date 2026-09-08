@@ -6,7 +6,7 @@ import app.morphe.patcher.patch.bytecodePatch
 
 @Suppress("unused")
 val hideVoomTabPatch = bytecodePatch(
-    name = "Hide VOOM tab",
+    name = "[Tab] Hide VOOM tab",
     description = "Removes the VOOM (formerly Timeline) tab from the main bottom navigation.",
     default = true,
 ) {

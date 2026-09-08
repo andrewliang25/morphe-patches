@@ -15,7 +15,7 @@ private const val FILTER_DESC = "(Ljava/util/List;)Ljava/util/List;"
 
 @Suppress("unused")
 val hideHomeFeedPatch = bytecodePatch(
-    name = "Hide Home content feed",
+    name = "[Home] Hide Home content feed",
     description = "Removes the content feed below the friends list on the Home tab. The feed " +
         "shows LINE NEWS posts, official account posts, live cards, content units, and ranking " +
         "units. The friends list, the service icons, and the other Home modules do not change.",
@@ -25,7 +25,7 @@ val hideHomeFeedPatch = bytecodePatch(
 
     extendWith("extensions/extension.mpe")
 
-    // Same mechanism as "Hide Home modules", and on the same list. The Home feed is a
+    // Same mechanism as "[Home] Hide Home modules", and on the same list. The Home feed is a
     // List<y82.j0>. Each element holds a typed y82.k0 module in field z.e. The list is the first
     // ctor argument (field `a`) of the Compose state lb2.g$a. This patch filters the list and
     // drops each module whose z.e.getType() belongs to the server content feed. Every type in
@@ -37,7 +37,7 @@ val hideHomeFeedPatch = bytecodePatch(
     // branch. The call replaces p1 (the list) with the filtered copy before the constructor
     // stores it. One constructor covers every feed build path and every state copy.
     //
-    // "Hide Home modules" prepends the same call shape at the same index. Both are pure
+    // "[Home] Hide Home modules" prepends the same call shape at the same index. Both are pure
     // List -> List filters on p1. Thus the patch that applies second runs first, and the
     // result is the same either way.
     //

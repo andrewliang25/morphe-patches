@@ -21,7 +21,7 @@ private const val LYP_MODULE_TYPE = "HomeTabLypRecommendation"
 
 @Suppress("unused")
 val hidePremiumPatch = bytecodePatch(
-    name = "Disable LINE Premium",
+    name = "[Premium] Disable LINE Premium",
     description = "Hides all LINE Yahoo Premium (LYP) surfaces: the upsells, the badges, the " +
         "Premium settings page, and the subscribe and manage flows. Premium chat backup changes " +
         "to the ordinary chat-history backup. This patch unlocks nothing, because the server " +
@@ -124,7 +124,7 @@ val hidePremiumPatch = bytecodePatch(
         // path goes to that constructor. One literal comparison needs no extension code, so this
         // patch declares no extension.
         //
-        // "Hide Home modules" and "Hide Home content feed" prepend the same call shape at the
+        // "[Home] Hide Home modules" and "[Home] Hide Home content feed" prepend the same call shape at the
         // same index. All three are pure List -> List filters on p1. Thus the patch that applies
         // last runs first, and the result is the same in every order.
         val homeState = mutableClassDefBy(HOME_STATE)
