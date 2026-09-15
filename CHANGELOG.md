@@ -1,3 +1,18 @@
+## [3.0.0](https://github.com/andrewliang25/morphe-patches/compare/v2.1.0...v3.0.0) (2026-09-15)
+
+### ⚠ BREAKING CHANGES
+
+* Check your patch selection before you patch an app. This
+release renames every patch. Morphe Manager and the Morphe CLI both store a
+selection by patch name, so your saved selection no longer matches. Every patch
+goes back to its default, which is enabled. A patch that you turned off is on
+again. The Manager also reports the renamed patches as new.
+
+### ✨ New Features
+
+* add Facebook ad patches ([e7040ec](https://github.com/andrewliang25/morphe-patches/commit/e7040ec16df13d0334462df77443203d2c5b4fac))
+* group patch names by category, and rename the MicroG-RE patches ([22c756e](https://github.com/andrewliang25/morphe-patches/commit/22c756ebd02166f040d570c3f9d9a451ae82e110))
+
 ## [3.0.0-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v2.1.0...v3.0.0-dev.1) (2026-09-15)
 
 ### ⚠ BREAKING CHANGES
