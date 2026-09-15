@@ -1,7 +1,7 @@
 package app.andrewliang.extension;
 
 /**
- * Helper for the "Hide Home content feed" LINE patch.
+ * Helper for the "[Home] Hide Home content feed" LINE patch.
  *
  * The LINE Home tab shows one server-driven list of typed modules. Each module is an m52.a0
  * with a stable getType() string. The list is the module list of the Compose state x72.h$a.

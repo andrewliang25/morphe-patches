@@ -4,7 +4,7 @@ import android.database.sqlite.SQLiteDatabase;
 import android.util.Log;
 
 /**
- * Helper for the "Keep unsent messages" patch.
+ * Helper for the "[Chat] Keep unsent messages" patch.
  *
  * <p>The patch makes LINE skip the database work it normally does when a message is unsent in a 1:1
  * or group chat, so the row survives untouched — text, media, reactions and search-index entry all

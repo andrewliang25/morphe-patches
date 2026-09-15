@@ -22,7 +22,7 @@ private const val MAX_NIBBLE_REGISTER = 15
 
 @Suppress("unused")
 val keepUnsentMessagesPatch = bytecodePatch(
-    name = "Keep unsent messages",
+    name = "[Chat] Keep unsent messages",
     description = "Keeps unsent messages from 1:1 and group chats on your device instead of " +
         "erasing them. This patch shows the usual \"unsent a message\" notice directly below the " +
         "message that it kept. This patch does not apply to OpenChat.",

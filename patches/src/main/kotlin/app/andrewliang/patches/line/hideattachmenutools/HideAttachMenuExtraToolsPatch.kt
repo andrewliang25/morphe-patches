@@ -6,7 +6,7 @@ import app.morphe.patcher.patch.bytecodePatch
 
 @Suppress("unused")
 val hideAttachMenuExtraToolsPatch = bytecodePatch(
-    name = "Hide attach menu extra tools",
+    name = "[Chat] Hide attach menu extra tools",
     description = "Removes all the server-provided extra tools from the + attach menu in a chat " +
         "room (Poll, Reservation, Schedule, Ladder shuffle, and more). The built-in tiles " +
         "(camera, gallery, files, and contact) do not change.",

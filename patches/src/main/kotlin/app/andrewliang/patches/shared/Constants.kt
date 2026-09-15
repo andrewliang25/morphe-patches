@@ -23,4 +23,26 @@ object Constants {
             ),
         ),
     )
+
+    /**
+     * Facebook (com.facebook.katana).
+     *
+     * Facebook ships as a split app bundle, so it uses [ApkFileType.APKM]; all app code is in
+     * `base.apk`. Pin the exact version the patches were confirmed against.
+     *
+     * Facebook releases roughly every two weeks and Redex reassigns every `LX/…` class name on
+     * each build, so these patches anchor only on names Redex cannot touch. Re-confirm on a bump —
+     * see `docs/facebook-ads-map.md`.
+     */
+    val COMPATIBILITY_FACEBOOK = Compatibility(
+        name = "Facebook",
+        packageName = "com.facebook.katana",
+        apkFileType = ApkFileType.APKM,
+        appIconColor = 0x0864FF, // Facebook brand blue.
+        targets = listOf(
+            AppTarget(
+                version = "577.0.0.50.72",
+            ),
+        ),
+    )
 }

@@ -6,7 +6,7 @@ import app.morphe.patcher.patch.bytecodePatch
 
 @Suppress("unused")
 val hideCommunityButtonPatch = bytecodePatch(
-    name = "Hide community button",
+    name = "[Chat] Hide community button",
     description = "Removes the community (OpenChat) button from the top of the Chats tab header.",
     default = true,
 ) {

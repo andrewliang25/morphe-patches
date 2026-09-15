@@ -6,7 +6,7 @@ import app.morphe.patcher.patch.bytecodePatch
 
 @Suppress("unused")
 val hideLineTodayTabPatch = bytecodePatch(
-    name = "Hide LINE TODAY tab",
+    name = "[Tab] Hide LINE TODAY tab",
     description = "Removes the LINE TODAY (News) tab from the main bottom navigation, " +
         "in both the news-tab and news-row layouts.",
     default = true,
