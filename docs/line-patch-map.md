@@ -89,7 +89,7 @@ whatever class owns that `f()`.
 | LINE GIFT (`chathistory_attach_dialog_label_giftshop`) | `yi1.h` | `GIFT` | `contains(ds3.a.GIFT)` |
 | Files `yi1.g`, Contact `yi1.f`, Location `yi1.m`, Voice `yi1.t`, Keep `yi1.i`, PayPay `yi1.p`, Live talk `yi1.l`, LINE MUSIC `yi1.n` | — | (their own) | — |
 
-**To hide one static tile** (used by "Hide Transfer button", "Hide LINE GIFT button" and the Calendar
+**To hide one static tile** (used by "[Chat] Hide Transfer button", "[Chat] Hide LINE GIFT button" and the Calendar
 `+` tile): anchor its ctor on the **unique read of its `wi1.b$b` type constant** — each constant is read
 in that one ctor only, and pinning the ctor's parameter list excludes the enum's `<clinit>` `sput` —
 then `mutableClassDefBy(fp.method.definingClass)`, select `j(Lxk1/b;)Z` by descriptor, and prepend
@@ -105,7 +105,7 @@ icons and destinations all come from the server payload, **not** from local reso
 
 - **Hide the whole category (stable):** every service is an `yi1.d`, built *only* in `xi1.c`, so forcing
   **`yi1.d.f(Lxk1/b;Lwi1/b;Lyi1/a$a;)Z`** to `return false` drops them all at once with no dependency on
-  the drifting server payload. This is **"Hide attach menu extra tools"**. Anchor: `yi1.d.f` is the only
+  the drifting server payload. This is **"[Chat] Hide attach menu extra tools"**. Anchor: `yi1.d.f` is the only
   `f(...)Z` reading `Lk81/a;->f` (its `availableChatTypes` set), which separates it from the sibling
   `f()` overrides in `yi1.a`/`yi1.p`.
 - **Hide one service (fragile — avoid):** a single service is identifiable only by its LINE service
@@ -120,7 +120,7 @@ icons and destinations all come from the server payload, **not** from local reso
 Easy to conflate. They are separate features with separate entry points, gates, and destinations.
 
 **Calendar** (native LINE Calendar; strings `line_calendar_*`; feature gate interface `or0.d`, impl
-`wr0.j`). Five in-messenger entry points, all removed by **"Hide calendar buttons"**:
+`wr0.j`). Five in-messenger entry points, all removed by **"[Chat] Hide calendar buttons"**:
 
 | Surface | Class / anchor | Hide technique |
 |---|---|---|
@@ -134,7 +134,7 @@ Easy to conflate. They are separate features with separate entry points, gates, 
 `z00.n` row built in `ChatHistoryMenuFragment` (~the `z00.n.<init>` block using string `0x7f150e87`
 + icon `0x7f0807ce`), gated by the boolean field `Lv00/o4;->l:Z` (the sole UI read of that field).
 Opens a **server-configured web page** (`settings.e$c.D`), not the native calendar. Removed by
-**"Hide Events button"** — because `z00.n` is shared by other rows, patch at the build site: replace
+**"[Chat] Hide Events button"** — because `z00.n` is shared by other rows, patch at the build site: replace
 the `iget-boolean … s4.l` (matched by `fieldAccess(Lv00/o4;,"l")` + `literal(0x7f150e87)`) with a
 `const 0` into the same register.
 
@@ -148,8 +148,8 @@ The header button row (Chats tab, `com.linecorp.line.chattab.header.ChatTabHeade
 `qz1.f`) is built from the Kotlin enum **`q11.q`** (constants `AI_FRIEND, ALBUM, CALENDAR, OPEN_CHAT,
 PLUS_MENU` — names survive obfuscation). Buttons are `sget-object <q11.q const>` + `add(...)` into a
 `ListBuilder` `ki8.b`. A separate green-dot icon `Set` uses `ki8.j` and does **not** include
-`CALENDAR`. To hide a header button, remove its `sget`+`add` pair (see "Hide calendar buttons" header
-row, and the sibling "Hide community button" which targets `OPEN_CHAT`).
+`CALENDAR`. To hide a header button, remove its `sget`+`add` pair (see "[Chat] Hide calendar buttons" header
+row, and the sibling "[Chat] Hide community button" which targets `OPEN_CHAT`).
 
 ---
 
@@ -164,13 +164,13 @@ enum is **not obfuscated**, so fingerprint on `returnType = "Ljava/util/List;"` 
 |---|---|---|---|---|
 | `HOME` / `HOME26` / `GLOBALHOME` | `hometab` / `linehome` / `globalhome` | — | always (one of the three) | — |
 | `CHAT` | `chatlist` | — | always | — |
-| `COMMERCE` | `commercetab` | `gnb_commerce` — "Shopping" / ja **ショッピング** | `function.maintab.commercetab` (JP) | **Hide Shopping tab** |
-| `COMMERCE_TW` | `commercetwtab` | `tw_commerce_tab_gnb` — "Discover" / zh-TW **逛逛** | `function.maintab.commercetwtab` (TW) | **Hide Shopping tab** |
+| `COMMERCE` | `commercetab` | `gnb_commerce` — "Shopping" / ja **ショッピング** | `function.maintab.commercetab` (JP) | **[Tab] Hide Shopping tab** |
+| `COMMERCE_TW` | `commercetwtab` | `tw_commerce_tab_gnb` — "Discover" / zh-TW **逛逛** | `function.maintab.commercetwtab` (TW) | **[Tab] Hide Shopping tab** |
 | `SQUARE` | `squaretab` | — | `rm5.b.C()` | — |
-| `TIMELINE` | `timeline` | — | `db0.k0.a(m2)` | Hide VOOM tab |
-| `NEWS` / `NEWS_ROW` | `newstab` / `newsrowtab` | — | `s28.a.b()` / `kc3.d.a()` | Hide LINE TODAY tab |
+| `TIMELINE` | `timeline` | — | `db0.k0.a(m2)` | [Tab] Hide VOOM tab |
+| `NEWS` / `NEWS_ROW` | `newstab` / `newsrowtab` | — | `s28.a.b()` / `kc3.d.a()` | [Tab] Hide LINE TODAY tab |
 | `CALL` | `call` | — | `y28.d.c()` | — |
-| `MINI` / `WALLET` | `minitab` / `wallettab` | — | `m2.a().Y().d()` / `m2.a().H0().l()` | Hide Wallet tab |
+| `MINI` / `WALLET` | `minitab` / `wallettab` | — | `m2.a().Y().d()` / `m2.a().H0().l()` | [Tab] Hide Wallet tab |
 
 **`COMMERCE`, `COMMERCE_TW`, `SQUARE` and `TIMELINE` share one `if`/`else-if` chain**, competing for a
 single slot. Two rules follow:
@@ -181,7 +181,7 @@ single slot. Two rules follow:
   the branch's trailing `goto`, so the slot stays empty, as stock LINE does when the gate is on.
 - **Anchor each patch on its own constants only.** The tab patches run in arbitrary order against one
   method and each fingerprint resolves *after* earlier mutations, so anchoring on a constant another
-  patch removes breaks the match. (Thus Hide Shopping tab avoids `TIMELINE` and `MINI`/`WALLET`; see
+  patch removes breaks the match. (Thus [Tab] Hide Shopping tab avoids `TIMELINE` and `MINI`/`WALLET`; see
   also `hidevoomtab/Fingerprints.kt`.)
 
 **A missing tab is safe everywhere.** Tab→index lookups are `Math.max(list.indexOf(...), 0)`, clamping
@@ -205,8 +205,8 @@ screenshot. That is the only step separating "the instructions are gone" from "t
 
 The Home tab renders a single server-driven `List<y82.j0>`. Everything on the tab is one of these
 modules — the friends list, the service icons, the ads, and the whole content feed below the friends
-list. Three patches filter that list: *Hide Home modules*, *Hide Home content feed*, and
-*Disable LINE Premium*. If you change this surface, update all three call sites.
+list. Three patches filter that list: *[Home] Hide Home modules*, *[Home] Hide Home content feed*, and
+*[Premium] Disable LINE Premium*. If you change this surface, update all three call sites.
 
 **The chain.** `v52.g.a(Ls52/i;Ly82/y0;)` assembles the list from the GCS response (one giant
 `packed-switch` over the payload oneof; **jadx fails on this method** — `Method not decompiled` — so
@@ -243,7 +243,7 @@ identifiers and all survive verbatim — the patches match on those, never on th
 **Three types are new since 26.11.0** (45 → 48) and are *not* in any blocklist yet:
 `GlobalHomeRecommendedSticker`, `GlobalHomeLoungeHoroscope` and
 `GcsGlobalHomeActivityHybridContentCard` (top-level `y82.n0`). Nothing was removed. The first two
-look like **Hide Home modules** candidates if they render in any region — that needs a full
+look like **[Home] Hide Home modules** candidates if they render in any region — that needs a full
 hidden-vs-kept inventory and its own device pass before the blocklist widens.
 
 Regenerate this diff on a bump by extracting the `const-string` from every `getType()` in the
@@ -251,15 +251,15 @@ classes referencing `Ly82/k0;` and comparing old tree to new.
 
 | `getType()` | Class | Surface | Status |
 |---|---|---|---|
-| `HomeContentsRecommendation` | `a0$s` | recommended stickers / content | **Hide Home modules** (device-confirmed) |
-| `HomePerformanceAd` | `a0$j0` | performance ads in the feed | **Hide Home modules** (device-confirmed) |
-| `FLEX` | `a0$f` | 即時夯話題 hot topics **and** the bottom promo/ad block | **Hide Home modules** (device-confirmed) |
-| `AdModel` | `a0$a` | generic ad module (`GcsAdModuleViewData` / `GcsAdMeta`) | **Hide Home modules** (static evidence only — never seen on device) |
-| `HomeFeedPost` | `a0$z` | OA / LINE NEWS post card | **Hide Home content feed** |
-| `HomeFeedLiveSingle` | `a0$w` | the `OA_LIVE` variant | **Hide Home content feed** |
-| `HomeFeedMatomeSingle` / `-Carousel` | `a0$y` / `a0$x` | AI-digest ("matome") news cards | **Hide Home content feed** |
-| `HomeFeedUnitBigVisual` / `-Grid` / `-Ranking` / `-ShortFormGrid` / `-Single` / `-SingleAndGrid` | `a0$b0`–`a0$g0` | content-unit layouts, each wrapping posts | **Hide Home content feed** |
-| `HomeFeedDefaultPageError` / `-DefaultPageLoading` / `HomeFeedError` / `HomeFeedSeedPostError` | `a0$t` / `a0$u` / `a0$v` / `a0$a0` | that feed's error & spinner placeholders | **Hide Home content feed** |
+| `HomeContentsRecommendation` | `a0$s` | recommended stickers / content | **[Home] Hide Home modules** (device-confirmed) |
+| `HomePerformanceAd` | `a0$j0` | performance ads in the feed | **[Home] Hide Home modules** (device-confirmed) |
+| `FLEX` | `a0$f` | 即時夯話題 hot topics **and** the bottom promo/ad block | **[Home] Hide Home modules** (device-confirmed) |
+| `AdModel` | `a0$a` | generic ad module (`GcsAdModuleViewData` / `GcsAdMeta`) | **[Home] Hide Home modules** (static evidence only — never seen on device) |
+| `HomeFeedPost` | `a0$z` | OA / LINE NEWS post card | **[Home] Hide Home content feed** |
+| `HomeFeedLiveSingle` | `a0$w` | the `OA_LIVE` variant | **[Home] Hide Home content feed** |
+| `HomeFeedMatomeSingle` / `-Carousel` | `a0$y` / `a0$x` | AI-digest ("matome") news cards | **[Home] Hide Home content feed** |
+| `HomeFeedUnitBigVisual` / `-Grid` / `-Ranking` / `-ShortFormGrid` / `-Single` / `-SingleAndGrid` | `a0$b0`–`a0$g0` | content-unit layouts, each wrapping posts | **[Home] Hide Home content feed** |
+| `HomeFeedDefaultPageError` / `-DefaultPageLoading` / `HomeFeedError` / `HomeFeedSeedPostError` | `a0$t` / `a0$u` / `a0$v` / `a0$a0` | that feed's error & spinner placeholders | **[Home] Hide Home content feed** |
 | `FriendsSubTabFriendsList`, `-AllAlbum`, `-Calendar`, `-LatestNotifications`, `-RecentlyUpdatedProfiles` | `a0$i`, `a0$g`, `a0$h`, `a0$j`, `a0$k` | the friends list and its sub-tabs | kept |
 | `HomeSocialGraph`, `HomeRecentlyProfileUpdate`, `HomeActivityFriendList`, `GlobalHomeFriendList` | `a0$m0`, `a0$k0`, `a0$r`, `a0$o` | friend updates / profiles | kept |
 | `HomeServiceList`, `GlobalHomeServiceSection`, `SquareJoinedChatList`, `HomeNotificationHub` | `a0$l0`, `a0$p`, `a0$q0`, `a0$i0` | service icons, OpenChat list, notification hub | kept |
@@ -268,7 +268,7 @@ classes referencing `Ly82/k0;` and comparing old tree to new.
 | `CommerceTwTabFriendshipGifts`, `-GreetingBanners`, `-QuickPolls`, `-Shortcuts` | `a0$b`–`a0$e` | the TW commerce tab | kept |
 | `HomeActivityCard` | `a0$q` | recommendation surface (`contentList` / `extraContentList`) | **not blocked** — no device evidence |
 | `GcsHomeActivityHybridContentCard` | `y82.o0` (top-level) | the hybrid variant of the above | **not blocked** — no device evidence |
-| `HomeTabLypRecommendation` | `a0$n0` | LYP premium upsell | **Disable LINE Premium** (third lever, no device evidence — see `line-premium-map.md`) |
+| `HomeTabLypRecommendation` | `a0$n0` | LYP premium upsell | **[Premium] Disable LINE Premium** (third lever, no device evidence — see `line-premium-map.md`) |
 | `GcsDummyHybridModule` | `y82.m0` (top-level) | dev/dummy, no renderer | kept |
 
 **Take this table from jadx, never from a smali grep.** 17 of the 43 nested classes are Kotlin
@@ -431,7 +431,7 @@ some of them:
 |---|---|---|
 | Home tab Google banner | `function.hometab.ad_rc.*`, `function.hometab.ads.displayrate*` | Google view, covered |
 | Chats tab Google banner | `function.chattab.ad_rc.*` | Google view, covered |
-| Smart Channel | `function.chattab.smartch.*` | `Hide ad views` and `Remove banner ads` |
+| Smart Channel | `function.chattab.smartch.*` | `[Ad] Hide ad views` and `[Ad] Remove banner ads` |
 | Album ads | `function.album.ad.*`, `function.moa.album.ad.*` | LAD inventory, covered |
 | Note ads | `function.note.ad.{list,end}_inventory_key` | LAD inventory, covered |
 | OpenChat header ads (4 places) | `function.square.{chatroom,note,thread_space,your_threads}.header_ad.*` | LAD or Google, covered |
@@ -487,21 +487,21 @@ starting point, so no one needs to sweep the APK again.
 
 | Patch (name) | Package | Targets |
 |---|---|---|
-| Hide calendar buttons | `line.hidecalendar` | the 5 Calendar surfaces above |
-| Hide Events button | `line.hideevents` | the `z00.n` Events chat-menu row |
-| Hide Transfer button | `line.hidetransfer` | `yi1.j` (`+` Transfer/LINE Pay tile) |
-| Hide LINE GIFT button | `line.hidegift` | `yi1.h` (`+` LINE GIFT tile) |
-| Hide attach menu extra tools | `line.hideattachmenutools` | all server-driven `yi1.d` services |
-| Redirect LINE Pay | `line.disablepay` | `PayLaunchActivity` / `PayLiffActivity` onCreate (see below) |
-| Keep unsent messages | `line.keepunsent` | `la8.x.invoke` — the unsend DB write (see below) |
-| Hide Shopping tab | `line.hideshoppingtab` | `COMMERCE` + `COMMERCE_TW` in `wy7.b.a()` (see above) |
-| Fix location maps via GmsCore | `line.fixlocationmaps` | `fo/p.b` — the maps module context (see below) |
+| [Chat] Hide calendar buttons | `line.hidecalendar` | the 5 Calendar surfaces above |
+| [Chat] Hide Events button | `line.hideevents` | the `z00.n` Events chat-menu row |
+| [Chat] Hide Transfer button | `line.hidetransfer` | `yi1.j` (`+` Transfer/LINE Pay tile) |
+| [Chat] Hide LINE GIFT button | `line.hidegift` | `yi1.h` (`+` LINE GIFT tile) |
+| [Chat] Hide attach menu extra tools | `line.hideattachmenutools` | all server-driven `yi1.d` services |
+| [General] Redirect LINE Pay | `line.disablepay` | `PayLaunchActivity` / `PayLiffActivity` onCreate (see below) |
+| [Chat] Keep unsent messages | `line.keepunsent` | `la8.x.invoke` — the unsend DB write (see below) |
+| [Tab] Hide Shopping tab | `line.hideshoppingtab` | `COMMERCE` + `COMMERCE_TW` in `wy7.b.a()` (see above) |
+| [Fix] Restore location maps via MicroG-RE | `line.fixlocationmaps` | `fo/p.b` — the maps module context (see below) |
 
 Each is an independent, `default = true`, user-facing `bytecodePatch` — one feature (or one
 feature's full set of entry points) per patch. Most are instruction-level edits. *Redirect LINE
-Pay*, *Keep unsent messages* and *Fix location maps* carry extension code.
+Pay*, *[Chat] Keep unsent messages* and *[Fix] Restore location maps* carry extension code.
 
-## LINE Pay intake & the "Redirect LINE Pay" patch
+## LINE Pay intake & the "[General] Redirect LINE Pay" patch
 
 **Why redirect instead of disable:** the messenger cannot run its own Pay flow on a re-signed build
 (the bundled VKey/V-Guard check fails — see `CLAUDE.md`). The patch (still packaged
@@ -565,7 +565,7 @@ hardcode `sv3.n`, which drifts).
 
 ---
 
-## Message unsend (receive side) & the "Keep unsent messages" patch
+## Message unsend (receive side) & the "[Chat] Keep unsent messages" patch
 
 ### How an incoming unsend reaches the database
 
@@ -629,7 +629,7 @@ stores the row already stripped — nothing local to keep.
 | cursor → content model | `Lma8/t;->e(Lcb8/q7;Ljp/naver/line/android/util/j;Lz58/b;)Lna8/g;` — `UNSENT` builds `Lna8/g$s$h0;` from `from_mid` |
 | content → UI model | `Lm11/b;->k(Lna8/g$s;)Ll11/h;` → `Ll11/h$h0;` |
 | UI model → text | `Lcl1/c;->a(Landroid/content/Context;Ll11/h;Lo21/a;)Ljava/lang/CharSequence;` |
-| bubble decoration | `Lnl1/b5;->K0(...)` — appends the "How to unsend discreetly" link on *your own* unsends (suppressed by *Hide premium unsend upsells*) |
+| bubble decoration | `Lnl1/b5;->K0(...)` — appends the "How to unsend discreetly" link on *your own* unsends (suppressed by *[Premium] Hide premium unsend upsells*) |
 
 Strings: `chathistory_message_format_unsent_receiver` (`0x7f150d65`, "%1$s unsent a message.") and
 `chathistory_message_format_unsent_sender` (`0x7f150d66`, "You unsent a message.") — chosen by
@@ -1121,7 +1121,7 @@ hard-requires do **not** resolve against LINE: `GooglePlayUtilityFingerprint` (n
 `"Google Play Services not available"` match is a constructor in `gl.h`). For LINE neither is
 needed anyway — real Play Services is installed, so the "GMS missing" checks never trigger.
 
-## Location maps & the "Fix location maps via GmsCore" patch
+## Location maps & the "[Fix] Restore location maps via MicroG-RE" patch
 
 Reported as issue #92 ("share location doesn't work"). On a re-signed build every map draws as an
 empty grid. The current location is still found and can still be sent, and only the map is blank.
@@ -1282,7 +1282,7 @@ later release. Nothing to patch today.
 | Feature | Strings (all dead in 26.14.0) | Why it matters when it ships |
 |---|---|---|
 | **Scroll preview** (chat list) | `chat_preview_desc_scrollpreview`, `chat_preview_banner_scrollpreview{labs,lyplite,lypstd,nonlypstd}`, `chat_chatlist_tooltip_scrollpreview{labs,lypstd,nonlypstd}` | A new chat-list feature tiered **four ways** (LINE Labs / LYP Lite / LYP Standard / non-LYP). The tier check is the thing to look at — if it is a local read of the market gate, `hidepremium` already moves it; if it is a server entitlement, it is another `INVALID_PREMIUM_STATUS` case. |
-| **LINE Calendar → standalone app cross-promo** | `line_calendar_apppromotion_link_morefeatures`, `line_calendar_apppromotion_popupdesc_eventlocation` | Would be a **6th Calendar surface** and belongs in *Hide calendar buttons*, which currently covers five. |
+| **LINE Calendar → standalone app cross-promo** | `line_calendar_apppromotion_link_morefeatures`, `line_calendar_apppromotion_popupdesc_eventlocation` | Would be a **6th Calendar surface** and belongs in *[Chat] Hide calendar buttons*, which currently covers five. |
 | **Scheduled-message upsell** | `chat_scheduledmessages_popupdesc_upgradetosendasscheduled_misc`, `chat_scheduledmessages_toast_errorwithmembership_linep` | Upsell copy for the scheduled-message feature below. |
 
 ### Live, but not yet verified against a patched build
@@ -1297,7 +1297,7 @@ returns compared with one look at a patched build.
 - `com/linecorp/line/settings/labs/view/LineUserSettingLabPremiumIntroComposeView`
 
 **Visible symptom to look for:** an LYP feature-onboarding popup appearing on a build with
-*Disable LINE Premium* applied.
+*[Premium] Disable LINE Premium* applied.
 
 For contrast, these new upsells **are** covered — each does a null-guarded facade read, so a false
 market gate takes the hide branch: `ChatVisualEndPageActivity` (photo-viewer premium banner),
@@ -1312,7 +1312,7 @@ region-dependent — check on device before widening the blocklist.
 
 | Type | Recommendation |
 |---|---|
-| `GlobalHomeRecommendedSticker` | **Candidate.** Global Home analogue of `HomeContentsRecommendation`, which *Hide Home modules* already hides — leaving this one is an inconsistency. |
+| `GlobalHomeRecommendedSticker` | **Candidate.** Global Home analogue of `HomeContentsRecommendation`, which *[Home] Hide Home modules* already hides — leaving this one is an inconsistency. |
 | `GlobalHomeLoungeHoroscope` | **Candidate.** New clutter module. |
 | `GcsGlobalHomeActivityHybridContentCard` | **Keep.** Analogue of `GcsHomeActivityHybridContentCard`, which is deliberately kept. |
 
@@ -1327,11 +1327,11 @@ assuming:
   (`zzbyb` → `zzbym`, a new `com/google/android/gms/ads/…/hsdp` deep-link wrapper).
 - **Nullable premium badge (`Lq83/n;`):** all 63 field reads are null-guarded. The 32 that look
   unguarded are inside `q83/n`'s own `equals`/`hashCode`/`toString`, where the holder is `this`.
-  So *Disable LINE Premium* adds no new `getDrawable(0)`-class crash risk beyond the known
+  So *[Premium] Disable LINE Premium* adds no new `getDrawable(0)`-class crash risk beyond the known
   Settings ▸ Chats one, which the backup-gate lever covers.
 - **Read receipts:** `DisabledManualReadReceiptViewModel` is new and sounds relevant, but it is a
   40-line Square (OpenChat) component-graph stub that never touches `TalkServiceClient` or the
-  `na3.e` read manager. *Keep chats unread* is unaffected.
+  `na3.e` read manager. *[Chat] Keep chats unread* is unaffected.
 
 ---
 

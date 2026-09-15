@@ -6,7 +6,7 @@ import app.morphe.patcher.patch.bytecodePatch
 
 @Suppress("unused")
 val hideWalletTabPatch = bytecodePatch(
-    name = "Hide Wallet tab",
+    name = "[Tab] Hide Wallet tab",
     description = "Removes the Wallet (LINE Pay) tab from the main bottom navigation, " +
         "in both the normal and mini-tab layouts.",
     default = true,

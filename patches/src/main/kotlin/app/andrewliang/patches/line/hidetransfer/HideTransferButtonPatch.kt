@@ -6,7 +6,7 @@ import app.morphe.patcher.patch.bytecodePatch
 
 @Suppress("unused")
 val hideTransferButtonPatch = bytecodePatch(
-    name = "Hide Transfer button",
+    name = "[Chat] Hide Transfer button",
     description = "Removes the Transfer (LINE Pay) tile from the + attach menu in a chat room.",
     default = true,
 ) {

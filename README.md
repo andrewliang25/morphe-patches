@@ -84,7 +84,7 @@ Google Play Services. No patch can change this ([details](docs/line-patch-map.md
 **Workaround:** install with **Root Mount**, which keeps LINE's original signature. Do not use the
 **Standard** install.
 
-This limitation does not affect chat-history backup. The *Fix chat backup sign-in via GmsCore*
+This limitation does not affect chat-history backup. The *[Fix] Restore chat backup sign-in via MicroG-RE*
 patch restores it through [MicroG-RE](https://github.com/MorpheApp/MicroG-RE).
 
 ### LINE: maps show an empty grid (re-signed builds)
@@ -98,7 +98,7 @@ its original signing certificate. A re-signed build changes that certificate. Go
 reports the certificate from its own process, so no patch can correct it
 ([details](docs/line-patch-map.md)).
 
-**Workaround:** enable the *Fix location maps via GmsCore* patch. It draws the maps through
+**Workaround:** enable the *[Fix] Restore location maps via MicroG-RE* patch. It draws the maps through
 [MicroG-RE](https://github.com/MorpheApp/MicroG-RE) **7.0.0 or later** instead, which is the first
 version with a map renderer. Google Play Services must still be installed. The tiles then come from OpenFreeMap,
 so they do not look like Google Maps. There is no satellite view. A **Root Mount** install keeps

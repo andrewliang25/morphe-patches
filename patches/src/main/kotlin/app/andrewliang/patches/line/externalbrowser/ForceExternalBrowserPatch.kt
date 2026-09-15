@@ -6,7 +6,7 @@ import app.morphe.patcher.patch.bytecodePatch
 
 @Suppress("unused")
 val forceExternalBrowserPatch = bytecodePatch(
-    name = "Open links in external browser",
+    name = "[General] Open links in external browser",
     description = "When you tap a web link (http or https), it opens in your default browser " +
         "instead of LINE's in-app browser. LIFF mini-apps and LINE deep links do not change.",
     default = true,

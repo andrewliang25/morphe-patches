@@ -6,7 +6,7 @@ import app.morphe.patcher.patch.bytecodePatch
 
 @Suppress("unused")
 val keepChatsUnreadPatch = bytecodePatch(
-    name = "Keep chats unread",
+    name = "[Chat] Keep chats unread",
     description = "When you open a 1:1 or group chat, LINE does not mark it read and sends no " +
         "read receipt. If you use \"Mark as read\" or \"Mark all as read\", LINE marks the chat " +
         "read and sends the receipt.",
