@@ -122,8 +122,9 @@ open.
 | `[Ad] Block ad telemetry` | 6 void methods across 4 classes with kept names | All are `return-void`. `onStartCommand` and the predicates are untouched |
 | `[Ad] Disable Audience Network` | 5 manifest components | All have `android:enabled="false"` |
 | `[Video] Download any video or reel` | 5 ownership checks across the 2 video menu builders | Each forced check is a `const/4` into the register its `move-result` wrote; the download-link null check is untouched |
+| `[Stories] Download any story` | The one capability check in `StoryViewerMoreButtonCallback` | `const/4` into the register its `move-result` wrote, so the cached capability reads true |
 
-Together the eight patches rewrite 20 classes. `BranchSweep` then reads the 21 dex files. It
+Together the nine patches rewrite 23 classes. `BranchSweep` then reads the 21 dex files. It
 reports 197,471 classes and 630,827 methods. Every branch offset, try range and handler lands on an
 instruction start.
 
@@ -274,7 +275,7 @@ path has no anchor.
 
 ## Media download
 
-Facebook ships a complete download feature for video. `[Video] Download any video or reel` writes no
+Facebook ships a complete download feature for video and for stories. `[Video] Download any video or reel` writes no
 UI and no downloader: it unlocks what is already there.
 
 ### Reels have no download code of their own
@@ -337,10 +338,27 @@ the menu item resolves by name to `drawable/fb_ic_download_24`. None of this is 
 
 ### Stories
 
-Not built. Story cards carry their own link field — `LX/aS6;->A01` logs `hasCopyrightDownloadUrl`
-from a cached string on the card — and `DownloadManager.saveStory` and `LX/aj3;->A01(…, StoryCard, …)`
-(`"CREATE_SAVE_VIDEO_FILE_FAILED"`) exist. The gate has not been traced. This is the obvious
-follow-up if the video half proves out.
+Built, and a **better prospect than the video half**. The story viewer's More menu is
+`com.facebook.stories.viewer.ui.buckets.regular.topbar.menu.StoryViewerMoreButtonCallback` — a kept
+name — and it asks exactly **one** capability question before offering the save item. Everything
+after it is unconditional; the surface enum it reads next only picks which label the item gets.
+
+That question is a no-argument predicate on the menu's capability object, cached into a field on
+first use. It returns `StoryBucket.A0k()` — "is this my own story" — for the regular viewer. The
+predicate has **exactly one caller**, so forcing its result is scoped to saving and nothing else.
+`StoryBucket.A0k()` itself must **not** be forced: `shouldShowViewCount`,
+`isFeedbackBarSupportedForBucket` and several sibling capabilities read it too.
+
+**Why it should outperform the video unlock:** the saving code works from the story's **own media
+address**, the one the viewer is already playing (its failures are `MEDIA_URL_EMPTY`,
+`VIDEO_FILE_MISSING`), not a separate download link the server may withhold. That address has to be
+present for the story to render at all.
+
+Neither the predicate nor its class is named in the patch. The menu class is a kept name, and the
+action it creates is reached through the `"save_story_attempted"` event its handler reports — the
+event appears in three methods, but only one is a one-argument `void`. The builder is then the only
+method on the kept class that creates that action, and the capability is the only call in it taking
+nothing and answering a boolean once `Boolean.booleanValue` is set aside.
 
 ## Risks
 
