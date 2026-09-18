@@ -121,8 +121,9 @@ open.
 | `[Ad] Block background ad prefetch` | 8 void methods across 7 schedulers with kept names | All are `return-void`. Constructors and the `A00()Z` gate are untouched |
 | `[Ad] Block ad telemetry` | 6 void methods across 4 classes with kept names | All are `return-void`. `onStartCommand` and the predicates are untouched |
 | `[Ad] Disable Audience Network` | 5 manifest components | All have `android:enabled="false"` |
+| `[Video] Download any video or reel` | 5 ownership checks across the 2 video menu builders | Each forced check is a `const/4` into the register its `move-result` wrote; the download-link null check is untouched |
 
-Together the seven patches rewrite 16 classes. `BranchSweep` then reads the 21 dex files. It
+Together the eight patches rewrite 20 classes. `BranchSweep` then reads the 21 dex files. It
 reports 197,471 classes and 630,827 methods. Every branch offset, try range and handler lands on an
 instruction start.
 
@@ -270,6 +271,76 @@ path has no anchor.
   is camera-roll ML and is not related.
 
 ---
+
+## Media download
+
+Facebook ships a complete download feature for video. `[Video] Download any video or reel` writes no
+UI and no downloader: it unlocks what is already there.
+
+### Reels have no download code of their own
+
+The reel three-dots menu is the ordinary video menu. Nothing is named after reels:
+
+```
+LX/ToL;->A00      ("THREE_DOTS_MENU", "video_id", PlayerOrigin)
+  -> LX/U9i;->A00(…, GraphQLStory, PlayerOrigin, …)
+    -> LX/Scj;->A0e(LX/2LO;)LX/2xZ;     factory: base builder or subclass
+      -> LX/2xZ;->A0i                   feed builder
+      -> LX/Sct;->A0i                   player builder (extends the base)
+```
+
+**An earlier pass concluded reels had no download action, from searching `DOWNLOAD_REEL`,
+`reel_download` and the reels packages and finding nothing.** That search was mis-aimed rather than
+conclusive: the button exists, tagged `"DOWNLOAD_VIDEO"` like every other video. A name-based search
+only proves a feature is not *named* after the surface — find the generic path the surface delegates
+to and search there.
+
+### The gate chain
+
+The item is added only after all of these pass, in this order:
+
+| # | Check | Patched |
+|---|---|---|
+| 1 | `BaseModelWithTree.getCachedBoolean(-1433294616)` | ✅ forced true |
+| 2 | media playback object non-null | left — a real precondition |
+| 3 | owner id non-empty | left |
+| 4 | **`ownerId.equals(myUserId)`**, off `FbUserSessionImpl.A02` | ✅ forced true |
+| 5 | `TreeJNI.getBooleanValue(1585574)` | ✅ forced true |
+| 6 | **download link non-null** | ❌ **left on purpose** |
+
+The player builder folds 1–4 into `LX/Scj;->A07(LX/Scj;, GraphQLStory)Z`, a 21-instruction predicate
+with exactly one caller. The patch forces that call's result at the call site rather than rewriting
+the predicate, so the helper stays intact for any future caller.
+
+Each forced check replaces the `move-result` after the call with `const/4` into **the same register
+that instruction already wrote**. `move-result` and `const/4` are both one code unit, so the layout,
+the branch offsets and the register allocation are all unchanged; the call still runs and only its
+answer is ignored. Branches are never edited.
+
+**Gate 6 stays.** The link is a server-supplied value, and bypassing the null check would hand
+`Uri.parse(null)` to the downloader. Where the server sends no link the item simply stays hidden,
+which makes the patch self-limiting rather than broken.
+
+### The open question
+
+Facebook checks ownership **before** it reads the link, so its own code never evaluates that field
+for anyone else's video. Whether the server populates it for content you do not own **cannot be
+settled by disassembly**. If the download option does not appear on other people's videos on a
+patched build, that is the answer, and this belongs in *Out of scope* rather than here.
+
+### The downloader
+
+`LX/UGl;->onMenuItemClick` is 34 instructions: it `Uri.parse`s the captured link and calls
+**`LX/gQ5;->A01(Context, Uri, Fragment, FbUserSession, …)`**, a generic "save this URI to the device"
+entry point with **nine call sites** across the app, with its own progress and error UI. The icon on
+the menu item resolves by name to `drawable/fb_ic_download_24`. None of this is touched.
+
+### Stories
+
+Not built. Story cards carry their own link field — `LX/aS6;->A01` logs `hasCopyrightDownloadUrl`
+from a cached string on the card — and `DownloadManager.saveStory` and `LX/aj3;->A01(…, StoryCard, …)`
+(`"CREATE_SAVE_VIDEO_FILE_FAILED"`) exist. The gate has not been traced. This is the obvious
+follow-up if the video half proves out.
 
 ## Risks
 
