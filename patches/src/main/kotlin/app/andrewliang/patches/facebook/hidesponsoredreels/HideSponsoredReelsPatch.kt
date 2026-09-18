@@ -13,7 +13,19 @@ val hideSponsoredReelsPatch = bytecodePatch(
 ) {
     compatibleWith(COMPATIBILITY_FACEBOOK)
 
+    // Blocking the page-load insert alone leaves three on-demand inserts running, which is why an
+    // ad could still appear after a while of scrolling and was gone once the app restarted: those
+    // three write straight into the item collection held in memory.
+    //
+    // Only the inserts are blocked, not the requests that feed them. Stopping the requests as well
+    // would save data, but that belongs with the prefetch patch, and the request methods have not
+    // been checked for organic side effects.
     execute {
-        VideoHomeInsertAdsFingerprint.method.addInstructions(0, "return-void")
+        listOf(
+            VideoHomeInsertAdsFingerprint,
+            RealtimeIntentAdInsertFingerprint,
+            SfdAdInsertFingerprint,
+            PoeAdRenderFingerprint,
+        ).forEach { it.method.addInstructions(0, "return-void") }
     }
 }

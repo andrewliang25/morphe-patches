@@ -1,8 +1,18 @@
 # Facebook ad map & findings
 
 Reference for the Facebook (`com.facebook.katana`) patches. It comes from a decompile of
-**577.0.0.50.72** (versionCode 474426275, arm64-v8a, Android 11+), the version pinned in
-`app/andrewliang/patches/shared/Constants.kt`.
+**577.0.0.50.72**, the version pinned in `app/andrewliang/patches/shared/Constants.kt`.
+
+APKMirror lists many variants of each Facebook release, and each variant has its own versionCode.
+Thus the versionCode alone does not identify a download. The decompile uses this variant:
+
+| | |
+|---|---|
+| APKMirror title | Facebook 577.0.0.50.72 (arm64-v8a) (360-480dpi) (Android 11+) |
+| versionCode | 474426275 — for this variant only |
+| ABI / density / minSdk | `arm64-v8a` / 360–480 dpi / 30 |
+
+To get the same bytecode, select the variant by its title. Do not search for the number.
 
 > ⚠️ **Obfuscation drift.** `LX/1lD;`, `LX/awi;` and `LX/50Q;` are Redex names. They change on
 > **every** Facebook release, which is about every two weeks. No patch hard-codes one — see
@@ -69,7 +79,15 @@ register of the name resolves the wrong constant.
 "handling_inorganic_clash"                         -> LX/awi;->B5t
 "VideoHomeDataControllerImpl.maybeInsertAds"       -> LX/50Q;->Cwp
 "FeedSponsoredStoryHolder.getTopValidAd"           -> LX/1y1;->A0R
+"StoryViewerMidCardDataSource.getBuckets"          -> LX/A2v;->B5t
+"AdPaginatingBucketStaticInsertionDataSource.getBuckets" -> LX/gq4;->B5t
+"VideoHomeDataControllerAdsUtil.maybeInsertFbShortsRealtimeIntentItem" -> LX/54e;->A02
+"VideoHomeDataControllerSfdAdsUtil"                -> LX/6S7;->run
 ```
+
+A Kotlin `Intrinsics` null-check message works the same way, because it carries the name of the
+variable it guards. `"uninsertedMainAdsQueue"` reaches `LX/Apf;->B5t` that way; it appears in three
+methods, and the `ImmutableList` return type is what picks the right one.
 
 ### `__redex_internal_original_name` is weaker than it looks
 
@@ -112,19 +130,82 @@ through `getCachedEnum(id, class, default)`, so it never returns null.
 found no problems. The test was a general pass, not a check of each surface, so the risks below stay
 open.
 
+That test then missed real leakage. Ads still appeared now and then in Reels and in the story viewer,
+and they were gone after the app was closed and reopened. The cause was **not** a prefetch cache. The
+six insertion sites added for it in 2026-09-18 are verified in the dex but **not yet device-tested**
+— see [Two families of insertion](#two-families-of-insertion).
+
 | Patch | Target | Verified in the patched dex |
 |---|---|---|
 | `[Feed] Hide sponsored posts` | `LX/1lD;->addNewEdgeToCollection` guard on `GraphQLFeedStoryCategory.SPONSORED` (it is `A0K`) | The branch lands on original instruction 0. Try blocks moved from `@fb` to `@107` |
 | `[Feed] Hide suggested and promoted posts` | The same chokepoint, plus a new `LX/1lD;->isSuggestedOrPromotedFeedUnit` | 15 `instance-of` arms, all of which branch to `@3e` |
-| `[Stories] Hide sponsored stories` | `LX/awi;->B5t` returns its input list | `return-object v28`, which is `p3`, the `ImmutableList` |
-| `[Reels] Hide sponsored reels` | `LX/50Q;->Cwp`, which is `maybeInsertAds` | `return-void` before the QPL marker, so no trace section stays open |
+| `[Stories] Hide sponsored stories` | 4 bucket data sources return their input list: `LX/awi;`, `LX/Apf;`, `LX/gq4;`, `LX/A2v;` | Each `return-object` names that method's own `p3`: `v28`, `v74`, `v9`, `v35` |
+| `[Reels] Hide sponsored reels` | `LX/50Q;->Cwp` (`maybeInsertAds`), plus `LX/54e;->A02`, `LX/6S7;->run`, `LX/6SZ;->run` | All are `return-void` before the QPL marker, so no trace section stays open |
 | `[Ad] Block background ad prefetch` | 8 void methods across 7 schedulers with kept names | All are `return-void`. Constructors and the `A00()Z` gate are untouched |
 | `[Ad] Block ad telemetry` | 6 void methods across 4 classes with kept names | All are `return-void`. `onStartCommand` and the predicates are untouched |
 | `[Ad] Disable Audience Network` | 5 manifest components | All have `android:enabled="false"` |
 
-Together the seven patches rewrite 16 classes. `BranchSweep` then reads the 21 dex files. It
+Together the seven patches rewrite 22 classes. `BranchSweep` then reads the 21 dex files. It
 reports 197,471 classes and 630,827 methods. Every branch offset, try range and handler lands on an
 instruction start.
+
+### Two families of insertion
+
+Neither Reels nor Stories has one chokepoint. Each has a **batch path** that runs when a page loads,
+and several **on-demand paths** that fetch a single ad while you are already scrolling and splice it
+into the collection held in memory. Patch only the batch path and an ad still turns up after a while,
+then vanishes on the next cold start, because the restart rebuilds the collection through the batch
+path alone. That is the shape of the bug, and it is worth recognising on any surface: **"it goes away
+when I restart the app" means the leak is an in-memory insert, not a cache.**
+
+A prefetch cache cannot produce it. Prefetch downloads ad creative; it never inserts anything into a
+feed, and a disk cache would survive the restart rather than be cleared by it.
+
+**Stories is a chain, not a chokepoint.** `StoryviewerBucketDataController.processBucketData`
+(`LX/9to;->A00`) holds an `ImmutableList` of bucket data sources and calls `B5t` on each, feeding
+every result into the next. `LX/9u3;->A0C` assembles the chain per session behind a launch-config
+predicate (`LX/YJ0;->A1J`, `LX/9wU;->A00`) and MobileConfig gates, so which sources are present
+varies by account — which is why the leak looked random. There are 8 implementations of `B5t`:
+
+| Impl | What it is | Size |
+|---|---|---|
+| `LX/Apf;` | `AdBucketDataSourceUtil` — the placement engine. `insertedMainAdsQueue`, `uninsertedMainAdsQueue`, `organicStoryQueue`, `HP_AD`, `RTI_AD`, casts to `com.facebook.audience.snacks.model.AdStory` | 3,669 |
+| `LX/awi;` | the clash resolver, which orders two ad buckets that land together | 356 |
+| `LX/A2v;` | `StoryViewerMidCardDataSource` — mid-cards fetched once the viewer is open | 339 |
+| `LX/gq4;` | `AdPaginatingBucketStaticInsertionDataSource` — drains a queue as the viewer paginates | 83 |
+
+`LX/9q9;->A00` is a factory returning **either** `Apf` **or** `gq4` by flag, so both ship and both
+need neutering; shipping one is a coin flip. `LX/Cgk;` is a placement-rule holder reached only from
+`Apf->B5t`, so it needs no separate work. `LX/bWY;` (the interface of `Apf` and `gq4`, which extends
+`Cny;`) carries the live push surface `AqM` / `Aqz` / `DtB` / `Efy` that dwell and CTA tailloads use
+to reach an open viewer.
+
+**Leave the other four alone.** `LX/9tv;` reinserts inline errors, `LX/A2s;` carries DM
+lightweight-reply buckets, and `LX/9ts;` / `LX/9tt;` are 21 and 24 instructions. None inserts ads.
+
+**Reels has three siblings of `maybeInsertAds`.** `LX/54e;` (`VideoHomeDataControllerAdsUtil`) splits
+into two entry families that share no code:
+
+| Entry | Reached from |
+|---|---|
+| `A06` / `A07`, the batch insert | **only** `LX/50Q;->Cwp` = `maybeInsertAds` |
+| `A04` → `A02`, `maybeInsertFbShortsRealtimeIntentItem` | `LX/5YP;->onFinish()`, `LX/6S6;->run()`, `LX/6VW;->invoke()` |
+| SFD ad | `LX/6S7;->run()` |
+| POE ad | `LX/6SZ;->run()` |
+
+`Cwp` has exactly one caller and `LX/50Q;` is the sole implementation of its interface `LX/CrK;`, so
+that patch was always tight. The other three simply reach the shared sink `LX/53B;->A06(LX/9aJ;I)`
+by themselves. `LX/6SZ;->run()` logs what it inserted under `GraphQLFeedStoryCategory.A0K`
+(`SPONSORED`), which is what confirms POE items are paid ads and not an injected organic unit.
+
+Only the inserts are blocked, not the requests that feed them (`LX/54e;->A05`, `LX/6S6;->run()`).
+Stopping the requests would save data, but that belongs with the prefetch patch, and those methods
+have not been checked for organic side effects.
+
+`LX/6SZ;` holds no string literal, so it is matched on the `__redex_internal_original_name` of the
+task class itself. That is sound here and unsound elsewhere: the field names **that lambda**, which is
+exactly what is wanted, whereas using it to infer a lambda's *enclosing* class is the trap described
+in [Anchoring](#anchoring).
 
 ### The feed chokepoint
 
@@ -166,13 +247,14 @@ manifest. It includes the parts that are not worth a patch, so that nobody finds
 | Surface | Where | Shipped |
 |---|---|---|
 | News feed sponsored posts | `LX/1lD;->addNewEdgeToCollection` | ✅ |
-| Stories tray ads | `LX/awi;->B5t`, `AdBucketDataSourceUtil`, `StoryBucket.getBucketType() == 9` | ✅ |
-| Reels and Watch feed ads | `LX/50Q;->Cwp`, `VideoHomeDataControllerAdsUtil`, `PoeAdsUtil`, `SfdAdsUtil`, `WatchAdStoryPool` | ✅ |
+| Story-viewer ads | The 4 ad sources in the `processBucketData` chain: `LX/Apf;`, `LX/awi;`, `LX/A2v;`, `LX/gq4;` | ✅ |
+| Stories **tray** ads (the row on the feed) | Not traced. Every `B5t` source found so far is viewer-side | ❌ inserter not located |
+| Reels and Watch feed ads | `LX/50Q;->Cwp` plus the 3 on-demand inserts: `LX/54e;->A02` (realtime intent), `LX/6S7;` (SFD), `LX/6SZ;` (POE) | ✅ |
 | Reels ad chrome | `FbShortsAdsRootKComponent`, `ReelsBannerAdsNativeComponent`, `ReelsAdsFloatingCtaPlugin`, `FbShortsAdsPostScrollNudge*` | Not necessary once insertion stops |
 | In-stream ads (pre-roll, mid-roll, post-roll) | `AdBreakStateMachineImpl`, `AdBreakFetchHelper`, `UnifiedAdBreakController`, `InstreamAdFetchUtil` | ❌ no anchor |
 | Pause ads | `PauseAdComponent`, `PauseAdUtil` | ❌ no anchor |
 | Squeezeback ads (the live video becomes smaller) | `SqueezebackAdPlugin` (`LX/TZ5;`) | ❌ not built |
-| Story-viewer ads | `StoryViewerAdsRootContainerComponentSpec`, `StoryViewerAdsVideoComponent`, `FBStoryAdsDelayedSkipManager` | ❌ not built |
+| Story-viewer ad chrome | `StoryViewerAdsRootContainerComponentSpec`, `StoryViewerAdsVideoComponent`, `FBStoryAdsDelayedSkipManager` | Not necessary once insertion stops |
 | Search results sponsored | `LX/KoE;->A1N`, `LX/LhI;->A00`, `SearchAdActions` | ❌ not built |
 | Marketplace ads | `FBMarketplaceAdsBrowserNativeModule` (React Native) | ❌ needs a different method |
 | Notifications-tab ads | The `fb_notif_ad_impression` events | ❌ insertion point not found |
