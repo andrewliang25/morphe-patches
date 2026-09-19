@@ -17,9 +17,9 @@ Morphe Manager to build a modified APK.
 ## 🩹 Patches list
 
 <!-- PATCHES_START EXPANDED -->
-> **[v3.1.0-dev.1](https://github.com/andrewliang25/morphe-patches/releases/tag/v3.1.0-dev.1)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;33 patches total
+> **[v3.1.0-dev.2](https://github.com/andrewliang25/morphe-patches/releases/tag/v3.1.0-dev.2)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;34 patches total
 <details open>
-<summary>📦 Facebook&nbsp;&nbsp;•&nbsp;&nbsp;8 patches</summary>
+<summary>📦 Facebook&nbsp;&nbsp;•&nbsp;&nbsp;9 patches</summary>
 <br>
 
 **🎯 Supported versions:**
@@ -36,6 +36,7 @@ Morphe Manager to build a modified APK.
 | [[Feed] Hide suggested and promoted posts](#feed-hide-suggested-and-promoted-posts) | Removes feed units Facebook injects rather than units your friends and pages posted: "Pages you may like" and its variants, the in-feed upsell nags and surveys, and the ad-experiment slots. Paid ads are a separate patch. |  |
 | [[General] Open links in external browser](#general-open-links-in-external-browser) | A web link that you tap opens in your default browser, and not in the in-app browser of Facebook. The pages of Facebook still open in the app. Thus login and checkout still work. |  |
 | [[Reels] Hide sponsored reels](#reels-hide-sponsored-reels) | Removes ads from Reels and Watch, so scrolling only shows videos from creators. Ads that play inside a video, such as mid-rolls, are not covered. |  |
+| [[Stories] Download any story](#stories-download-any-story) | Adds Facebook's own save option to the menu of any story, and not only to the stories that you posted. It saves the picture or the video that the story shows, with Facebook's own save code. |  |
 | [[Stories] Hide sponsored stories](#stories-hide-sponsored-stories) | Removes ad cards from the story viewer, so swiping through stories only shows stories people posted. |  |
 
 </details>

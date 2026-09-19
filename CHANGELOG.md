@@ -1,3 +1,9 @@
+## [3.1.0-dev.2](https://github.com/andrewliang25/morphe-patches/compare/v3.1.0-dev.1...v3.1.0-dev.2) (2026-09-19)
+
+### ✨ New Features
+
+* unlock Facebook's save option for any story ([ea17778](https://github.com/andrewliang25/morphe-patches/commit/ea17778afa7dbcbb4aea7edacdd7034fd215c7f1))
+
 ## [3.1.0-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v3.0.1-dev.1...v3.1.0-dev.1) (2026-09-19)
 
 ### ✨ New Features
