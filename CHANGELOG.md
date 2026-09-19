@@ -1,3 +1,15 @@
+## [3.1.0](https://github.com/andrewliang25/morphe-patches/compare/v3.0.0...v3.1.0) (2026-09-19)
+
+### 🐛 Bug Fixes
+
+* block the on-demand ad inserts in Reels and Stories ([92db9d8](https://github.com/andrewliang25/morphe-patches/commit/92db9d8b33e16faa4e1a52534c681e5cdb775509))
+* remove the server-inlined ads from the Reels page ([8ad2d13](https://github.com/andrewliang25/morphe-patches/commit/8ad2d137d91261c1dbc25d368f1689652ac4cb74))
+
+### ✨ New Features
+
+* open Facebook links in the external browser ([07bf98a](https://github.com/andrewliang25/morphe-patches/commit/07bf98a91fa64644b022cb7f1fb503644d2a5922))
+* unlock Facebook's save option for any story ([ea17778](https://github.com/andrewliang25/morphe-patches/commit/ea17778afa7dbcbb4aea7edacdd7034fd215c7f1))
+
 ## [3.1.0-dev.2](https://github.com/andrewliang25/morphe-patches/compare/v3.1.0-dev.1...v3.1.0-dev.2) (2026-09-19)
 
 ### ✨ New Features
