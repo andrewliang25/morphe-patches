@@ -1,6 +1,6 @@
 {
   "NOTE": "Do NOT manually edit this file. This file is automatically updated when semantic release (release.yml) runs. Manually editing this file can break your releases and break third party tools that use this file.",
-  "version": "3.0.0",
+  "version": "3.0.1-dev.1",
   "patches": [
     {
       "name": "[Ad] Block ad telemetry",
@@ -684,7 +684,7 @@
     },
     {
       "name": "[Reels] Hide sponsored reels",
-      "description": "Stops ads being inserted into Reels and Watch, so scrolling only shows videos from creators. Ads that play inside a video, such as mid-rolls, are not covered.",
+      "description": "Removes ads from Reels and Watch, so scrolling only shows videos from creators. Ads that play inside a video, such as mid-rolls, are not covered.",
       "default": true,
       "dependencies": [],
       "compatiblePackages": [
@@ -710,7 +710,7 @@
     },
     {
       "name": "[Stories] Hide sponsored stories",
-      "description": "Removes ad cards from the Stories tray and from the story viewer, so swiping through stories only shows stories people posted.",
+      "description": "Removes ad cards from the story viewer, so swiping through stories only shows stories people posted.",
       "default": true,
       "dependencies": [],
       "compatiblePackages": [

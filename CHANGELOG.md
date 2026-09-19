@@ -1,3 +1,10 @@
+## [3.0.1-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v3.0.0...v3.0.1-dev.1) (2026-09-19)
+
+### 🐛 Bug Fixes
+
+* block the on-demand ad inserts in Reels and Stories ([92db9d8](https://github.com/andrewliang25/morphe-patches/commit/92db9d8b33e16faa4e1a52534c681e5cdb775509))
+* remove the server-inlined ads from the Reels page ([8ad2d13](https://github.com/andrewliang25/morphe-patches/commit/8ad2d137d91261c1dbc25d368f1689652ac4cb74))
+
 ## [3.0.0](https://github.com/andrewliang25/morphe-patches/compare/v2.1.0...v3.0.0) (2026-09-15)
 
 ### ⚠ BREAKING CHANGES

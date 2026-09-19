@@ -17,7 +17,7 @@ Morphe Manager to build a modified APK.
 ## 🩹 Patches list
 
 <!-- PATCHES_START EXPANDED -->
-> **[v3.0.0](https://github.com/andrewliang25/morphe-patches/releases/tag/v3.0.0)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;32 patches total
+> **[v3.0.1-dev.1](https://github.com/andrewliang25/morphe-patches/releases/tag/v3.0.1-dev.1)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;32 patches total
 <details open>
 <summary>📦 Facebook&nbsp;&nbsp;•&nbsp;&nbsp;7 patches</summary>
 <br>
@@ -34,8 +34,8 @@ Morphe Manager to build a modified APK.
 | [[Ad] Disable Audience Network](#ad-disable-audience-network) | Stops the Facebook app acting as the ad server for other apps on your device. This is the one patch that changes how other apps behave rather than how Facebook behaves: apps that show Facebook ads fall back to their own ad sources or show nothing, and an app that makes you watch an ad for a reward may not be able to give you one. |  |
 | [[Feed] Hide sponsored posts](#feed-hide-sponsored-posts) | Removes sponsored posts from the news feed. The ad is dropped before it reaches the feed list, so it leaves no gap and its impression is never logged. Covers both server-delivered ads and the ones the app ranks and inserts locally. |  |
 | [[Feed] Hide suggested and promoted posts](#feed-hide-suggested-and-promoted-posts) | Removes feed units Facebook injects rather than units your friends and pages posted: "Pages you may like" and its variants, the in-feed upsell nags and surveys, and the ad-experiment slots. Paid ads are a separate patch. |  |
-| [[Reels] Hide sponsored reels](#reels-hide-sponsored-reels) | Stops ads being inserted into Reels and Watch, so scrolling only shows videos from creators. Ads that play inside a video, such as mid-rolls, are not covered. |  |
-| [[Stories] Hide sponsored stories](#stories-hide-sponsored-stories) | Removes ad cards from the Stories tray and from the story viewer, so swiping through stories only shows stories people posted. |  |
+| [[Reels] Hide sponsored reels](#reels-hide-sponsored-reels) | Removes ads from Reels and Watch, so scrolling only shows videos from creators. Ads that play inside a video, such as mid-rolls, are not covered. |  |
+| [[Stories] Hide sponsored stories](#stories-hide-sponsored-stories) | Removes ad cards from the story viewer, so swiping through stories only shows stories people posted. |  |
 
 </details>
 
