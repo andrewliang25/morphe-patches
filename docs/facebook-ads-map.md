@@ -560,8 +560,8 @@ through an index. `v3` stays untouched. `onNewIntent` has no such pair, and it r
 
 Facebook ships a complete save feature for media. It has the menu item, the label, the icon, the
 click handler and a general downloader. Facebook offers the feature only on the content that you
-posted. One half of that unlock ships here. The other half was built, measured on a device, and
-then dropped.
+posted. The half for stories ships here. The half for video went through three attempts. Each
+attempt applied cleanly, and a device round then killed it. The measurement is the part to keep.
 
 ### Stories: what ships
 
@@ -596,51 +596,137 @@ story of another account. It writes the full-size picture to
 naming of Facebook and not an error. A control build without the patch offers no save item on the
 same kind of story. A **video** story is not tested.
 
-### Video and reels: built, measured, dropped
+### Video and reels: three paths, all measured, none shipped
 
-`[Video] Download any video or reel` forced five ownership checks in the two video menu builders,
-`LX/2xZ;->A0i` and `LX/Sct;->A0i`. Both carry the tag `"DOWNLOAD_VIDEO"` and both call `Menu.add`.
-The patch applied cleanly. Every forced check is a `const/4` in the shipped dex. The download item
-**never appeared**.
+Facebook holds **three** separate download paths for video, and each one has its own gate. Work on
+this went through all three. The patch for each applied cleanly. Every forced check is a `const` in
+the shipped dex. The download row **never appeared** on another account's video.
 
-A probe build gave the reason, and it is not the reason that the code suggests. The probe marked the
-entry of the download block in each builder. It also marked the value at every object null check
-inside the block, and the `Menu.add` that ends the block. On a device the probe wrote **nothing**:
+| Path | Surface | Gate | Result |
+|---|---|---|---|
+| Old `android.view.Menu` builders `LX/2xZ;->A0i` and `LX/Sct;->A0i` | none | 5 ownership checks | The code does not run at all |
+| `MediaGalleryMenuHelper` (`LX/8R4;`) | the photo and video viewer | `A03` answers the address, or null | Forced. No video of another account opens in this viewer |
+| The reel sheet (`LX/Tkb;->A00`) | reels and feed video | a tree flag, then an address | Forced. The block exits before the flag |
 
-| Surface | Probe |
+**All three stop at the same wall, and it is not the flag.** The measurement below is what settles
+it. It took four device rounds to reach. Three of those rounds went to gates that were never the
+cause.
+
+#### What the probes said
+
+The first probe marked the entry of the download block in both old builders, every null check inside
+it, and the `Menu.add` that ends it. On a device it logged **nothing**: not for another account's
+reel, not for a feed video, and **not for your own reel, where Facebook does show "Download reel"**.
+A surface that shows the row without running the code is a surface built somewhere else, so those
+two builders are dead code. The label resource that they pass to `getString` (`0x7f147339`) belongs
+to those two methods and nothing else. The tag `"DOWNLOAD_VIDEO"` is in five methods, and all five
+are the same old pair and its listeners.
+
+The second probe logged a **stack trace** from a tap on "Download reel" on an own reel. That named
+the live path in one run:
+
+```
+X.1SJ.onClick → X.TMH.A1R → X.UOz.DFH → X.UEH.A02 → X.UEH.A03
+              → X.UBD.A00 → X.ajB.A04 (HTTP GET) → X.OKw.A02 (the file)
+```
+
+None of it passes through the save entry point that the gallery uses. Thus a probe on that entry
+point stayed silent while the app wrote a file. `LX/OKw;->A02` names the file, and its string
+`"FB_VID_"` is the anchor that found the whole chain.
+
+The third probe marked the gate of the reel sheet and logged the address that the sheet builds:
+
+| Reel | The gate | The address |
+|---|---|---|
+| Your own | reached | `https://scontent…/…mp4?…oh=…&oe=…`, 720p at 526 kbps |
+| Another account's | **never reached** | none |
+
+On another account's reel the builder leaves the block **before** it reads the flag, at the null
+checks on the media subtree above it. The flag was never what hid the row.
+
+#### Why no patch can add the address
+
+Each path asks the media tree for a download address, and for content that you did not post the
+answer is absent. The old builders stop at `LX/KDM;->A00()`, which returns null. The gallery method
+answers null. The reel sheet leaves its block at the same kind of check. A forced null cannot
+replace data that never arrived: it reaches `Uri.parse`, or the save code fetches an address that is
+not there.
+
+Nothing can build the address either. A Facebook media address carries server-issued `oh` and `oe`
+signatures, so no code in the client can derive one from a video id.
+
+**Thus the permission flag is the wrong target on every path, and this is the finding worth keeping.**
+A patch on the abandoned branch `feat/facebook-download-video` forces the flag at all seven places
+that read it. The row stays hidden, because the data that it needs is absent.
+
+#### The address that does exist: what the player streams
+
+The video plays, so an address must be in the process. It is, and it is usable. The player keeps it
+on `com.facebook.video.engine.api.VideoDataSource`. Redex **keeps that class name** and renames its
+fields, so a probe must read the fields by reflection.
+
+For another account's reel the player holds progressive MP4 addresses, and not only a manifest:
+
+| Field | Rendition | Bitrate |
+|---|---|---|
+| `A07` | `xpv_progressive … h264-basic-gen2_720p` | 1.10 Mbps and 3.95 Mbps |
+| `A08` | `xpv_progressive … h264-basic-gen2_360p` | 0.61 Mbps |
+| `A0C` | the DASH manifest, as inline XML | not needed |
+
+A test took one `A08` address off the device and fetched it from an unrelated machine, with no
+headers:
+**HTTP 200, `video/mp4`, 213,789 bytes, and the file holds `avc1` and `mp4a`** — one video track and
+one audio track, muxed. Two risks usually kill this idea: a manifest in place of a file, and a video
+track without sound. Neither occurs here. Quality is not a problem either. The own download of an
+own reel was 720p at 526 kbps, and `A07` is the same size or better.
+
+#### Why it is still not shipped
+
+The idea is feasible. It is not cheap, and these are the costs, in the order that matters:
+
+* **The app preloads.** The app built six sources in about 15 seconds of scrolling, because
+  Facebook prepares the reels that come next. A patch that saves "the last source built" saves the wrong
+  video some of the time. The save must read the source of the item that the sheet belongs to, and
+  that is unproven work.
+* **The rendition needs a rule.** Prefer `A07`, fall back to `A08`, and do nothing when neither is
+  there. Without the rule the patch silently saves 360p.
+* **The row does not exist.** Each row of the sheet is an `LX/UPK;` around an action, so a patch can
+  build one. But its label comes from a downloaded string pack, which the app does not keep in
+  `resources.arsc`, and its icon is a resource id.
+* **The anchors move.** `LX/Tkb;->A00`, `LX/UPK;`, `LX/UOz;` and the **field offsets** of
+  `VideoDataSource` all change with a release about every two weeks. Compare the one-instruction
+  patches elsewhere in this bundle, which survive a bump untouched.
+* **The address expires.** The `oh` and `oe` parameters are good for hours, so the save must happen
+  at once and nothing can be queued.
+* **It is a different claim.** Every other patch here unlocks something that Facebook ships and
+  gates in its own process. This one takes media that the server decided not to offer. That belongs
+  in a patch description, not in a footnote.
+
+**Verdict: recorded, not built.** Read *"Patchable" is not "worth patching"* in `CLAUDE.md` before
+starting it again.
+
+#### Anchors that survive a bump
+
+These are the names that found everything above, and none of them is a Redex name:
+
+| Anchor | What it finds |
 |---|---|
-| The reel of another account, from the Reels tab | Silent |
-| The video of another account, opened from the feed | Silent |
-| **Your own reel, where Facebook does show "Download reel"** | **Silent** |
+| `videoDownloadMediaAction` | the listener of the gallery row. One method has the name, one method calls it |
+| `"FB_VID_"` | the method that names a saved video file, and through it the whole reel save chain |
+| `"save_story_attempted"` | the action behind the story save item |
+| `"end_screen.more_options_settings"` | the more-options model of the video player |
+| `com.facebook.video.engine.api.VideoDataSource` | what the player streams. Fields by reflection, never by name |
+| `getBooleanValue` and `getCachedNullableString` | kept names on `TreeJNI`, which is how every gate reads the tree |
 
-The last row decides it. Both builders are old `android.view.Menu` code that this version does not
-run, not even for the one surface that works. Thus a forced gate in them cannot change anything. Two
-static facts agree. The label resource that the builders pass to `getString` (`0x7f147339`) is used
-by **those two methods and nothing else**. The tag `"DOWNLOAD_VIDEO"` is in five methods only, and
-all five are the same old pair and its click listeners.
+#### The lesson, which cost two patches
 
-**The lesson, which cost one patch.** A string tag and a `Menu.add` do not prove that a menu builder
-is *the* builder. Facebook keeps whole old menu implementations in the dex, and a search by name
-finds them first. One probe run costs less than the device rounds that it replaces. Write the probe
-**before** the patch. This is the same trap as the earlier conclusion that reels have no download
-code. A search for `DOWNLOAD_REEL` and for the reels packages found nothing, which proved only that
-the feature is not *named* after the surface.
-
-The checks of the old builders are still a record of the data that the feature reads. In order:
-`getCachedBoolean(-1433294616)`, the media object, the owner id against `FbUserSessionImpl.A02`,
-`TreeJNI.getBooleanValue(1585574)`, the subtree behind `LX/KDM;->A00()`, and last the download
-address. The address comes from the server and can be null. Never force it, because a forced null
-goes to `Uri.parse`. Whether the live surface asks the same questions is **not known**.
-
-Where to look if this work starts again:
-
-* The downloader `LX/gQ5;->A01(Context, Uri, Fragment, FbUserSession, …)` has **nine** callers. Two
-  are the old listeners `LX/UGl;` and `LX/UHG;`. Thus the handler of the live sheet is one of
-  `LX/4ef;->AA5`, `LX/4ef;->ABE`, `LX/FaK;->DcZ`, `LX/UHV;->onClick`, `LX/XOi;->DJQ`,
-  `LX/b5T;->onSuccess` and `LX/bM1;->invoke`.
-* The interface text of Facebook is **not** in `resources.arsc`. It arrives in downloaded string
-  packs. Thus "Download reel" is not an anchor. Anchor on the download drawables instead, for
-  example `fb_ic_download_*` at `0x7f19097a`. The row must reference one of them to draw its icon.
+A string tag and a `Menu.add` do not prove that a menu builder is *the* builder: Facebook keeps
+whole old menu implementations in the dex, and a search by name finds them first. A forced flag does
+not prove a gate is *the* gate either. One probe run costs less than the device rounds that it
+replaces. Three searches missed the live path, and a stack trace from one tap named it. Measure
+first. This is the same trap as the earlier conclusion that reels have no download code: a search
+for `DOWNLOAD_REEL` found nothing, which proved only that the feature is not *named* after the
+surface.
 
 ## Risks
 
