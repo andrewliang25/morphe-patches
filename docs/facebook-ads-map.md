@@ -151,10 +151,19 @@ story-viewer half of that work is still **not device-tested**.
 | `[Ad] Block background ad prefetch` | 8 void methods across 7 schedulers with kept names | All are `return-void`. Constructors and the `A00()Z` gate are untouched |
 | `[Ad] Block ad telemetry` | 6 void methods across 4 classes with kept names | All are `return-void`. `onStartCommand` and the predicates are untouched |
 | `[Ad] Disable Audience Network` | 5 manifest components | All have `android:enabled="false"` |
+| `[General] Open links in external browser` | `BrowserLiteActivity->onCreate` and `->onNewIntent`, hooked after their super call | Both branches resolve to a target index: `onCreate` to the trace-close marker load, `onNewIntent` to the original next instruction |
 
-Together the seven patches rewrite 22 classes. `BranchSweep` then reads the 21 dex files. It
-reports 197,471 classes and 630,827 methods. Every branch offset, try range and handler lands on an
-instruction start.
+Together the eight patches rewrite 28 classes, and they add the extension on top of that. The CLI
+prints this count as `Stripping N modified classes`. Two controlled runs on 2026-09-19 against
+bundle 3.0.1-dev.1 give the split. The whole bundle strips **28** classes and writes 1,115 new
+ones. The seven ad patches alone, with the browser patch off, strip **26** and write 1,113. Thus
+the browser patch is the two browser activities and its part of the extension.
+
+`BranchSweep` reads the 21 dex files, and each branch offset, try range and handler lands on an
+instruction start. Its last totals for classes and methods are **older than the counts in the
+paragraph above**. They come from before the Reels page work of 2026-09-19: 197,471 classes and
+630,827 methods for the ad patches with no extension, and 198,557 and 641,106 for the whole bundle.
+Do the sweep again before you quote these numbers.
 
 ### Two families of insertion
 
@@ -412,6 +421,136 @@ path has no anchor.
   is camera-roll ML and is not related.
 
 ---
+
+## Link handling
+
+Facebook opens each tapped link in its own browser. `[General] Open links in external browser`
+gives the URL to the system instead.
+
+### Why the menu action of the browser is the wrong thing to call
+
+The browser has an **Open with** menu action, and that action does the correct thing. It builds an
+`ACTION_VIEW` on the URL and starts it. But a patch cannot call it.
+
+The action is one branch of `LX/dLG;->A01`, a dispatcher of 588 instructions that each menu item
+shares. Its intent builder `LX/cyp;->A00(LX/eYb;, LX/eXt;)` takes the chrome and the state objects
+of the browser. These objects exist only after the browser is built. Thus a call to the action must
+start the browser and then close it. The user sees a flash, and a dead entry stays on the back
+stack. Copy what the action builds, and hook earlier.
+
+### There are two in-app browsers, and the links go to the newer one
+
+`com.facebook.browser.lite` is not the whole story. Facebook also ships
+`com.facebook.browser.`**`litev2`**. The central launcher `handleByBrowserLite` (`LX/8A2;->A03`,
+about 2,800 instructions) **sets the component of the launch intent** to
+`litev2.lite.BrowserLiteDIActivity`. Nothing else can redirect an explicit component bind. Thus a
+hook on the original browser alone never runs for an ordinary link.
+
+The first device round proved this at a high cost. The hook was correct in the build, and each link
+still opened in the app. Both browsers have a hook now. **At each version bump, read the component
+that `handleByBrowserLite` binds. Do not assume that the old class is still the live one.**
+
+### The chokepoint
+
+Each entry point goes through the activity, and **the URL is the data of the launch intent**, not
+an extra. The v1 sites do `new Intent(ctx, BrowserLiteActivity.class).setData(uri)`, and
+`handleByBrowserLite` reads and rewrites `Intent.getData()` throughout. Thus one hook for each
+browser covers the feed, the comments, the Pages and the story link stickers.
+
+`onCreate` is 16 instructions. `invoke-super` is at index 3, and the browser is built at index 10
+(`LX/dSq;->A0A`). This leaves a clean gap for the hook. The hook must go **after** the super call.
+If it goes before, Android answers with `SuperNotCalledException`.
+
+| Class | Relationship | Patched |
+|---|---|---|
+| `litev2.lite.BrowserLiteDIActivity` | **the browser that ordinary links reach** | ✅ `onCreate` + `onNewIntent` |
+| `litev2.lite.BrowserLiteDITransparentActivity` | **extends** it | ✅ for free |
+| `lite.BrowserLiteActivity` | the original, which some surfaces still reach | ✅ `onCreate` + `onNewIntent` |
+| `lite.BrowserLiteInMainProcessBottomSheetActivity` | **extends** it | ✅ for free |
+| `DMASecureBrowserActivity` | extends `FragmentActivity` directly | ❌ on purpose — the separate browser for the EU Digital Markets Act |
+
+All three run in the main process. Thus the extension has no cross-process problem.
+
+`onNewIntent` needs its own hook, and that hook must read the **parameter**, not `getIntent()`.
+`getIntent()` still returns the intent that started the browser, which is the previous link.
+
+### The URL is the link shim, not the link
+
+The third device round found the last fault. Each patch applied, the hook was correct in the dex,
+and each link still opened in the app. `dumpsys` gave the answer:
+
+```
+Intent { act=android.intent.action.VIEW
+         dat=https://lm.facebook.com/l.php?u=https%3A%2F%2Fwww.example.com%2Fnews%2F1.htm&h=AUAN...
+         cmp=com.facebook.katana/com.facebook.browser.litev2.lite.BrowserLiteDIActivity }
+```
+
+Facebook does not give the browser the link that the user tapped. It gives it the **link shim**,
+which is the click tracker of Facebook. The shim is on `lm.facebook.com`, and that host ends with
+`.facebook.com`. Thus the host test of the extension reads each outbound link as internal, and each
+one stays in the app. The hook ran for each link. The host test sent each one back.
+
+`unwrapLinkShim` now reads the `u` parameter before the host test, and the rest of the work uses
+that destination. The `/flx/warn/` interstitial has the same shape and the same `u`. The shim does
+not go out to the browser. Thus the browser makes one request and not two, and Facebook does not
+learn that the link opened. The destination still holds the `fbclid` parameter of Facebook, because
+that parameter is part of the destination URL.
+
+Two things make this fault hard to see:
+
+* An app link never reaches the browser. A YouTube link and a Threads link opened in their own apps
+  before the correction, and only the other links were wrong.
+* The browser activity is not exported. `am start -n …/BrowserLiteDIActivity` answers
+  `SecurityException: Permission Denial`, thus the shell cannot make the fault. Tap a link on the
+  device. Then read the intent of the activity with `adb shell dumpsys activity activities`.
+
+### Why the extension needs no package filter
+
+An `ACTION_VIEW` on an ordinary URL cannot come back into Facebook and make a loop, because **each
+`http` and `https` intent filter of Facebook is limited to a host that Facebook owns**
+(`www.facebook.com`, `work.meta.com` and more). At a version bump, decode the manifest with
+`aapt2 dump xmltree --file AndroidManifest.xml base.apk` and read the filters again.
+
+Thus the extension needs no package enumeration, and it needs no `<queries>` manifest entry. An
+implicit `ACTION_VIEW` to a browser is exempt from package visibility. Compare
+`[Fix] Restore location maps via MicroG-RE`, which does add one entry, because `createPackageContext`
+names a package.
+
+The hosts of Facebook stay in the app on purpose. Login, checkout and the web pages of Facebook
+need the JavaScript bridges and the autofill of the in-app browser. No other browser has them.
+
+### Read an injected block whole
+
+The second device round crashed at each link tap:
+
+```
+VerifyError: ... BrowserLiteDIActivity.onCreate ...
+[0xD] register v0 has type IntegerConstant but expected Reference: android.content.Intent
+```
+
+The `move-result-object` after `getIntent()` was absent, thus the redirect got the integer that was
+in `v0`. The fault came in with the rework for two browsers, which moved the intent load into a
+parameter. The `move-result-object` did not move with it.
+
+**`BranchSweep` cannot find this fault.** It makes sure that each branch, try range and handler
+lands on an instruction start. It knows nothing about the *types* of the registers. Only the
+verifier of ART knows them, and that verifier runs on the device, at class load.
+
+The check that must have found the fault hid it. The injected block was read with
+`grep -E "redirect|if-nez|invoke-super"`, and a filter of that shape cannot show an absent
+instruction. **Dump the whole injected block, and read each line.** Look for a non-void `invoke-*`
+that has no `move-result*` after it.
+
+### Keep the trace section balanced
+
+`onCreate` opens a trace section in its prologue (`LX/0Cv;->A00(I)I` into `v3`) and closes it at the
+tail (`LX/0Cv;->A07(II)V`). A hook that returns early leaves that section open. Thus the redirect
+branch jumps to the **marker load that feeds the closing call**. It does not jump to `return-void`,
+and it does not jump to the call itself. A jump to the call closes the section with the boolean of
+the hook in place of the marker.
+
+The patch finds that instruction through the pair of static calls on the tracer class, and not
+through an index. `v3` stays untouched. `onNewIntent` has no such pair, and it returns.
 
 ## Risks
 
