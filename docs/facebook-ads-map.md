@@ -132,15 +132,22 @@ open.
 
 That test then missed real leakage. Ads still appeared now and then in Reels and in the story viewer,
 and they were gone after the app was closed and reopened. The cause was **not** a prefetch cache. The
-six insertion sites added for it in 2026-09-18 are verified in the dex but **not yet device-tested**
-— see [Two families of insertion](#two-families-of-insertion).
+six insertion sites added for it in 2026-09-18 are verified in the dex — see
+[Two families of insertion](#two-families-of-insertion).
+
+The block on those sites was necessary but not sufficient. A device round on 2026-09-19 showed that
+Reels ads arrive **inside the fetched page**. The server puts them there, so no insert runs, and no
+insertion patch can stop them. The patch removes them from the page instead, at the level that the
+screen reads. See
+[Reels ads arrive inside the page](#reels-ads-arrive-inside-the-page-not-through-an-insert). The
+story-viewer half of that work is still **not device-tested**.
 
 | Patch | Target | Verified in the patched dex |
 |---|---|---|
 | `[Feed] Hide sponsored posts` | `LX/1lD;->addNewEdgeToCollection` guard on `GraphQLFeedStoryCategory.SPONSORED` (it is `A0K`) | The branch lands on original instruction 0. Try blocks moved from `@fb` to `@107` |
 | `[Feed] Hide suggested and promoted posts` | The same chokepoint, plus a new `LX/1lD;->isSuggestedOrPromotedFeedUnit` | 15 `instance-of` arms, all of which branch to `@3e` |
 | `[Stories] Hide sponsored stories` | 4 bucket data sources return their input list: `LX/awi;`, `LX/Apf;`, `LX/gq4;`, `LX/A2v;` | Each `return-object` names that method's own `p3`: `v28`, `v74`, `v9`, `v35` |
-| `[Reels] Hide sponsored reels` | `LX/50Q;->Cwp` (`maybeInsertAds`), plus `LX/54e;->A02`, `LX/6S7;->run`, `LX/6SZ;->run` | All are `return-void` before the QPL marker, so no trace section stays open |
+| `[Reels] Hide sponsored reels` | The page filter at the controller's `(List)Z` entry and at the item collection, plus `return-void` in `LX/50Q;->Cwp` (`maybeInsertAds`), `LX/54e;->A02`, `LX/6S7;->run`, `LX/6SZ;->run` | Every `return-void` lands before the QPL marker, so no trace section stays open. The filters are device-tested. See [Reels ads arrive inside the page](#reels-ads-arrive-inside-the-page-not-through-an-insert) |
 | `[Ad] Block background ad prefetch` | 8 void methods across 7 schedulers with kept names | All are `return-void`. Constructors and the `A00()Z` gate are untouched |
 | `[Ad] Block ad telemetry` | 6 void methods across 4 classes with kept names | All are `return-void`. `onStartCommand` and the predicates are untouched |
 | `[Ad] Disable Audience Network` | 5 manifest components | All have `android:enabled="false"` |
@@ -206,6 +213,59 @@ have not been checked for organic side effects.
 task class itself. That is sound here and unsound elsewhere: the field names **that lambda**, which is
 exactly what is wanted, whereas using it to infer a lambda's *enclosing* class is the trap described
 in [Anchoring](#anchoring).
+
+### Reels ads arrive inside the page, not through an insert
+
+The block on all four insert paths did not stop the ads. They continued at two ads after every two
+reels. Every blocked method is `return-void` in the shipped dex. A logging build then showed the
+cause.
+
+No insert path ran. Items reached Reels only as whole fetched pages, and the ad was already in the
+page beside the organic items. **The server puts the ad in the page.** No insertion patch can stop
+this, so the patch must filter the page.
+
+A page arrives at two levels. Only the upper level reaches the screen:
+
+| Level | What it holds | Method |
+|---|---|---|
+| Controller page entry | a `List` of **section wrappers**, each holding its own list of items | `LX/50Q;` sibling of `Cwp`, shape `(Ljava/util/List;)Z` |
+| Item collection | the items of one section, flattened | `(ILjava/util/Collection;)Z`, plus the listener walk `(<collection>;Ljava/util/Collection;)V` |
+
+The filter on the collection alone looked correct. It changed nothing on the screen. A device round
+on **2026-09-19** caught an ad in a page and logged `dropped 1 of 2` for it. The app then showed
+that ad as the third reel. The collection is a flat copy of the items. A new collection thus leaves
+the section wrapper as it arrived, and the screen reads the wrapper.
+
+**A drop count proves that the filter ran. It does not prove that the screen changed.** Only a device
+round shows the difference. This is the same lesson as "Applied" in
+[Two traps this work hit](#two-traps-this-work-hit).
+
+The patch thus filters the sections as the controller gets them. It keeps the collection filter
+behind them, for anything that enters the list by another route. Both filters call
+`app.andrewliang.extension.ReelsAdFilter`. The patch resolves the ad base class and gives it to that
+filter, because the name is a Redex name and moves on every release.
+
+Runtime names on 577.0.0.50.72, for recognition only:
+
+| Runtime class | What it is |
+|---|---|
+| `X.721` | the section wrapper. Its item list was the field `A01` |
+| `X.71s` | an organic reel |
+| `X.BB0` | an ad item. It extends the resolved ad base |
+| `X.Aw5` | seen once among 28 organic items, not an ad base subclass, not identified |
+
+The patch finds the item list of a section by type and never by name. `A01` will be another name
+after the next release. The patch removes the ads from the list in place. Then every other holder of
+that list agrees with the screen. If the list refuses, the patch replaces the field. The patch also
+removes a section that is left empty.
+
+The patch keeps a section that it cannot read, because an unreadable section is not a proven empty
+section.
+
+**Device result, 2026-09-19, 40 seconds of scrolling:** the patch dropped 13 ad sections across 32
+pages. It delivered 28 organic reels. There was no reflection fallback, no stall, and no ad on the
+screen. If a page becomes empty, the app fetches the next page in about 6 ms. Thus the removal of a
+whole section is safe.
 
 ### The feed chokepoint
 
