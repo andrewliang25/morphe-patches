@@ -152,12 +152,14 @@ story-viewer half of that work is still **not device-tested**.
 | `[Ad] Block ad telemetry` | 6 void methods across 4 classes with kept names | All are `return-void`. `onStartCommand` and the predicates are untouched |
 | `[Ad] Disable Audience Network` | 5 manifest components | All have `android:enabled="false"` |
 | `[General] Open links in external browser` | `BrowserLiteActivity->onCreate` and `->onNewIntent`, hooked after their super call | Both branches resolve to a target index: `onCreate` to the trace-close marker load, `onNewIntent` to the original next instruction |
+| `[Stories] Download any story` | The one capability check in `StoryViewerMoreButtonCallback` | `const/4` into the register its `move-result` wrote, so the cached capability reads true |
 
 Together the eight patches rewrite 28 classes, and they add the extension on top of that. The CLI
 prints this count as `Stripping N modified classes`. Two controlled runs on 2026-09-19 against
 bundle 3.0.1-dev.1 give the split. The whole bundle strips **28** classes and writes 1,115 new
 ones. The seven ad patches alone, with the browser patch off, strip **26** and write 1,113. Thus
 the browser patch is the two browser activities and its part of the extension.
+`[Stories] Download any story` came after those runs, thus it is in none of these counts.
 
 `BranchSweep` reads the 21 dex files, and each branch offset, try range and handler lands on an
 instruction start. Its last totals for classes and methods are **older than the counts in the
@@ -551,6 +553,94 @@ the hook in place of the marker.
 
 The patch finds that instruction through the pair of static calls on the tracer class, and not
 through an index. `v3` stays untouched. `onNewIntent` has no such pair, and it returns.
+
+---
+
+## Media download
+
+Facebook ships a complete save feature for media. It has the menu item, the label, the icon, the
+click handler and a general downloader. Facebook offers the feature only on the content that you
+posted. One half of that unlock ships here. The other half was built, measured on a device, and
+then dropped.
+
+### Stories: what ships
+
+`[Stories] Download any story` adds the save item of Facebook to the menu of any story.
+
+The "More" menu of the story viewer is
+`com.facebook.stories.viewer.ui.buckets.regular.topbar.menu.StoryViewerMoreButtonCallback`, which is
+a kept name. It asks exactly **one** capability question before it offers the save item. Everything
+after that question is unconditional. The surface enum that it reads next only decides which label
+the item gets.
+
+The question is a predicate on the capability object of the menu. It takes nothing and answers a
+boolean, and the menu caches the answer in a field. For the regular viewer it returns
+`StoryBucket.A0k()`, which means "this is my own story". The predicate has **exactly one caller**.
+Thus a forced answer changes the save and nothing else. Do **not** force `StoryBucket.A0k()` itself.
+`shouldShowViewCount`, `isFeedbackBarSupportedForBucket` and other capabilities read it too.
+
+The patch names neither the predicate nor its class. The menu class is a kept name. The action that
+the menu creates reports the event `"save_story_attempted"`, and that event is the anchor. The event
+is in three methods, and only one of them is a `void` with one parameter. The builder is then the
+only method on the kept class that creates that action. The capability is then the only call in the
+builder that takes nothing and answers a boolean, apart from `Boolean.booleanValue`.
+
+**Why this half works and the video half does not.** The save code reads the media address of the
+story itself, which is the address that the viewer already plays. Its errors are `MEDIA_URL_EMPTY`
+and `VIDEO_FILE_MISSING`. That address must be present, or the story does not appear at all. Thus
+nothing can withhold it.
+
+**Device-confirmed 2026-09-19** on a re-signed 577.0.0.50.72. The item "Save photo" appears on the
+story of another account. It writes the full-size picture to
+`/sdcard/Pictures/Facebook/FB_IMG_*.jpg`. The bytes are AVIF under a `.jpg` name, which is the
+naming of Facebook and not an error. A control build without the patch offers no save item on the
+same kind of story. A **video** story is not tested.
+
+### Video and reels: built, measured, dropped
+
+`[Video] Download any video or reel` forced five ownership checks in the two video menu builders,
+`LX/2xZ;->A0i` and `LX/Sct;->A0i`. Both carry the tag `"DOWNLOAD_VIDEO"` and both call `Menu.add`.
+The patch applied cleanly. Every forced check is a `const/4` in the shipped dex. The download item
+**never appeared**.
+
+A probe build gave the reason, and it is not the reason that the code suggests. The probe marked the
+entry of the download block in each builder. It also marked the value at every object null check
+inside the block, and the `Menu.add` that ends the block. On a device the probe wrote **nothing**:
+
+| Surface | Probe |
+|---|---|
+| The reel of another account, from the Reels tab | Silent |
+| The video of another account, opened from the feed | Silent |
+| **Your own reel, where Facebook does show "Download reel"** | **Silent** |
+
+The last row decides it. Both builders are old `android.view.Menu` code that this version does not
+run, not even for the one surface that works. Thus a forced gate in them cannot change anything. Two
+static facts agree. The label resource that the builders pass to `getString` (`0x7f147339`) is used
+by **those two methods and nothing else**. The tag `"DOWNLOAD_VIDEO"` is in five methods only, and
+all five are the same old pair and its click listeners.
+
+**The lesson, which cost one patch.** A string tag and a `Menu.add` do not prove that a menu builder
+is *the* builder. Facebook keeps whole old menu implementations in the dex, and a search by name
+finds them first. One probe run costs less than the device rounds that it replaces. Write the probe
+**before** the patch. This is the same trap as the earlier conclusion that reels have no download
+code. A search for `DOWNLOAD_REEL` and for the reels packages found nothing, which proved only that
+the feature is not *named* after the surface.
+
+The checks of the old builders are still a record of the data that the feature reads. In order:
+`getCachedBoolean(-1433294616)`, the media object, the owner id against `FbUserSessionImpl.A02`,
+`TreeJNI.getBooleanValue(1585574)`, the subtree behind `LX/KDM;->A00()`, and last the download
+address. The address comes from the server and can be null. Never force it, because a forced null
+goes to `Uri.parse`. Whether the live surface asks the same questions is **not known**.
+
+Where to look if this work starts again:
+
+* The downloader `LX/gQ5;->A01(Context, Uri, Fragment, FbUserSession, …)` has **nine** callers. Two
+  are the old listeners `LX/UGl;` and `LX/UHG;`. Thus the handler of the live sheet is one of
+  `LX/4ef;->AA5`, `LX/4ef;->ABE`, `LX/FaK;->DcZ`, `LX/UHV;->onClick`, `LX/XOi;->DJQ`,
+  `LX/b5T;->onSuccess` and `LX/bM1;->invoke`.
+* The interface text of Facebook is **not** in `resources.arsc`. It arrives in downloaded string
+  packs. Thus "Download reel" is not an anchor. Anchor on the download drawables instead, for
+  example `fb_ic_download_*` at `0x7f19097a`. The row must reference one of them to draw its icon.
 
 ## Risks
 
