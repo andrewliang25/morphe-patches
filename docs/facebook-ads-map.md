@@ -1,8 +1,18 @@
 # Facebook ad map & findings
 
 Reference for the Facebook (`com.facebook.katana`) patches. It comes from a decompile of
-**577.0.0.50.72** (versionCode 474426275, arm64-v8a, Android 11+), the version pinned in
-`app/andrewliang/patches/shared/Constants.kt`.
+**577.0.0.50.72**, the version pinned in `app/andrewliang/patches/shared/Constants.kt`.
+
+APKMirror lists many variants of each Facebook release, and each variant has its own versionCode.
+Thus the versionCode alone does not identify a download. The decompile uses this variant:
+
+| | |
+|---|---|
+| APKMirror title | Facebook 577.0.0.50.72 (arm64-v8a) (360-480dpi) (Android 11+) |
+| versionCode | 474426275 — for this variant only |
+| ABI / density / minSdk | `arm64-v8a` / 360–480 dpi / 30 |
+
+To get the same bytecode, select the variant by its title. Do not search for the number.
 
 > ⚠️ **Obfuscation drift.** `LX/1lD;`, `LX/awi;` and `LX/50Q;` are Redex names. They change on
 > **every** Facebook release, which is about every two weeks. No patch hard-codes one — see
@@ -69,7 +79,15 @@ register of the name resolves the wrong constant.
 "handling_inorganic_clash"                         -> LX/awi;->B5t
 "VideoHomeDataControllerImpl.maybeInsertAds"       -> LX/50Q;->Cwp
 "FeedSponsoredStoryHolder.getTopValidAd"           -> LX/1y1;->A0R
+"StoryViewerMidCardDataSource.getBuckets"          -> LX/A2v;->B5t
+"AdPaginatingBucketStaticInsertionDataSource.getBuckets" -> LX/gq4;->B5t
+"VideoHomeDataControllerAdsUtil.maybeInsertFbShortsRealtimeIntentItem" -> LX/54e;->A02
+"VideoHomeDataControllerSfdAdsUtil"                -> LX/6S7;->run
 ```
+
+A Kotlin `Intrinsics` null-check message works the same way, because it carries the name of the
+variable it guards. `"uninsertedMainAdsQueue"` reaches `LX/Apf;->B5t` that way; it appears in three
+methods, and the `ImmutableList` return type is what picks the right one.
 
 ### `__redex_internal_original_name` is weaker than it looks
 
@@ -112,19 +130,153 @@ through `getCachedEnum(id, class, default)`, so it never returns null.
 found no problems. The test was a general pass, not a check of each surface, so the risks below stay
 open.
 
+That test then missed real leakage. Ads still appeared now and then in Reels and in the story viewer,
+and they were gone after the app was closed and reopened. The cause was **not** a prefetch cache. The
+six insertion sites added for it in 2026-09-18 are verified in the dex — see
+[Two families of insertion](#two-families-of-insertion).
+
+The block on those sites was necessary but not sufficient. A device round on 2026-09-19 showed that
+Reels ads arrive **inside the fetched page**. The server puts them there, so no insert runs, and no
+insertion patch can stop them. The patch removes them from the page instead, at the level that the
+screen reads. See
+[Reels ads arrive inside the page](#reels-ads-arrive-inside-the-page-not-through-an-insert). The
+story-viewer half of that work is still **not device-tested**.
+
 | Patch | Target | Verified in the patched dex |
 |---|---|---|
 | `[Feed] Hide sponsored posts` | `LX/1lD;->addNewEdgeToCollection` guard on `GraphQLFeedStoryCategory.SPONSORED` (it is `A0K`) | The branch lands on original instruction 0. Try blocks moved from `@fb` to `@107` |
 | `[Feed] Hide suggested and promoted posts` | The same chokepoint, plus a new `LX/1lD;->isSuggestedOrPromotedFeedUnit` | 15 `instance-of` arms, all of which branch to `@3e` |
-| `[Stories] Hide sponsored stories` | `LX/awi;->B5t` returns its input list | `return-object v28`, which is `p3`, the `ImmutableList` |
-| `[Reels] Hide sponsored reels` | `LX/50Q;->Cwp`, which is `maybeInsertAds` | `return-void` before the QPL marker, so no trace section stays open |
+| `[Stories] Hide sponsored stories` | 4 bucket data sources return their input list: `LX/awi;`, `LX/Apf;`, `LX/gq4;`, `LX/A2v;` | Each `return-object` names that method's own `p3`: `v28`, `v74`, `v9`, `v35` |
+| `[Reels] Hide sponsored reels` | The page filter at the controller's `(List)Z` entry and at the item collection, plus `return-void` in `LX/50Q;->Cwp` (`maybeInsertAds`), `LX/54e;->A02`, `LX/6S7;->run`, `LX/6SZ;->run` | Every `return-void` lands before the QPL marker, so no trace section stays open. The filters are device-tested. See [Reels ads arrive inside the page](#reels-ads-arrive-inside-the-page-not-through-an-insert) |
 | `[Ad] Block background ad prefetch` | 8 void methods across 7 schedulers with kept names | All are `return-void`. Constructors and the `A00()Z` gate are untouched |
 | `[Ad] Block ad telemetry` | 6 void methods across 4 classes with kept names | All are `return-void`. `onStartCommand` and the predicates are untouched |
 | `[Ad] Disable Audience Network` | 5 manifest components | All have `android:enabled="false"` |
+| `[General] Open links in external browser` | `BrowserLiteActivity->onCreate` and `->onNewIntent`, hooked after their super call | Both branches resolve to a target index: `onCreate` to the trace-close marker load, `onNewIntent` to the original next instruction |
+| `[Stories] Download any story` | The one capability check in `StoryViewerMoreButtonCallback` | `const/4` into the register its `move-result` wrote, so the cached capability reads true |
 
-Together the seven patches rewrite 16 classes. `BranchSweep` then reads the 21 dex files. It
-reports 197,471 classes and 630,827 methods. Every branch offset, try range and handler lands on an
-instruction start.
+Together the eight patches rewrite 28 classes, and they add the extension on top of that. The CLI
+prints this count as `Stripping N modified classes`. Two controlled runs on 2026-09-19 against
+bundle 3.0.1-dev.1 give the split. The whole bundle strips **28** classes and writes 1,115 new
+ones. The seven ad patches alone, with the browser patch off, strip **26** and write 1,113. Thus
+the browser patch is the two browser activities and its part of the extension.
+`[Stories] Download any story` came after those runs, thus it is in none of these counts.
+
+`BranchSweep` reads the 21 dex files, and each branch offset, try range and handler lands on an
+instruction start. Its last totals for classes and methods are **older than the counts in the
+paragraph above**. They come from before the Reels page work of 2026-09-19: 197,471 classes and
+630,827 methods for the ad patches with no extension, and 198,557 and 641,106 for the whole bundle.
+Do the sweep again before you quote these numbers.
+
+### Two families of insertion
+
+Neither Reels nor Stories has one chokepoint. Each has a **batch path** that runs when a page loads,
+and several **on-demand paths** that fetch a single ad while you are already scrolling and splice it
+into the collection held in memory. Patch only the batch path and an ad still turns up after a while,
+then vanishes on the next cold start, because the restart rebuilds the collection through the batch
+path alone. That is the shape of the bug, and it is worth recognising on any surface: **"it goes away
+when I restart the app" means the leak is an in-memory insert, not a cache.**
+
+A prefetch cache cannot produce it. Prefetch downloads ad creative; it never inserts anything into a
+feed, and a disk cache would survive the restart rather than be cleared by it.
+
+**Stories is a chain, not a chokepoint.** `StoryviewerBucketDataController.processBucketData`
+(`LX/9to;->A00`) holds an `ImmutableList` of bucket data sources and calls `B5t` on each, feeding
+every result into the next. `LX/9u3;->A0C` assembles the chain per session behind a launch-config
+predicate (`LX/YJ0;->A1J`, `LX/9wU;->A00`) and MobileConfig gates, so which sources are present
+varies by account — which is why the leak looked random. There are 8 implementations of `B5t`:
+
+| Impl | What it is | Size |
+|---|---|---|
+| `LX/Apf;` | `AdBucketDataSourceUtil` — the placement engine. `insertedMainAdsQueue`, `uninsertedMainAdsQueue`, `organicStoryQueue`, `HP_AD`, `RTI_AD`, casts to `com.facebook.audience.snacks.model.AdStory` | 3,669 |
+| `LX/awi;` | the clash resolver, which orders two ad buckets that land together | 356 |
+| `LX/A2v;` | `StoryViewerMidCardDataSource` — mid-cards fetched once the viewer is open | 339 |
+| `LX/gq4;` | `AdPaginatingBucketStaticInsertionDataSource` — drains a queue as the viewer paginates | 83 |
+
+`LX/9q9;->A00` is a factory returning **either** `Apf` **or** `gq4` by flag, so both ship and both
+need neutering; shipping one is a coin flip. `LX/Cgk;` is a placement-rule holder reached only from
+`Apf->B5t`, so it needs no separate work. `LX/bWY;` (the interface of `Apf` and `gq4`, which extends
+`Cny;`) carries the live push surface `AqM` / `Aqz` / `DtB` / `Efy` that dwell and CTA tailloads use
+to reach an open viewer.
+
+**Leave the other four alone.** `LX/9tv;` reinserts inline errors, `LX/A2s;` carries DM
+lightweight-reply buckets, and `LX/9ts;` / `LX/9tt;` are 21 and 24 instructions. None inserts ads.
+
+**Reels has three siblings of `maybeInsertAds`.** `LX/54e;` (`VideoHomeDataControllerAdsUtil`) splits
+into two entry families that share no code:
+
+| Entry | Reached from |
+|---|---|
+| `A06` / `A07`, the batch insert | **only** `LX/50Q;->Cwp` = `maybeInsertAds` |
+| `A04` → `A02`, `maybeInsertFbShortsRealtimeIntentItem` | `LX/5YP;->onFinish()`, `LX/6S6;->run()`, `LX/6VW;->invoke()` |
+| SFD ad | `LX/6S7;->run()` |
+| POE ad | `LX/6SZ;->run()` |
+
+`Cwp` has exactly one caller and `LX/50Q;` is the sole implementation of its interface `LX/CrK;`, so
+that patch was always tight. The other three simply reach the shared sink `LX/53B;->A06(LX/9aJ;I)`
+by themselves. `LX/6SZ;->run()` logs what it inserted under `GraphQLFeedStoryCategory.A0K`
+(`SPONSORED`), which is what confirms POE items are paid ads and not an injected organic unit.
+
+Only the inserts are blocked, not the requests that feed them (`LX/54e;->A05`, `LX/6S6;->run()`).
+Stopping the requests would save data, but that belongs with the prefetch patch, and those methods
+have not been checked for organic side effects.
+
+`LX/6SZ;` holds no string literal, so it is matched on the `__redex_internal_original_name` of the
+task class itself. That is sound here and unsound elsewhere: the field names **that lambda**, which is
+exactly what is wanted, whereas using it to infer a lambda's *enclosing* class is the trap described
+in [Anchoring](#anchoring).
+
+### Reels ads arrive inside the page, not through an insert
+
+The block on all four insert paths did not stop the ads. They continued at two ads after every two
+reels. Every blocked method is `return-void` in the shipped dex. A logging build then showed the
+cause.
+
+No insert path ran. Items reached Reels only as whole fetched pages, and the ad was already in the
+page beside the organic items. **The server puts the ad in the page.** No insertion patch can stop
+this, so the patch must filter the page.
+
+A page arrives at two levels. Only the upper level reaches the screen:
+
+| Level | What it holds | Method |
+|---|---|---|
+| Controller page entry | a `List` of **section wrappers**, each holding its own list of items | `LX/50Q;` sibling of `Cwp`, shape `(Ljava/util/List;)Z` |
+| Item collection | the items of one section, flattened | `(ILjava/util/Collection;)Z`, plus the listener walk `(<collection>;Ljava/util/Collection;)V` |
+
+The filter on the collection alone looked correct. It changed nothing on the screen. A device round
+on **2026-09-19** caught an ad in a page and logged `dropped 1 of 2` for it. The app then showed
+that ad as the third reel. The collection is a flat copy of the items. A new collection thus leaves
+the section wrapper as it arrived, and the screen reads the wrapper.
+
+**A drop count proves that the filter ran. It does not prove that the screen changed.** Only a device
+round shows the difference. This is the same lesson as "Applied" in
+[Two traps this work hit](#two-traps-this-work-hit).
+
+The patch thus filters the sections as the controller gets them. It keeps the collection filter
+behind them, for anything that enters the list by another route. Both filters call
+`app.andrewliang.extension.ReelsAdFilter`. The patch resolves the ad base class and gives it to that
+filter, because the name is a Redex name and moves on every release.
+
+Runtime names on 577.0.0.50.72, for recognition only:
+
+| Runtime class | What it is |
+|---|---|
+| `X.721` | the section wrapper. Its item list was the field `A01` |
+| `X.71s` | an organic reel |
+| `X.BB0` | an ad item. It extends the resolved ad base |
+| `X.Aw5` | seen once among 28 organic items, not an ad base subclass, not identified |
+
+The patch finds the item list of a section by type and never by name. `A01` will be another name
+after the next release. The patch removes the ads from the list in place. Then every other holder of
+that list agrees with the screen. If the list refuses, the patch replaces the field. The patch also
+removes a section that is left empty.
+
+The patch keeps a section that it cannot read, because an unreadable section is not a proven empty
+section.
+
+**Device result, 2026-09-19, 40 seconds of scrolling:** the patch dropped 13 ad sections across 32
+pages. It delivered 28 organic reels. There was no reflection fallback, no stall, and no ad on the
+screen. If a page becomes empty, the app fetches the next page in about 6 ms. Thus the removal of a
+whole section is safe.
 
 ### The feed chokepoint
 
@@ -166,13 +318,14 @@ manifest. It includes the parts that are not worth a patch, so that nobody finds
 | Surface | Where | Shipped |
 |---|---|---|
 | News feed sponsored posts | `LX/1lD;->addNewEdgeToCollection` | ✅ |
-| Stories tray ads | `LX/awi;->B5t`, `AdBucketDataSourceUtil`, `StoryBucket.getBucketType() == 9` | ✅ |
-| Reels and Watch feed ads | `LX/50Q;->Cwp`, `VideoHomeDataControllerAdsUtil`, `PoeAdsUtil`, `SfdAdsUtil`, `WatchAdStoryPool` | ✅ |
+| Story-viewer ads | The 4 ad sources in the `processBucketData` chain: `LX/Apf;`, `LX/awi;`, `LX/A2v;`, `LX/gq4;` | ✅ |
+| Stories **tray** ads (the row on the feed) | Not traced. Every `B5t` source found so far is viewer-side | ❌ inserter not located |
+| Reels and Watch feed ads | `LX/50Q;->Cwp` plus the 3 on-demand inserts: `LX/54e;->A02` (realtime intent), `LX/6S7;` (SFD), `LX/6SZ;` (POE) | ✅ |
 | Reels ad chrome | `FbShortsAdsRootKComponent`, `ReelsBannerAdsNativeComponent`, `ReelsAdsFloatingCtaPlugin`, `FbShortsAdsPostScrollNudge*` | Not necessary once insertion stops |
 | In-stream ads (pre-roll, mid-roll, post-roll) | `AdBreakStateMachineImpl`, `AdBreakFetchHelper`, `UnifiedAdBreakController`, `InstreamAdFetchUtil` | ❌ no anchor |
 | Pause ads | `PauseAdComponent`, `PauseAdUtil` | ❌ no anchor |
 | Squeezeback ads (the live video becomes smaller) | `SqueezebackAdPlugin` (`LX/TZ5;`) | ❌ not built |
-| Story-viewer ads | `StoryViewerAdsRootContainerComponentSpec`, `StoryViewerAdsVideoComponent`, `FBStoryAdsDelayedSkipManager` | ❌ not built |
+| Story-viewer ad chrome | `StoryViewerAdsRootContainerComponentSpec`, `StoryViewerAdsVideoComponent`, `FBStoryAdsDelayedSkipManager` | Not necessary once insertion stops |
 | Search results sponsored | `LX/KoE;->A1N`, `LX/LhI;->A00`, `SearchAdActions` | ❌ not built |
 | Marketplace ads | `FBMarketplaceAdsBrowserNativeModule` (React Native) | ❌ needs a different method |
 | Notifications-tab ads | The `fb_notif_ad_impression` events | ❌ insertion point not found |
@@ -270,6 +423,310 @@ path has no anchor.
   is camera-roll ML and is not related.
 
 ---
+
+## Link handling
+
+Facebook opens each tapped link in its own browser. `[General] Open links in external browser`
+gives the URL to the system instead.
+
+### Why the menu action of the browser is the wrong thing to call
+
+The browser has an **Open with** menu action, and that action does the correct thing. It builds an
+`ACTION_VIEW` on the URL and starts it. But a patch cannot call it.
+
+The action is one branch of `LX/dLG;->A01`, a dispatcher of 588 instructions that each menu item
+shares. Its intent builder `LX/cyp;->A00(LX/eYb;, LX/eXt;)` takes the chrome and the state objects
+of the browser. These objects exist only after the browser is built. Thus a call to the action must
+start the browser and then close it. The user sees a flash, and a dead entry stays on the back
+stack. Copy what the action builds, and hook earlier.
+
+### There are two in-app browsers, and the links go to the newer one
+
+`com.facebook.browser.lite` is not the whole story. Facebook also ships
+`com.facebook.browser.`**`litev2`**. The central launcher `handleByBrowserLite` (`LX/8A2;->A03`,
+about 2,800 instructions) **sets the component of the launch intent** to
+`litev2.lite.BrowserLiteDIActivity`. Nothing else can redirect an explicit component bind. Thus a
+hook on the original browser alone never runs for an ordinary link.
+
+The first device round proved this at a high cost. The hook was correct in the build, and each link
+still opened in the app. Both browsers have a hook now. **At each version bump, read the component
+that `handleByBrowserLite` binds. Do not assume that the old class is still the live one.**
+
+### The chokepoint
+
+Each entry point goes through the activity, and **the URL is the data of the launch intent**, not
+an extra. The v1 sites do `new Intent(ctx, BrowserLiteActivity.class).setData(uri)`, and
+`handleByBrowserLite` reads and rewrites `Intent.getData()` throughout. Thus one hook for each
+browser covers the feed, the comments, the Pages and the story link stickers.
+
+`onCreate` is 16 instructions. `invoke-super` is at index 3, and the browser is built at index 10
+(`LX/dSq;->A0A`). This leaves a clean gap for the hook. The hook must go **after** the super call.
+If it goes before, Android answers with `SuperNotCalledException`.
+
+| Class | Relationship | Patched |
+|---|---|---|
+| `litev2.lite.BrowserLiteDIActivity` | **the browser that ordinary links reach** | ✅ `onCreate` + `onNewIntent` |
+| `litev2.lite.BrowserLiteDITransparentActivity` | **extends** it | ✅ for free |
+| `lite.BrowserLiteActivity` | the original, which some surfaces still reach | ✅ `onCreate` + `onNewIntent` |
+| `lite.BrowserLiteInMainProcessBottomSheetActivity` | **extends** it | ✅ for free |
+| `DMASecureBrowserActivity` | extends `FragmentActivity` directly | ❌ on purpose — the separate browser for the EU Digital Markets Act |
+
+All three run in the main process. Thus the extension has no cross-process problem.
+
+`onNewIntent` needs its own hook, and that hook must read the **parameter**, not `getIntent()`.
+`getIntent()` still returns the intent that started the browser, which is the previous link.
+
+### The URL is the link shim, not the link
+
+The third device round found the last fault. Each patch applied, the hook was correct in the dex,
+and each link still opened in the app. `dumpsys` gave the answer:
+
+```
+Intent { act=android.intent.action.VIEW
+         dat=https://lm.facebook.com/l.php?u=https%3A%2F%2Fwww.example.com%2Fnews%2F1.htm&h=AUAN...
+         cmp=com.facebook.katana/com.facebook.browser.litev2.lite.BrowserLiteDIActivity }
+```
+
+Facebook does not give the browser the link that the user tapped. It gives it the **link shim**,
+which is the click tracker of Facebook. The shim is on `lm.facebook.com`, and that host ends with
+`.facebook.com`. Thus the host test of the extension reads each outbound link as internal, and each
+one stays in the app. The hook ran for each link. The host test sent each one back.
+
+`unwrapLinkShim` now reads the `u` parameter before the host test, and the rest of the work uses
+that destination. The `/flx/warn/` interstitial has the same shape and the same `u`. The shim does
+not go out to the browser. Thus the browser makes one request and not two, and Facebook does not
+learn that the link opened. The destination still holds the `fbclid` parameter of Facebook, because
+that parameter is part of the destination URL.
+
+Two things make this fault hard to see:
+
+* An app link never reaches the browser. A YouTube link and a Threads link opened in their own apps
+  before the correction, and only the other links were wrong.
+* The browser activity is not exported. `am start -n …/BrowserLiteDIActivity` answers
+  `SecurityException: Permission Denial`, thus the shell cannot make the fault. Tap a link on the
+  device. Then read the intent of the activity with `adb shell dumpsys activity activities`.
+
+### Why the extension needs no package filter
+
+An `ACTION_VIEW` on an ordinary URL cannot come back into Facebook and make a loop, because **each
+`http` and `https` intent filter of Facebook is limited to a host that Facebook owns**
+(`www.facebook.com`, `work.meta.com` and more). At a version bump, decode the manifest with
+`aapt2 dump xmltree --file AndroidManifest.xml base.apk` and read the filters again.
+
+Thus the extension needs no package enumeration, and it needs no `<queries>` manifest entry. An
+implicit `ACTION_VIEW` to a browser is exempt from package visibility. Compare
+`[Fix] Restore location maps via MicroG-RE`, which does add one entry, because `createPackageContext`
+names a package.
+
+The hosts of Facebook stay in the app on purpose. Login, checkout and the web pages of Facebook
+need the JavaScript bridges and the autofill of the in-app browser. No other browser has them.
+
+### Read an injected block whole
+
+The second device round crashed at each link tap:
+
+```
+VerifyError: ... BrowserLiteDIActivity.onCreate ...
+[0xD] register v0 has type IntegerConstant but expected Reference: android.content.Intent
+```
+
+The `move-result-object` after `getIntent()` was absent, thus the redirect got the integer that was
+in `v0`. The fault came in with the rework for two browsers, which moved the intent load into a
+parameter. The `move-result-object` did not move with it.
+
+**`BranchSweep` cannot find this fault.** It makes sure that each branch, try range and handler
+lands on an instruction start. It knows nothing about the *types* of the registers. Only the
+verifier of ART knows them, and that verifier runs on the device, at class load.
+
+The check that must have found the fault hid it. The injected block was read with
+`grep -E "redirect|if-nez|invoke-super"`, and a filter of that shape cannot show an absent
+instruction. **Dump the whole injected block, and read each line.** Look for a non-void `invoke-*`
+that has no `move-result*` after it.
+
+### Keep the trace section balanced
+
+`onCreate` opens a trace section in its prologue (`LX/0Cv;->A00(I)I` into `v3`) and closes it at the
+tail (`LX/0Cv;->A07(II)V`). A hook that returns early leaves that section open. Thus the redirect
+branch jumps to the **marker load that feeds the closing call**. It does not jump to `return-void`,
+and it does not jump to the call itself. A jump to the call closes the section with the boolean of
+the hook in place of the marker.
+
+The patch finds that instruction through the pair of static calls on the tracer class, and not
+through an index. `v3` stays untouched. `onNewIntent` has no such pair, and it returns.
+
+---
+
+## Media download
+
+Facebook ships a complete save feature for media. It has the menu item, the label, the icon, the
+click handler and a general downloader. Facebook offers the feature only on the content that you
+posted. The half for stories ships here. The half for video went through three attempts. Each
+attempt applied cleanly, and a device round then killed it. The measurement is the part to keep.
+
+### Stories: what ships
+
+`[Stories] Download any story` adds the save item of Facebook to the menu of any story.
+
+The "More" menu of the story viewer is
+`com.facebook.stories.viewer.ui.buckets.regular.topbar.menu.StoryViewerMoreButtonCallback`, which is
+a kept name. It asks exactly **one** capability question before it offers the save item. Everything
+after that question is unconditional. The surface enum that it reads next only decides which label
+the item gets.
+
+The question is a predicate on the capability object of the menu. It takes nothing and answers a
+boolean, and the menu caches the answer in a field. For the regular viewer it returns
+`StoryBucket.A0k()`, which means "this is my own story". The predicate has **exactly one caller**.
+Thus a forced answer changes the save and nothing else. Do **not** force `StoryBucket.A0k()` itself.
+`shouldShowViewCount`, `isFeedbackBarSupportedForBucket` and other capabilities read it too.
+
+The patch names neither the predicate nor its class. The menu class is a kept name. The action that
+the menu creates reports the event `"save_story_attempted"`, and that event is the anchor. The event
+is in three methods, and only one of them is a `void` with one parameter. The builder is then the
+only method on the kept class that creates that action. The capability is then the only call in the
+builder that takes nothing and answers a boolean, apart from `Boolean.booleanValue`.
+
+**Why this half works and the video half does not.** The save code reads the media address of the
+story itself, which is the address that the viewer already plays. Its errors are `MEDIA_URL_EMPTY`
+and `VIDEO_FILE_MISSING`. That address must be present, or the story does not appear at all. Thus
+nothing can withhold it.
+
+**Device-confirmed 2026-09-19** on a re-signed 577.0.0.50.72. The item "Save photo" appears on the
+story of another account. It writes the full-size picture to
+`/sdcard/Pictures/Facebook/FB_IMG_*.jpg`. The bytes are AVIF under a `.jpg` name, which is the
+naming of Facebook and not an error. A control build without the patch offers no save item on the
+same kind of story. A **video** story is not tested.
+
+### Video and reels: three paths, all measured, none shipped
+
+Facebook holds **three** separate download paths for video, and each one has its own gate. Work on
+this went through all three. The patch for each applied cleanly. Every forced check is a `const` in
+the shipped dex. The download row **never appeared** on another account's video.
+
+| Path | Surface | Gate | Result |
+|---|---|---|---|
+| Old `android.view.Menu` builders `LX/2xZ;->A0i` and `LX/Sct;->A0i` | none | 5 ownership checks | The code does not run at all |
+| `MediaGalleryMenuHelper` (`LX/8R4;`) | the photo and video viewer | `A03` answers the address, or null | Forced. No video of another account opens in this viewer |
+| The reel sheet (`LX/Tkb;->A00`) | reels and feed video | a tree flag, then an address | Forced. The block exits before the flag |
+
+**All three stop at the same wall, and it is not the flag.** The measurement below is what settles
+it. It took four device rounds to reach. Three of those rounds went to gates that were never the
+cause.
+
+#### What the probes said
+
+The first probe marked the entry of the download block in both old builders, every null check inside
+it, and the `Menu.add` that ends it. On a device it logged **nothing**: not for another account's
+reel, not for a feed video, and **not for your own reel, where Facebook does show "Download reel"**.
+A surface that shows the row without running the code is a surface built somewhere else, so those
+two builders are dead code. The label resource that they pass to `getString` (`0x7f147339`) belongs
+to those two methods and nothing else. The tag `"DOWNLOAD_VIDEO"` is in five methods, and all five
+are the same old pair and its listeners.
+
+The second probe logged a **stack trace** from a tap on "Download reel" on an own reel. That named
+the live path in one run:
+
+```
+X.1SJ.onClick → X.TMH.A1R → X.UOz.DFH → X.UEH.A02 → X.UEH.A03
+              → X.UBD.A00 → X.ajB.A04 (HTTP GET) → X.OKw.A02 (the file)
+```
+
+None of it passes through the save entry point that the gallery uses. Thus a probe on that entry
+point stayed silent while the app wrote a file. `LX/OKw;->A02` names the file, and its string
+`"FB_VID_"` is the anchor that found the whole chain.
+
+The third probe marked the gate of the reel sheet and logged the address that the sheet builds:
+
+| Reel | The gate | The address |
+|---|---|---|
+| Your own | reached | `https://scontent…/…mp4?…oh=…&oe=…`, 720p at 526 kbps |
+| Another account's | **never reached** | none |
+
+On another account's reel the builder leaves the block **before** it reads the flag, at the null
+checks on the media subtree above it. The flag was never what hid the row.
+
+#### Why no patch can add the address
+
+Each path asks the media tree for a download address, and for content that you did not post the
+answer is absent. The old builders stop at `LX/KDM;->A00()`, which returns null. The gallery method
+answers null. The reel sheet leaves its block at the same kind of check. A forced null cannot
+replace data that never arrived: it reaches `Uri.parse`, or the save code fetches an address that is
+not there.
+
+Nothing can build the address either. A Facebook media address carries server-issued `oh` and `oe`
+signatures, so no code in the client can derive one from a video id.
+
+**Thus the permission flag is the wrong target on every path, and this is the finding worth keeping.**
+A patch on the abandoned branch `feat/facebook-download-video` forces the flag at all seven places
+that read it. The row stays hidden, because the data that it needs is absent.
+
+#### The address that does exist: what the player streams
+
+The video plays, so an address must be in the process. It is, and it is usable. The player keeps it
+on `com.facebook.video.engine.api.VideoDataSource`. Redex **keeps that class name** and renames its
+fields, so a probe must read the fields by reflection.
+
+For another account's reel the player holds progressive MP4 addresses, and not only a manifest:
+
+| Field | Rendition | Bitrate |
+|---|---|---|
+| `A07` | `xpv_progressive … h264-basic-gen2_720p` | 1.10 Mbps and 3.95 Mbps |
+| `A08` | `xpv_progressive … h264-basic-gen2_360p` | 0.61 Mbps |
+| `A0C` | the DASH manifest, as inline XML | not needed |
+
+A test took one `A08` address off the device and fetched it from an unrelated machine, with no
+headers:
+**HTTP 200, `video/mp4`, 213,789 bytes, and the file holds `avc1` and `mp4a`** — one video track and
+one audio track, muxed. Two risks usually kill this idea: a manifest in place of a file, and a video
+track without sound. Neither occurs here. Quality is not a problem either. The own download of an
+own reel was 720p at 526 kbps, and `A07` is the same size or better.
+
+#### Why it is still not shipped
+
+The idea is feasible. It is not cheap, and these are the costs, in the order that matters:
+
+* **The app preloads.** The app built six sources in about 15 seconds of scrolling, because
+  Facebook prepares the reels that come next. A patch that saves "the last source built" saves the wrong
+  video some of the time. The save must read the source of the item that the sheet belongs to, and
+  that is unproven work.
+* **The rendition needs a rule.** Prefer `A07`, fall back to `A08`, and do nothing when neither is
+  there. Without the rule the patch silently saves 360p.
+* **The row does not exist.** Each row of the sheet is an `LX/UPK;` around an action, so a patch can
+  build one. But its label comes from a downloaded string pack, which the app does not keep in
+  `resources.arsc`, and its icon is a resource id.
+* **The anchors move.** `LX/Tkb;->A00`, `LX/UPK;`, `LX/UOz;` and the **field offsets** of
+  `VideoDataSource` all change with a release about every two weeks. Compare the one-instruction
+  patches elsewhere in this bundle, which survive a bump untouched.
+* **The address expires.** The `oh` and `oe` parameters are good for hours, so the save must happen
+  at once and nothing can be queued.
+* **It is a different claim.** Every other patch here unlocks something that Facebook ships and
+  gates in its own process. This one takes media that the server decided not to offer. That belongs
+  in a patch description, not in a footnote.
+
+**Verdict: recorded, not built.** Read *"Patchable" is not "worth patching"* in `CLAUDE.md` before
+starting it again.
+
+#### Anchors that survive a bump
+
+These are the names that found everything above, and none of them is a Redex name:
+
+| Anchor | What it finds |
+|---|---|
+| `videoDownloadMediaAction` | the listener of the gallery row. One method has the name, one method calls it |
+| `"FB_VID_"` | the method that names a saved video file, and through it the whole reel save chain |
+| `"save_story_attempted"` | the action behind the story save item |
+| `"end_screen.more_options_settings"` | the more-options model of the video player |
+| `com.facebook.video.engine.api.VideoDataSource` | what the player streams. Fields by reflection, never by name |
+| `getBooleanValue` and `getCachedNullableString` | kept names on `TreeJNI`, which is how every gate reads the tree |
+
+#### The lesson, which cost two patches
+
+A string tag and a `Menu.add` do not prove that a menu builder is *the* builder: Facebook keeps
+whole old menu implementations in the dex, and a search by name finds them first. A forced flag does
+not prove a gate is *the* gate either. One probe run costs less than the device rounds that it
+replaces. Three searches missed the live path, and a stack trace from one tap named it. Measure
+first. This is the same trap as the earlier conclusion that reels have no download code: a search
+for `DOWNLOAD_REEL` found nothing, which proved only that the feature is not *named* after the
+surface.
 
 ## Risks
 
