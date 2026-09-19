@@ -17,7 +17,7 @@ val downloadStoryPatch = bytecodePatch(
     description = "Adds Facebook's own save option to the menu of any story, and not only to the " +
         "stories that you posted. It saves the picture or the video that the story shows, with " +
         "Facebook's own save code.",
-    default = false,
+    default = true,
 ) {
     compatibleWith(COMPATIBILITY_FACEBOOK)
 
