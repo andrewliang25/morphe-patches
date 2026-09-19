@@ -1,6 +1,6 @@
 {
   "NOTE": "Do NOT manually edit this file. This file is automatically updated when semantic release (release.yml) runs. Manually editing this file can break your releases and break third party tools that use this file.",
-  "version": "3.0.1-dev.1",
+  "version": "3.1.0-dev.1",
   "patches": [
     {
       "name": "[Ad] Block ad telemetry",
@@ -516,6 +516,32 @@
           "targets": [
             {
               "version": "26.14.0",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "[General] Open links in external browser",
+      "description": "A web link that you tap opens in your default browser, and not in the in-app browser of Facebook. The pages of Facebook still open in the app. Thus login and checkout still work.",
+      "default": true,
+      "dependencies": [],
+      "compatiblePackages": [
+        {
+          "packageName": "com.facebook.katana",
+          "name": "Facebook",
+          "description": null,
+          "apkFileType": "APKM",
+          "appIconColor": "#0864FF",
+          "signatures": null,
+          "targets": [
+            {
+              "version": "577.0.0.50.72",
               "versionCodes": null,
               "isExperimental": false,
               "minSdk": null,

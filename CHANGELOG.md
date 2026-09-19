@@ -1,3 +1,9 @@
+## [3.1.0-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v3.0.1-dev.1...v3.1.0-dev.1) (2026-09-19)
+
+### ✨ New Features
+
+* open Facebook links in the external browser ([07bf98a](https://github.com/andrewliang25/morphe-patches/commit/07bf98a91fa64644b022cb7f1fb503644d2a5922))
+
 ## [3.0.1-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v3.0.0...v3.0.1-dev.1) (2026-09-19)
 
 ### 🐛 Bug Fixes
