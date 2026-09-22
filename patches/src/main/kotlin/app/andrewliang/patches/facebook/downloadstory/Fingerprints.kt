@@ -7,6 +7,14 @@ internal const val STORY_VIEWER_MORE_MENU =
     "Lcom/facebook/stories/viewer/ui/buckets/regular/topbar/menu/StoryViewerMoreButtonCallback;"
 
 /**
+ * Kept name. One story, and the object that the save action carries.
+ *
+ * Its `getMedia` is also a kept name, so the extension reaches the address of the story through
+ * two names that Redex leaves alone and no name that it rewrites.
+ */
+internal const val STORY_CARD = "Lcom/facebook/stories/model/StoryCard;"
+
+/**
  * The action behind the save item. The analytics event that it reports is what finds it.
  *
  * The event name is in three methods. One of the other two is a string table, which returns a
