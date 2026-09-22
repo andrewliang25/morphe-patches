@@ -10,8 +10,12 @@ import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
 import com.android.tools.smali.dexlib2.iface.instruction.Instruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.RegisterRangeInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.ThreeRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.VariableRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.formats.Instruction35c
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.android.tools.smali.dexlib2.iface.reference.StringReference
@@ -355,7 +359,24 @@ val downloadReelPatch = bytecodePatch(
 
         check(markerRegister != null) { "Could not trace the marker list of $sidebarName" }
 
-        // Three instructions before the call: the object moves are done, so v0 to v2 are free.
+        // Three instructions before the call the object moves are done, so v0 to v2 hold nothing
+        // that is still wanted. That was true when this was written and it is not self-evident,
+        // so it is checked rather than trusted: an earlier version of this patch read `p0` here,
+        // which is live nowhere near the end of this method, and the app died with a VerifyError
+        // on every reel. A build that fails with the message below is the same fault found early.
+        //
+        // The window is from the injection to the call. Any touch of one of these registers in it
+        // counts, whether it reads or writes, because that is the cheap and safe way round.
+        val scratch = setOf(0, 1, 2)
+        val busy = (assemblyIndex - 3..assemblyIndex)
+            .filter { it in instructions.indices }
+            .filter { registersTouched(instructions[it]).any(scratch::contains) }
+
+        check(busy.isEmpty()) {
+            "$sidebarName still uses " + scratch.joinToString { "v$it" } +
+                " at instruction(s) ${busy.joinToString()}, so the injection cannot borrow them"
+        }
+
         sidebar.addInstructions(
             assemblyIndex - 3,
             """
@@ -520,6 +541,38 @@ private fun fieldNames(instructions: List<Instruction>, owner: String): Map<Stri
     }
 
     return names
+}
+
+/**
+ * Every register that one instruction names, whether it reads it or writes it.
+ *
+ * The caller wants to know that a register is free. Telling a read from a write needs a table of
+ * every opcode, and the answer to the easier question is enough: an instruction that names the
+ * register at all is a reason not to borrow it.
+ */
+private fun registersTouched(instruction: Instruction): Set<Int> = buildSet {
+    when (instruction) {
+        is RegisterRangeInstruction ->
+            (0 until instruction.registerCount).forEach { add(instruction.startRegister + it) }
+
+        is Instruction35c -> {
+            val count = (instruction as VariableRegisterInstruction).registerCount
+            val registers = listOf(
+                instruction.registerC,
+                instruction.registerD,
+                instruction.registerE,
+                instruction.registerF,
+                instruction.registerG,
+            )
+            registers.take(count).forEach(::add)
+        }
+
+        else -> {
+            if (instruction is OneRegisterInstruction) add(instruction.registerA)
+            if (instruction is TwoRegisterInstruction) add(instruction.registerB)
+            if (instruction is ThreeRegisterInstruction) add(instruction.registerC)
+        }
+    }
 }
 
 /** The local a call argument was copied from, so adding to it adds to the same object. */
