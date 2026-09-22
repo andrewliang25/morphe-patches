@@ -764,6 +764,28 @@ and the register plumbing at the injection point. `Fb dump` prints no operand re
 method by register number and anchors on an 18-parameter signature. Facebook releases about every
 two weeks. This would need re-deriving on most of them, and it can fail quietly rather than loudly.
 
+### A reel opened from the story tray saves at 360p, and that is the source
+
+Measured, so that nobody re-investigates the ranking for it. A reel reached through the story tray
+is saved by the **story** half, which reads the card rather than the player, and the card carries
+four addresses of which only two are distinct:
+
+| Candidate | What it is |
+|---|---|
+| `…_n.jpg` (1080p), twice | the poster image |
+| `…_n.mp4` (360p), twice | the video, and the only one |
+
+There is no high quality video address on the card at all. The ranking picks the only video there
+is, so it is right; the ceiling is the source. A reel reached through the reels tray is saved by the
+sidebar button instead, which reads `videoHdUri` off the player, and comes back at 720p.
+
+Closing the gap would mean giving the story half a route to the player, which its action does not
+have: it holds a context and a card and nothing else. The shape that would work is a small map from
+video id to source, filled where `VideoPlayerParams` is built, since that object carries both the id
+and the source — keyed per item, so not the "most recent source" trap. **Not built**, and worth one
+probe first: the 720p seen so far was from reels-tray playback, and if Facebook streams the story
+tray at 360p then the player holds nothing better either.
+
 ### Anchors that survive a bump
 
 None of these is a Redex name.
