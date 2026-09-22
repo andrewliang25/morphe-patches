@@ -152,7 +152,7 @@ story-viewer half of that work is still **not device-tested**.
 | `[Ad] Block ad telemetry` | 6 void methods across 4 classes with kept names | All are `return-void`. `onStartCommand` and the predicates are untouched |
 | `[Ad] Disable Audience Network` | 5 manifest components | All have `android:enabled="false"` |
 | `[General] Open links in external browser` | `BrowserLiteActivity->onCreate` and `->onNewIntent`, hooked after their super call | Both branches resolve to a target index: `onCreate` to the trace-close marker load, `onNewIntent` to the original next instruction |
-| `[Stories] Download any story` | The one capability check in `StoryViewerMoreButtonCallback` | `const/4` into the register its `move-result` wrote, so the cached capability reads true |
+| `[Stories] Download any story` | The one capability check in `StoryViewerMoreButtonCallback`, plus the body of the action's tap handler | `const/4` into the register its `move-result` wrote, so the cached capability reads true; then the handler runs our own download, which skips Facebook's licensed-music check (issue #110) |
 
 Together the eight patches rewrite 28 classes, and they add the extension on top of that. The CLI
 prints this count as `Stripping N modified classes`. Two controlled runs on 2026-09-19 against
@@ -558,175 +558,217 @@ through an index. `v3` stays untouched. `onNewIntent` has no such pair, and it r
 
 ## Media download
 
-Facebook ships a complete save feature for media. It has the menu item, the label, the icon, the
-click handler and a general downloader. Facebook offers the feature only on the content that you
-posted. The half for stories ships here. The half for video went through three attempts. Each
-attempt applied cleanly, and a device round then killed it. The measurement is the part to keep.
+Facebook ships a save feature for media and offers it only on the content that you posted. This
+bundle saves media itself instead of asking Facebook to do it.
+
+The story half ships. The video half does not, and the reason is now known: for content that you
+did not post, Facebook opens a **different viewer**, and that viewer has no download row in its
+code at all.
+
+> ⚠️ **Two statements that used to be in this file were wrong**, and both were disproved on a
+> device. They are corrected below, and the corrections are kept visible because each one cost a
+> round. The first said the reel sheet leaves its block at a null check. It does not; it adds the
+> row unconditionally. The second said no patch can add the address. The address is on the player
+> and is fetchable. See [Video and reels](#video-and-reels-what-four-device-rounds-showed).
 
 ### Stories: what ships
 
-`[Stories] Download any story` adds the save item of Facebook to the menu of any story.
+`[Stories] Download any story` has two halves, because Facebook limits the feature twice.
 
-The "More" menu of the story viewer is
-`com.facebook.stories.viewer.ui.buckets.regular.topbar.menu.StoryViewerMoreButtonCallback`, which is
-a kept name. It asks exactly **one** capability question before it offers the save item. Everything
-after that question is unconditional. The surface enum that it reads next only decides which label
-the item gets.
+**The item.** The "More" menu of the story viewer is
+`com.facebook.stories.viewer.ui.buckets.regular.topbar.menu.StoryViewerMoreButtonCallback`, a kept
+name. It asks exactly **one** capability question before it offers the save item. Everything after
+that question is unconditional, and the surface enum it reads next only decides the label. The
+question is a predicate on the capability object: it takes nothing, answers a boolean, and the menu
+caches the answer in a field. For the regular viewer it returns `StoryBucket.A0k()`, which means
+"this is my own story", and the predicate has **exactly one caller**. So a forced answer changes the
+save and nothing else. Do **not** force `StoryBucket.A0k()` itself — `shouldShowViewCount`,
+`isFeedbackBarSupportedForBucket` and other capabilities read it too.
 
-The question is a predicate on the capability object of the menu. It takes nothing and answers a
-boolean, and the menu caches the answer in a field. For the regular viewer it returns
-`StoryBucket.A0k()`, which means "this is my own story". The predicate has **exactly one caller**.
-Thus a forced answer changes the save and nothing else. Do **not** force `StoryBucket.A0k()` itself.
-`shouldShowViewCount`, `isFeedbackBarSupportedForBucket` and other capabilities read it too.
+The patch names neither the predicate nor its class. The action that the menu creates reports the
+event `"save_story_attempted"`, and that event is the anchor. The event is in three methods and only
+one is a `void` with one parameter. The builder is then the only method on the kept class that
+creates that action, and the capability is the only call in the builder that takes nothing and
+answers a boolean, apart from `Boolean.booleanValue`.
 
-The patch names neither the predicate nor its class. The menu class is a kept name. The action that
-the menu creates reports the event `"save_story_attempted"`, and that event is the anchor. The event
-is in three methods, and only one of them is a `void` with one parameter. The builder is then the
-only method on the kept class that creates that action. The capability is then the only call in the
-builder that takes nothing and answers a boolean, apart from `Boolean.booleanValue`.
+**The download.** Forcing the item is not enough, and this is what issue #110 reported. The tap
+handler of the action checks the story for licensed music **first**:
 
-**Why this half works and the video half does not.** The save code reads the media address of the
-story itself, which is the address that the viewer already plays. Its errors are `MEDIA_URL_EMPTY`
-and `VIDEO_FILE_MISSING`. That address must be present, or the story does not appear at all. Thus
-nothing can withhold it.
+```
+LX/agk;->Dy7(LX/a9v;)V
+  1: invoke-virtual StoryCard->A1Q()Z          <- a content predicate
+ 10: TreeJNI->getIntValue(#-2082673550)
+ 12: const/16 v0, #15000                       <- a duration ceiling
+ 13: if-gt ... -> the branch that builds the dialog
+ 16: LX/bUp;->DtL(StoryCard;ZZ)V               <- the plain save
+```
 
-**Device-confirmed 2026-09-19** on a re-signed 577.0.0.50.72. The item "Save photo" appears on the
-story of another account. It writes the full-size picture to
-`/sdcard/Pictures/Facebook/FB_IMG_*.jpg`. The bytes are AVIF under a `.jpg` name, which is the
-naming of Facebook and not an error. A control build without the patch offers no save item on the
-same kind of story. A **video** story is not tested.
+On a story with music it shows a copyright warning and then saves nothing, whatever the user
+answers, and not even a copy without the sound. The check is the first thing the method does, so
+there is nothing to route around. The patch prepends its own download and returns, which leaves
+Facebook's body unreachable — the same shape as `facebook/shared/Neuter.kt`. The extension answers
+whether it took the job, and Facebook's body still runs when it declines, so the item never does
+nothing at all.
 
-### Video and reels: three paths, all measured, none shipped
+The action holds what the download needs, and both are found **by type**: the only
+`Landroid/content/Context;` field and the only `Lcom/facebook/stories/model/StoryCard;` field. The
+handler is the only method on the class besides its constructor. The action is constructed in
+**exactly one place** in the whole dex, so one interception covers every story surface. (The
+reference bundle had to patch four story surfaces on 573. Re-run that `xrefc` on a bump.)
 
-Facebook holds **three** separate download paths for video, and each one has its own gate. Work on
-this went through all three. The patch for each applied cleanly. Every forced check is a `const` in
-the shipped dex. The download row **never appeared** on another account's video.
+**Device-confirmed 2026-09-22** on a re-signed 577.0.0.50.72. Three video stories with music saved
+with no warning, `save finished: OK` each time, no crash. The files are real:
+`/sdcard/Movies/Facebook/FB_VID_*.mp4`, 200–300 KB, and one pulled back holds `avc1` and `mp4a` —
+one video track and one audio track, muxed and playable with sound.
 
-| Path | Surface | Gate | Result |
+### The downloader in the extension
+
+Five classes in `app.andrewliang.extension`. Two of them hold **no Android type at all**, so the
+ranking and the fetch compile and run under `javac` alone; `work/Renditions.java` checks the ranking
+against a fixed set of addresses with no device. The ranking is the part a device cannot show — a
+saved file looks the same whether the best address was chosen or the first one read.
+
+- **The address is chosen by value, never by field name.** Facebook renames the fields every
+  release while the addresses in them keep their shape. The ranking refuses inline XML, `.mpd` and
+  `.m3u8`, refuses a thumbnail, prefers a progressive file, then ranks by the short side in pixels.
+- **Ties break on the text of the address.** `getDeclaredFields()` has no defined order on ART, so a
+  tie broken by the order the fields were read is a different answer on a different device.
+- **The walk is fenced.** Bounded depth, a node budget, an identity-visited set and a class-prefix
+  allowlist. Without the allowlist it reaches a `View`, then a `Context`, then the whole app, on the
+  thread that draws.
+- **No static holds the last address seen.** Facebook prepares the reels that come next: 19
+  `VideoPlayerParams` and 3 distinct video ids were built in the first seconds of one run. Anything
+  remembered rather than passed in saves the wrong video and still reports success.
+- **Nothing is queued.** The `oh` and `oe` parameters are signed and last hours, so the fetch starts
+  on the tap. That is why `DownloadManager` is the wrong tool here despite being the obvious one.
+- **The type comes from the server**, and the type decides the file name. Facebook's own save writes
+  AVIF bytes into a `.jpg`, which leaves the gallery unable to draw a thumbnail; copying that would
+  copy the fault.
+
+### The fields of the source name themselves
+
+`com.facebook.video.engine.api.VideoDataSource` is a kept class name whose fields are renamed every
+release. It also carries `EVr`, a debug dump that pairs each field with its **real** name:
+
+```
+ 2: iget-object v0, v3, VideoDataSource->A08:Landroid/net/Uri;   5: const-string "videoUri"
+ 9: iget-object v0, v3, VideoDataSource->A07:Landroid/net/Uri;  11: const-string "videoHdUri"
+15: iget-object v0, v3, VideoDataSource->A06:Landroid/net/Uri;  17: const-string "captionsUri"
+```
+
+So a patch resolves `videoHdUri` and `videoUri` at patch time with no letter written down. It also
+avoids a trap: the **third** `Uri` on the object is the subtitles, which "take any Uri" would
+happily download.
+
+Two cautions. The pairing order is **not stable between classes** — `VideoDataSource.EVr` emits
+`iget` then `const-string`, while `VideoPlayerParams.EVr` emits `const-string` then `iget` for
+`videoId` and also carries labels such as `"videoDataSourceNull"` that are not field names. Pair
+within a small window in either direction and fail loudly if a name does not resolve. And do not use
+`EVr` for the other hop: the `VideoDataSource` on a `VideoPlayerParams` is the only field of that
+type, and the type is a kept name, so resolve it by type.
+
+Measured on this build, for one reel:
+
+| Field | Real name | Rendition | Bitrate |
 |---|---|---|---|
-| Old `android.view.Menu` builders `LX/2xZ;->A0i` and `LX/Sct;->A0i` | none | 5 ownership checks | The code does not run at all |
-| `MediaGalleryMenuHelper` (`LX/8R4;`) | the photo and video viewer | `A03` answers the address, or null | Forced. No video of another account opens in this viewer |
-| The reel sheet (`LX/Tkb;->A00`) | reels and feed video | a tree flag, then an address | Forced. The block exits before the flag |
+| `A07` | `videoHdUri` | `dash_h264-basic-gen2_720p` | 1.23 Mbps |
+| `A08` | `videoUri` | `sve_sd` (360p) | 0.30 Mbps |
+| `A0C` | `abrManifestContent` | the DASH manifest, inline XML | — |
 
-**All three stop at the same wall, and it is not the flag.** The measurement below is what settles
-it. It took four device rounds to reach. Three of those rounds went to gates that were never the
-cause.
+The tag and the bitrate are in the address in **plain text**, and also inside the base64 `efg`
+parameter. One address taken off the device was fetched from an unrelated machine with **no headers
+at all**: HTTP 200, `video/mp4`, holding `avc1` and `mp4a`.
 
-#### What the probes said
+### Video and reels: what four device rounds showed
 
-The first probe marked the entry of the download block in both old builders, every null check inside
-it, and the `Menu.add` that ends it. On a device it logged **nothing**: not for another account's
-reel, not for a feed video, and **not for your own reel, where Facebook does show "Download reel"**.
-A surface that shows the row without running the code is a surface built somewhere else, so those
-two builders are dead code. The label resource that they pass to `getString` (`0x7f147339`) belongs
-to those two methods and nothing else. The tag `"DOWNLOAD_VIDEO"` is in five methods, and all five
-are the same old pair and its listeners.
+Nothing ships. The mechanism below is the part to keep, because two earlier readings of it were
+wrong and each cost a round.
 
-The second probe logged a **stack trace** from a tap on "Download reel" on an own reel. That named
-the live path in one run:
+**The gate is not a flag. It is which viewer opens.**
+
+| What is opened | Sheet configuration | Download row |
+|---|---|---|
+| Your own profile video | `LX/Sbp;` | built — the sheet builder runs with nothing forced |
+| Another account's profile video | `LX/Sbr;` | never — the builder is not reached |
+| The Reels tab | `LX/Sbr;` | never |
+
+`LX/Ti9;->A07()Ljava/util/List;` sorts fifteen configurations and decides which sections a sheet
+has. Two of them, `LX/Sbq;` and `LX/Sbp;`, carry a boolean that means "this is mine" and answer with
+an empty list when it is false. Forcing that boolean looks like the answer and **is not**: for
+content you did not post the app never builds an `Sbp` at all. It builds an `Sbr`, and `Sbr` reaches
+no download section. `LX/UPK;`, the download row, is constructed in exactly one place — inside
+`LX/Tkb;->A00` — and on a device that method never ran for another account's video.
+
+What the earlier readings got wrong, in order:
+
+1. *"The builder leaves at the null checks above the flag."* No. Those checks branch **forward into**
+   the row code. The row is added unconditionally; the flag and the media subtree only choose which
+   subtitle the row shows. This came from reading a dump that prints no branch targets, so every
+   `if-*` looked like an exit.
+2. *"Then the flag one level up is the gate, and forcing it shows the row."* No. That flag is on the
+   wrong configuration for the surface that matters, as the table above shows.
+
+**What did work, and is the route if this is ever built.** The reels sidebar — the strip of buttons
+beside a reel — is a Litho component, and it has the item's player on a field:
 
 ```
-X.1SJ.onClick → X.TMH.A1R → X.UOz.DFH → X.UEH.A02 → X.UEH.A03
-              → X.UBD.A00 → X.ajB.A04 (HTTP GET) → X.OKw.A02 (the file)
+LX/AyH;->A1N(LX/3Sr;)LX/3S3;          the UDD sidebar, 1102 instructions
+  16: iget-object v0, v1, LX/AyH;->A06:LX/56N;             per-item player params
+ 178: iget-object v1, v1, LX/56N;->A03:VideoPlayerParams;
+ 180: iget-object v1, v1, VideoPlayerParams;->A0d:VideoDataSource;
+1052: invoke-static/range LX/B34;->A01(..., ArrayList, ArrayList, List, ...)  the buttons
+1084: invoke-static/range LX/B34;->A00(...)                                   the sidebar
 ```
 
-None of it passes through the save entry point that the gallery uses. Thus a probe on that entry
-point stayed silent while the app wrote a file. `LX/OKw;->A02` names the file, and its string
-`"FB_VID_"` is the anchor that found the whole chain.
+So the tapped item's source is reachable **from a field of the component**, which gives per-item
+binding by construction — no static state and no matching by video id. The button collections are
+the three parallel lists that `B34.A01` takes. Find the component with the string
+`updateState:UDDSideBarComponent.onUpdateUfiState`.
 
-The third probe marked the gate of the reel sheet and logged the address that the sheet builds:
+The open question is the button itself. Data classes exist that take a `CharSequence` label, the
+`LX/1XR;` icon enum and four `Function1` handlers (`LX/ZI2;`, `LX/ZEW;`), so a plain hardcoded label
+is possible. But the sidebar's own buttons are `LX/B2u;`, which takes an icon and the player params
+and **no label**, so it derives one internally. Whether a label-carrying button can be put into the
+sidebar's collections is not resolved.
 
-| Reel | The gate | The address |
-|---|---|---|
-| Your own | reached | `https://scontent…/…mp4?…oh=…&oe=…`, 720p at 526 kbps |
-| Another account's | **never reached** | none |
+**The cost, stated plainly.** Such an injection reads locals of an 1100-instruction obfuscated
+method by register number and anchors on an 18-parameter signature. Facebook releases about every
+two weeks. This would need re-deriving on most of them, and it can fail quietly rather than loudly.
 
-On another account's reel the builder leaves the block **before** it reads the flag, at the null
-checks on the media subtree above it. The flag was never what hid the row.
+### Anchors that survive a bump
 
-#### Why no patch can add the address
-
-Each path asks the media tree for a download address, and for content that you did not post the
-answer is absent. The old builders stop at `LX/KDM;->A00()`, which returns null. The gallery method
-answers null. The reel sheet leaves its block at the same kind of check. A forced null cannot
-replace data that never arrived: it reaches `Uri.parse`, or the save code fetches an address that is
-not there.
-
-Nothing can build the address either. A Facebook media address carries server-issued `oh` and `oe`
-signatures, so no code in the client can derive one from a video id.
-
-**Thus the permission flag is the wrong target on every path, and this is the finding worth keeping.**
-A patch on the abandoned branch `feat/facebook-download-video` forces the flag at all seven places
-that read it. The row stays hidden, because the data that it needs is absent.
-
-#### The address that does exist: what the player streams
-
-The video plays, so an address must be in the process. It is, and it is usable. The player keeps it
-on `com.facebook.video.engine.api.VideoDataSource`. Redex **keeps that class name** and renames its
-fields, so a probe must read the fields by reflection.
-
-For another account's reel the player holds progressive MP4 addresses, and not only a manifest:
-
-| Field | Rendition | Bitrate |
-|---|---|---|
-| `A07` | `xpv_progressive … h264-basic-gen2_720p` | 1.10 Mbps and 3.95 Mbps |
-| `A08` | `xpv_progressive … h264-basic-gen2_360p` | 0.61 Mbps |
-| `A0C` | the DASH manifest, as inline XML | not needed |
-
-A test took one `A08` address off the device and fetched it from an unrelated machine, with no
-headers:
-**HTTP 200, `video/mp4`, 213,789 bytes, and the file holds `avc1` and `mp4a`** — one video track and
-one audio track, muxed. Two risks usually kill this idea: a manifest in place of a file, and a video
-track without sound. Neither occurs here. Quality is not a problem either. The own download of an
-own reel was 720p at 526 kbps, and `A07` is the same size or better.
-
-#### Why it is still not shipped
-
-The idea is feasible. It is not cheap, and these are the costs, in the order that matters:
-
-* **The app preloads.** The app built six sources in about 15 seconds of scrolling, because
-  Facebook prepares the reels that come next. A patch that saves "the last source built" saves the wrong
-  video some of the time. The save must read the source of the item that the sheet belongs to, and
-  that is unproven work.
-* **The rendition needs a rule.** Prefer `A07`, fall back to `A08`, and do nothing when neither is
-  there. Without the rule the patch silently saves 360p.
-* **The row does not exist.** Each row of the sheet is an `LX/UPK;` around an action, so a patch can
-  build one. But its label comes from a downloaded string pack, which the app does not keep in
-  `resources.arsc`, and its icon is a resource id.
-* **The anchors move.** `LX/Tkb;->A00`, `LX/UPK;`, `LX/UOz;` and the **field offsets** of
-  `VideoDataSource` all change with a release about every two weeks. Compare the one-instruction
-  patches elsewhere in this bundle, which survive a bump untouched.
-* **The address expires.** The `oh` and `oe` parameters are good for hours, so the save must happen
-  at once and nothing can be queued.
-* **It is a different claim.** Every other patch here unlocks something that Facebook ships and
-  gates in its own process. This one takes media that the server decided not to offer. That belongs
-  in a patch description, not in a footnote.
-
-**Verdict: recorded, not built.** Read *"Patchable" is not "worth patching"* in `CLAUDE.md` before
-starting it again.
-
-#### Anchors that survive a bump
-
-These are the names that found everything above, and none of them is a Redex name:
+None of these is a Redex name.
 
 | Anchor | What it finds |
 |---|---|
-| `videoDownloadMediaAction` | the listener of the gallery row. One method has the name, one method calls it |
-| `"FB_VID_"` | the method that names a saved video file, and through it the whole reel save chain |
-| `"save_story_attempted"` | the action behind the story save item |
-| `"end_screen.more_options_settings"` | the more-options model of the video player |
-| `com.facebook.video.engine.api.VideoDataSource` | what the player streams. Fields by reflection, never by name |
-| `getBooleanValue` and `getCachedNullableString` | kept names on `TreeJNI`, which is how every gate reads the tree |
+| `EVr` on `VideoDataSource` | the real name of every field of the source, at patch time |
+| `com.facebook.video.engine.api.VideoDataSource` | what the player streams. Fields by `EVr` or by value, never by letter |
+| `"save_story_attempted"` | the action behind the story save item, and so its tap handler |
+| `getMedia` on `StoryCard` | a kept method name; the media of a story |
+| `updateState:UDDSideBarComponent.onUpdateUfiState` | the reels sidebar component |
+| `com.facebook.fbshorts.viewer.ui.config.api.VDDViewerUIConfig` | the sheet configurations, and through their shared superclass the section builder |
+| `"reels_overflow_menu"` | the sheet builder that holds the download row |
+| `"fds_control_download_video"` | the download row itself |
+| `"tap_on_profile_viewer_save_video"` | the tap handler of that row |
+| `"FB_VID_"` | the method that names a saved video file |
+| `getBooleanValue`, `getCachedNullableString` | kept names on `TreeJNI`, which is how every gate reads the tree |
 
-#### The lesson, which cost two patches
+### The lessons, which cost four rounds
 
-A string tag and a `Menu.add` do not prove that a menu builder is *the* builder: Facebook keeps
-whole old menu implementations in the dex, and a search by name finds them first. A forced flag does
-not prove a gate is *the* gate either. One probe run costs less than the device rounds that it
-replaces. Three searches missed the live path, and a stack trace from one tap named it. Measure
-first. This is the same trap as the earlier conclusion that reels have no download code: a search
-for `DOWNLOAD_REEL` found nothing, which proved only that the feature is not *named* after the
-surface.
+- **A dump without branch targets cannot tell an exit from a jump forward.** `work/Fb.java`'s
+  `dump` prints no targets, and that alone produced a wrong finding that sat in this file. Decode
+  the target before calling an `if-*` an exit.
+- **Forcing a flag proves nothing until you know which screen reads it.** Two rounds went to a
+  boolean that was never read on the surface under test. Log the runtime class of the object that
+  holds it first.
+- **Force and observe in the same build.** One round forced without reporting and the next reported
+  without forcing, so neither could say why a row was still missing.
+- A string tag and a `Menu.add` do not prove a menu builder is *the* builder: Facebook keeps whole
+  old menu implementations in the dex, and a search by name finds them first. One probe run costs
+  less than the device rounds it replaces.
+- **It is a different claim.** Every other patch here unlocks something Facebook ships and gates in
+  its own process. Saving media that the server chose not to offer belongs in the patch description,
+  not in a footnote.
 
 ## Risks
 
@@ -755,9 +797,20 @@ surface.
 unzip -q <bundle>.apkm -d work/fb-extract
 unzip -q work/fb-extract/base.apk 'classes*.dex' -d work/fb-extract/dex
 
-# search (scratch dexlib2 tool Fb.java: classes | strhost | methods | dump | xrefm | xrefc |
-# fields. Redex.java prints __redex_internal_original_name)
-java -cp .:smali-dexlib2.jar Fb strhost 'FeedUnitCollection.addElementAtTail' --dex work/fb-extract/dex
+# search (scratch dexlib2 tool Fb.java: classes | strhost | methods | sig | dump | xrefm |
+# xrefc | xreff. Redex.java prints __redex_internal_original_name)
+#
+# Fb.java reads its dex directory from the FBDEX ENVIRONMENT VARIABLE. A --dex argument is
+# accepted and silently ignored, so it falls back to the unpatched tree and a patched site then
+# looks untouched -- which reads exactly like a fingerprint that failed to match.
+export FBDEX=work/fb-extract/dex
+java -cp .:smali-dexlib2.jar Fb strhost 'FeedUnitCollection.addElementAtTail'
+
+# A whole-dex index, once, then grep it instead of rescanning per query. ~8s, 1.8M lines.
+java -cp .:smali-dexlib2.jar Fb sig '' > /tmp/allsig.txt
+
+# `dump` prints NO branch targets and no invoke operand registers. Do not call an `if-*` an exit
+# on its evidence -- that mistake put a wrong finding in this file. Decode the target first.
 
 # apply, then ALWAYS disassemble the result
 java -jar work/morphe-desktop-*.jar patch -p patches/build/libs/patches-*.mpp \
