@@ -146,6 +146,7 @@ signature. Or keep only one app of the two.
 ## 🙏 Special thanks
 
 - [@f870103](https://github.com/f870103) — lent a LINE account for tests, and found the redirect URL of the LINE Pay app.
+- [@SapitoSucio](https://github.com/SapitoSucio) — some features and implementations here take their idea from [FroggoMorphePatches](https://github.com/SapitoSucio/FroggoMorphePatches).
 
 ## ⭐ Star history
 
