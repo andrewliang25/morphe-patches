@@ -149,11 +149,31 @@ final class RenditionPicker {
     static int qualityOf(String url) {
         if (url == null) return 0;
 
-        int direct = qualityOfText(url);
-        if (direct > 0) return direct;
+        // A measured marker first, wherever it is. Facebook writes the real one into the efg
+        // parameter as often as into the address, and an address can carry a crude word that
+        // disagrees with it: one seen here reads `tag=sd` while its efg says the rendition is
+        // 360. Reading the word first returned 480 for that address and stopped, which let a
+        // 360 outrank a 720 whose only marker was inside its efg.
+        int measured = markerIn(url);
+        if (measured > 0) return measured;
 
         String efg = decodeEfg(url);
-        return efg == null ? 0 : qualityOfText(efg);
+        if (efg != null) {
+            measured = markerIn(efg);
+            if (measured > 0) return measured;
+
+            // The tag inside names the rendition as a bare number more often than as a marker:
+            // `...C3.360.sve_sd` states 360 and never writes `360p`. Only the decoded tag is read
+            // this way. The address itself is full of long digit runs that mean nothing.
+            measured = bareNumberIn(efg);
+            if (measured > 0) return measured;
+        }
+
+        // Only now the word, which says nothing more precise than "big" or "small".
+        int word = wordIn(url);
+        if (word > 0) return word;
+
+        return efg == null ? 0 : wordIn(efg);
     }
 
     /**
@@ -369,15 +389,51 @@ final class RenditionPicker {
         return cut < 0 ? withoutQuery : withoutQuery.substring(0, cut);
     }
 
-    /** The first of the three markers that this text carries, in a fixed order. */
-    private static int qualityOfText(String text) {
+    /** A number this text actually states: a `720p` marker, or the short side of a `1280x720`. */
+    private static int markerIn(String text) {
         int marked = matchNumberBefore(text, 'p');
         if (marked > 0) return marked;
 
-        int pair = matchDimensionPair(text);
-        if (pair > 0) return pair;
+        return matchDimensionPair(text);
+    }
 
+    /**
+     * The largest plausible standalone number in [text].
+     *
+     * Bounded to real frame heights, so an id or a timestamp in the same tag cannot be mistaken
+     * for one.
+     */
+    private static int bareNumberIn(String text) {
+        int best = 0;
+        int index = 0;
+
+        while (index < text.length()) {
+            if (!Character.isDigit(text.charAt(index))) {
+                index++;
+                continue;
+            }
+
+            int start = index;
+            while (index < text.length() && Character.isDigit(text.charAt(index))) index++;
+
+            int digits = index - start;
+            if (digits < 3 || digits > 4) continue;
+
+            try {
+                int value = Integer.parseInt(text.substring(start, index));
+                if (value >= 144 && value <= 4320) best = Math.max(best, value);
+            } catch (NumberFormatException ignored) {
+                // Cannot happen: every character was checked as a digit.
+            }
+        }
+
+        return best;
+    }
+
+    /** The crude signal. Kept only for an address that states no number anywhere. */
+    private static int wordIn(String text) {
         String lower = text.toLowerCase(Locale.US);
+
         if (containsWord(lower, "hd")) return 720;
         if (containsWord(lower, "sd")) return 480;
 
@@ -490,8 +546,12 @@ final class RenditionPicker {
         if (raw.isEmpty()) return null;
 
         try {
-            // The parameter is base64 for a URL, and Facebook drops the padding.
-            StringBuilder padded = new StringBuilder(raw);
+            // The padding of this parameter arrives percent-encoded, because it sits in a query
+            // string. Left in place it is not base64 at all, the decode throws, and the whole
+            // parameter is silently ignored -- which is what made a 360 look like a 480.
+            String cleaned = raw.replace("%3D", "").replace("%3d", "").replace("=", "");
+
+            StringBuilder padded = new StringBuilder(cleaned);
             while (padded.length() % 4 != 0) padded.append('=');
 
             byte[] decoded = java.util.Base64.getUrlDecoder().decode(padded.toString());

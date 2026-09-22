@@ -173,9 +173,18 @@ public final class MediaDownload {
         // Activity across it is a leak that Facebook's own tooling would report.
         Context safe = application != null ? application : context;
 
+        // Every candidate, so a saved file that is smaller than expected can be told apart from
+        // a ranking that chose badly. Names and sizes only: a whole address is a signed, working
+        // handle to the user's content, and the log can be read by anything else on the device.
+        StringBuilder all = new StringBuilder();
+        for (String url : urls) {
+            if (all.length() > 0) all.append(", ");
+            all.append(describe(url));
+        }
+
         Log.i(TAG, "saving " + (isVideo ? "video" : "image")
             + " " + describe(chosen)
-            + " from " + urls.size() + " address(es)");
+            + " from " + urls.size() + " candidate(s): " + all);
 
         start(safe, chosen, isVideo);
         return true;
