@@ -95,7 +95,7 @@ val downloadStoryPatch = bytecodePatch(
 
         builder.forceResultTrue(instructions, capabilityCalls.single().index)
 
-        // Second half. The item now appears; this decides what tapping it does.
+        // Second half. The item now appears. This half decides what a tap on it does.
         val action = mutableClassDefBy(saveAction)
 
         // Both fields are picked by their type. The action holds one context and one story, so
@@ -139,12 +139,12 @@ val downloadStoryPatch = bytecodePatch(
             "$saveAction->${handler.name} has too few registers to borrow two"
         }
 
-        // The download answers whether it took the job. When it declines -- an old Android, no
-        // address on the story, or too many saves at once -- the original body still runs, so the
-        // patch never leaves the item doing nothing at all.
+        // The download answers whether it took the job. It can decline: an old Android, no
+        // address on the story, or too many saves at once. Then the original body still runs, so
+        // the patch never leaves the item doing nothing at all.
         //
         // The label binds to a real instruction. A label written inside an injected block is
-        // resolved against the addresses of the block and would branch into the middle of an
+        // resolved against the addresses of the block, and it branches into the middle of an
         // earlier instruction.
         handler.addInstructionsWithLabels(
             0,

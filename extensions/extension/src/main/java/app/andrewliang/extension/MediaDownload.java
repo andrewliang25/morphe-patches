@@ -16,7 +16,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * can fetch. This takes that address and fetches it.
  *
  * <p>For a story that is the point of the whole thing. Facebook's own save runs a check for
- * licensed music first, and on a story that has any it shows a warning and then saves nothing,
+ * licensed music first. On a story that has any, it shows a warning and then saves nothing,
  * whatever the user answers (issue #110). The patch replaces the body of that handler, so the
  * check never runs and the video arrives complete, with its sound.
  *
@@ -24,9 +24,9 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * <p>The object that holds the media, and nothing else. Each entry point is called with the object
  * of the item that the user tapped, so the file saved is always the item on the screen. There is
- * deliberately <b>no static holding the last address seen</b>: Facebook prepares the next reels
+ * deliberately <b>no static holding the last address seen</b>. Facebook prepares the next reels
  * while the current one plays, and a measurement counted six of them built in about fifteen
- * seconds of scrolling, so anything remembered rather than passed in saves the wrong video and
+ * seconds of scrolling. Anything remembered rather than passed in saves the wrong video, and
  * still reports success.
  *
  * <p>Capture the log with {@code adb logcat -s AndrewFbSave}.
@@ -58,8 +58,8 @@ public final class MediaDownload {
             return begin(context, collectStoryUrls(host));
         } catch (Throwable t) {
             // Throwable and not Exception. A renamed field surfaces as NoSuchFieldError, and a
-            // reflective call on a changed class surfaces as a LinkageError; neither is an
-            // Exception, and either one reaching Facebook's click handler ends the app.
+            // reflective call on a changed class surfaces as a LinkageError. Neither is an
+            // Exception, and either one that reaches Facebook's click handler ends the app.
             Log.w(TAG, "the story save could not start", t);
             return false;
         }
@@ -73,7 +73,7 @@ public final class MediaDownload {
      * file names no field of its own and neither does the patch.
      *
      * <p>Asking by name matters here in a way that it does not for a story. The source carries a
-     * third address of the same type that holds the subtitles, so "the first address on the
+     * third address of the same type, and it holds the subtitles. So "the first address on the
      * object" is a real way to save the wrong thing.
      *
      * @return whether a download started. {@code false} lets the caller fall back to the app.
@@ -97,7 +97,7 @@ public final class MediaDownload {
         addIfUsable(urls, RenditionPicker.fieldValue(host, sdField));
 
         // Either the object is not the source itself, or the release moved the fields. Ranking
-        // by value still answers, and it is the reason this is not simply a pair of reads.
+        // by value still answers, and it is the reason this is not only a pair of reads.
         if (urls.isEmpty()) urls.addAll(RenditionPicker.harvest(host, 1));
 
         return urls;
@@ -134,10 +134,9 @@ public final class MediaDownload {
     /**
      * Pick the best address of those found and fetch it.
      *
-     * <p>Whether the item is a video or a picture is decided here by ranking it both ways and
-     * keeping the better answer, rather than by reading the type of the item from the app. The
-     * app records that type in an enum whose constants move between releases, and mistaking one
-     * for another is the kind of fault that saves the wrong file quietly.
+     * <p>This ranks the item both ways and keeps the better answer. It does not read the type of
+     * the item from the app. The app records that type in an enum whose constants move between
+     * releases, and one constant mistaken for another saves the wrong file without a word.
      */
     private static boolean begin(Context context, List<String> urls) {
         if (Build.VERSION.SDK_INT < MIN_SDK) {
@@ -170,7 +169,7 @@ public final class MediaDownload {
 
         Context application = context.getApplicationContext();
         // Never the Activity. A download outlives the screen that started it, and holding the
-        // Activity across it is a leak that Facebook's own tooling would report.
+        // Activity across it is a leak, and Facebook's own tooling reports it.
         Context safe = application != null ? application : context;
 
         // Every candidate, so a saved file that is smaller than expected can be told apart from
@@ -202,7 +201,7 @@ public final class MediaDownload {
                 Log.i(TAG, "save finished: " + status);
                 Feedback.show(application, message(status, writer.savedLocation()), status != Downloader.Status.OK);
             } catch (Throwable t) {
-                // Nothing may leave this thread. Facebook installs its own handler for uncaught
+                // Nothing can leave this thread. Facebook installs its own handler for uncaught
                 // exceptions and reports them as its own crashes.
                 Log.w(TAG, "the save failed", t);
                 Feedback.show(application, "Download failed", true);
@@ -212,7 +211,7 @@ public final class MediaDownload {
         }, "andrew-fb-save");
 
         // A thread that ends when the copy ends leaves nothing behind in a process that is not
-        // ours. A pool would park a thread there for as long as Facebook runs.
+        // ours. A pool parks a thread there for as long as Facebook runs.
         worker.setDaemon(true);
         worker.setPriority(Thread.NORM_PRIORITY - 1);
         worker.start();

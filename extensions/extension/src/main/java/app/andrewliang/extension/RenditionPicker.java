@@ -30,7 +30,7 @@ import java.util.Set;
  * address that an object can reach and then asks which one looks best, rather than asking for the
  * field that held the best one last time.
  *
- * <p>The caller that knows a field name by other means should read that field directly with
+ * <p>The caller that knows a field name by other means must read that field directly with
  * {@link #fieldValue} and only fall back to {@link #harvest}. The video path does exactly that: the
  * patch reads the real field names out of the app itself, so it can ask for the high quality
  * address by name. The story path has no such source and ranks by value.
@@ -64,7 +64,7 @@ final class RenditionPicker {
         String lower = text.toLowerCase(Locale.US);
         if (!lower.startsWith("http://") && !lower.startsWith("https://")) return false;
 
-        // A real address holds no space. Inline XML that begins with a URL would.
+        // A real address holds no space. Inline XML that starts with a URL holds one.
         for (int i = 0; i < text.length(); i++) {
             if (Character.isWhitespace(text.charAt(i))) return false;
         }
@@ -150,10 +150,10 @@ final class RenditionPicker {
         if (url == null) return 0;
 
         // A measured marker first, wherever it is. Facebook writes the real one into the efg
-        // parameter as often as into the address, and an address can carry a crude word that
-        // disagrees with it: one seen here reads `tag=sd` while its efg says the rendition is
-        // 360. Reading the word first returned 480 for that address and stopped, which let a
-        // 360 outrank a 720 whose only marker was inside its efg.
+        // parameter as often as into the address. An address can also carry a crude word that
+        // disagrees with it. One seen here reads `tag=sd` while its efg states 360. A read of the
+        // word first answered 480 for that address and stopped, which let a 360 outrank a 720
+        // whose only marker sat inside its efg.
         int measured = markerIn(url);
         if (measured > 0) return measured;
 
@@ -180,9 +180,9 @@ final class RenditionPicker {
      * Which of two addresses to prefer. Lower sorts better.
      *
      * <p>The last key is the address itself, and it has to be. The walk reads fields in whatever
-     * order the runtime reports them, which the JVM and ART both leave unspecified, so a tie
-     * broken by the order they were found is a different answer on a different device. Comparing
-     * the text makes the answer the same everywhere.
+     * order the runtime reports them, and the JVM and ART both leave that order unspecified. A tie
+     * broken by the order they were found is a different answer on a different device. A compare
+     * of the text makes the answer the same everywhere.
      */
     static int compare(String a, String b, boolean video) {
         int tierA = video ? videoTier(a) : imageTier(a);
@@ -244,9 +244,9 @@ final class RenditionPicker {
      * Every address that [host] can reach within [maxDepth] steps.
      *
      * <p>This is a walk with a fence around it, and the fence is the point. An object of Facebook
-     * holds a view, a view holds a context and a context holds the whole application, so a walk
-     * that follows every field reaches the entire app and does it on the thread that draws. The
-     * budget, the depth and the check on the name of the class are what keep it to the media.
+     * holds a view, a view holds a context, and a context holds the whole application. A walk that
+     * follows every field thus reaches the entire app, on the thread that draws. The budget, the
+     * depth and the check on the name of the class are what keep it to the media.
      */
     static List<String> harvest(Object host, int maxDepth) {
         List<String> found = new ArrayList<>();
@@ -443,8 +443,8 @@ final class RenditionPicker {
     /**
      * The number in a marker such as {@code _720p}, or {@code 0}.
      *
-     * <p>Written by hand rather than with a regular expression, because this runs on every address
-     * of every save and a pattern here is not worth the cost of compiling one.
+     * <p>Written by hand rather than with a regular expression. This runs on every address of
+     * every save, and a pattern here is not worth the cost to compile one.
      */
     private static int matchNumberBefore(String text, char suffix) {
         int best = 0;
@@ -547,8 +547,8 @@ final class RenditionPicker {
 
         try {
             // The padding of this parameter arrives percent-encoded, because it sits in a query
-            // string. Left in place it is not base64 at all, the decode throws, and the whole
-            // parameter is silently ignored -- which is what made a 360 look like a 480.
+            // string. Left in place it is not base64 at all, so the decode throws and the whole
+            // parameter is ignored without a word. That is what made a 360 look like a 480.
             String cleaned = raw.replace("%3D", "").replace("%3d", "").replace("=", "");
 
             StringBuilder padded = new StringBuilder(cleaned);
@@ -557,7 +557,7 @@ final class RenditionPicker {
             byte[] decoded = java.util.Base64.getUrlDecoder().decode(padded.toString());
             return new String(decoded, java.nio.charset.StandardCharsets.UTF_8);
         } catch (Throwable t) {
-            // Not base64, or not for a URL. The address simply says nothing about its size.
+            // Not base64, or not for a URL. The address says nothing about its size.
             return null;
         }
     }

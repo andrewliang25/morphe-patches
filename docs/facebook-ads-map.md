@@ -561,9 +561,9 @@ through an index. `v3` stays untouched. `onNewIntent` has no such pair, and it r
 Facebook ships a save feature for media and offers it only on the content that you posted. This
 bundle saves media itself instead of asking Facebook to do it.
 
-The story half ships. The video half does not, and the reason is now known: for content that you
-did not post, Facebook opens a **different viewer**, and that viewer has no download row in its
-code at all.
+The story half ships. The video half does not, and the reason is now known. For content that you
+did not post, Facebook opens a **different viewer**. That viewer has no download row in its code
+at all.
 
 > ⚠️ **Two statements that used to be in this file were wrong**, and both were disproved on a
 > device. They are corrected below, and the corrections are kept visible because each one cost a
@@ -588,7 +588,7 @@ save and nothing else. Do **not** force `StoryBucket.A0k()` itself — `shouldSh
 The patch names neither the predicate nor its class. The action that the menu creates reports the
 event `"save_story_attempted"`, and that event is the anchor. The event is in three methods and only
 one is a `void` with one parameter. The builder is then the only method on the kept class that
-creates that action, and the capability is the only call in the builder that takes nothing and
+creates that action. The capability is then the only call in that builder that takes nothing and
 answers a boolean, apart from `Boolean.booleanValue`.
 
 **The download.** Forcing the item is not enough, and this is what issue #110 reported. The tap
@@ -604,8 +604,8 @@ LX/agk;->Dy7(LX/a9v;)V
 ```
 
 On a story with music it shows a copyright warning and then saves nothing, whatever the user
-answers, and not even a copy without the sound. The check is the first thing the method does, so
-there is nothing to route around. The patch prepends its own download and returns, which leaves
+answers. It does not even save a copy without the sound. The check is the first thing the method
+does, so there is nothing to route around. The patch prepends its own download and returns, which leaves
 Facebook's body unreachable — the same shape as `facebook/shared/Neuter.kt`. The extension answers
 whether it took the job, and Facebook's body still runs when it declines, so the item never does
 nothing at all.
@@ -617,16 +617,16 @@ handler is the only method on the class besides its constructor. The action is c
 reference bundle had to patch four story surfaces on 573. Re-run that `xrefc` on a bump.)
 
 **Device-confirmed 2026-09-22** on a re-signed 577.0.0.50.72. Three video stories with music saved
-with no warning, `save finished: OK` each time, no crash. The files are real:
-`/sdcard/Movies/Facebook/FB_VID_*.mp4`, 200–300 KB, and one pulled back holds `avc1` and `mp4a` —
+with no warning, `save finished: OK` each time, no crash. The files are real. They land in
+`/sdcard/Movies/Facebook/FB_VID_*.mp4` at 200–300 KB. One pulled back holds `avc1` and `mp4a`:
 one video track and one audio track, muxed and playable with sound.
 
 ### The downloader in the extension
 
 Five classes in `app.andrewliang.extension`. Two of them hold **no Android type at all**, so the
-ranking and the fetch compile and run under `javac` alone; `work/Renditions.java` checks the ranking
-against a fixed set of addresses with no device. The ranking is the part a device cannot show — a
-saved file looks the same whether the best address was chosen or the first one read.
+ranking and the fetch compile and run under `javac` alone. `work/Renditions.java` checks the
+ranking against a fixed set of addresses, with no device. The ranking is the part a device cannot
+show. A saved file looks the same whether the best address was chosen or the first one read.
 
 - **The address is chosen by value, never by field name.** Facebook renames the fields every
   release while the addresses in them keep their shape. The ranking refuses inline XML, `.mpd` and
@@ -642,13 +642,13 @@ saved file looks the same whether the best address was chosen or the first one r
 - **Nothing is queued.** The `oh` and `oe` parameters are signed and last hours, so the fetch starts
   on the tap. That is why `DownloadManager` is the wrong tool here despite being the obvious one.
 - **The type comes from the server**, and the type decides the file name. Facebook's own save writes
-  AVIF bytes into a `.jpg`, which leaves the gallery unable to draw a thumbnail; copying that would
-  copy the fault.
+  AVIF bytes into a `.jpg`, which leaves the gallery unable to draw a thumbnail. A copy of that
+  behaviour copies the fault.
 
 ### The fields of the source name themselves
 
 `com.facebook.video.engine.api.VideoDataSource` is a kept class name whose fields are renamed every
-release. It also carries `EVr`, a debug dump that pairs each field with its **real** name:
+release. It also carries `EVr`. That method is a debug dump, and it pairs each field with its **real** name:
 
 ```
  2: iget-object v0, v3, VideoDataSource->A08:Landroid/net/Uri;   5: const-string "videoUri"
@@ -657,15 +657,16 @@ release. It also carries `EVr`, a debug dump that pairs each field with its **re
 ```
 
 So a patch resolves `videoHdUri` and `videoUri` at patch time with no letter written down. It also
-avoids a trap: the **third** `Uri` on the object is the subtitles, which "take any Uri" would
-happily download.
+avoids a trap. The **third** `Uri` on the object is the subtitles, and "take any Uri" downloads
+it without complaint.
 
-Two cautions. The pairing order is **not stable between classes** — `VideoDataSource.EVr` emits
-`iget` then `const-string`, while `VideoPlayerParams.EVr` emits `const-string` then `iget` for
-`videoId` and also carries labels such as `"videoDataSourceNull"` that are not field names. Pair
-within a small window in either direction and fail loudly if a name does not resolve. And do not use
-`EVr` for the other hop: the `VideoDataSource` on a `VideoPlayerParams` is the only field of that
-type, and the type is a kept name, so resolve it by type.
+Two cautions. The pairing order is **not stable between classes**. `VideoDataSource.EVr` emits
+`iget` then `const-string`. `VideoPlayerParams.EVr` emits `const-string` then `iget` for
+`videoId`, and it also carries labels such as `"videoDataSourceNull"` that are not field names.
+So pair within a small window in either direction, and fail loudly if a name does not resolve.
+
+Do not use `EVr` for the other hop. The `VideoDataSource` on a `VideoPlayerParams` is the only
+field of that type, and the type is a kept name, so resolve it by type.
 
 Measured on this build, for one reel:
 
@@ -708,8 +709,8 @@ What the earlier readings got wrong, in order:
 2. *"Then the flag one level up is the gate, and forcing it shows the row."* No. That flag is on the
    wrong configuration for the surface that matters, as the table above shows.
 
-**What did work, and is the route if this is ever built.** The reels sidebar — the strip of buttons
-beside a reel — is a Litho component, and it has the item's player on a field:
+**What did work, and is the route this patch takes.** The reels sidebar is the strip of buttons
+beside a reel. It is a Litho component, and it holds the item's player on a field:
 
 ```
 LX/AyH;->A1N(LX/3Sr;)LX/3S3;          the UDD sidebar, 1102 instructions
@@ -720,10 +721,9 @@ LX/AyH;->A1N(LX/3Sr;)LX/3S3;          the UDD sidebar, 1102 instructions
 1084: invoke-static/range LX/B34;->A00(...)                                   the sidebar
 ```
 
-So the tapped item's source is reachable **from a field of the component**, which gives per-item
-binding by construction — no static state and no matching by video id. The button collections are
-the three parallel lists that `B34.A01` takes. Find the component with the string
-`updateState:UDDSideBarComponent.onUpdateUfiState`.
+So the tapped item's source is reachable **from a field of the component**. That gives per-item
+binding by construction, with no static state and no match by video id. The button collections
+are the three parallel lists that `B34.A01` takes.
 
 **The button needs nothing invented.** The sidebar builds its own buttons through one factory, and
 every part of it takes a plain value:
@@ -746,8 +746,8 @@ extension, so it hijacked an existing multiplexed lambda of the app and its case
 `.mpe` here already carries the Kotlin standard library, so a plain Java class in the extension can
 `implement Function1` and be passed straight in.
 
-The whole shape matches the reference patch on 573 position for position, which is worth recording
-because it means the mapping can be re-derived the same way on the next bump:
+The whole shape matches the reference patch on 573, position for position. That is worth a record,
+because the mapping can be derived the same way on the next bump:
 
 | 573 | 577 |
 |---|---|
@@ -760,15 +760,15 @@ What is still unresolved is only implementation detail: which of the three lists
 and the register plumbing at the injection point. `Fb dump` prints no operand registers for an
 `invoke`, so that needs a disassembler that does.
 
-**The cost, stated plainly.** Such an injection reads locals of an 1100-instruction obfuscated
-method by register number and anchors on an 18-parameter signature. Facebook releases about every
-two weeks. This would need re-deriving on most of them, and it can fail quietly rather than loudly.
+**The cost, stated plainly.** This injection reads locals of an 1100-instruction obfuscated method by
+register number, and anchors on an 18-parameter signature. Facebook releases about every two
+weeks, so it needs a new derivation on most of them. It can also fail quietly rather than loudly.
 
 ### A reel opened from the story tray saves at 360p, and that is the source
 
 Measured, so that nobody re-investigates the ranking for it. A reel reached through the story tray
-is saved by the **story** half, which reads the card rather than the player, and the card carries
-four addresses of which only two are distinct:
+is saved by the **story** half. That half reads the card rather than the player, and the card
+carries four addresses of which only two are distinct:
 
 | Candidate | What it is |
 |---|---|
@@ -779,12 +779,13 @@ There is no high quality video address on the card at all. The ranking picks the
 is, so it is right; the ceiling is the source. A reel reached through the reels tray is saved by the
 sidebar button instead, which reads `videoHdUri` off the player, and comes back at 720p.
 
-Closing the gap would mean giving the story half a route to the player, which its action does not
-have: it holds a context and a card and nothing else. The shape that would work is a small map from
-video id to source, filled where `VideoPlayerParams` is built, since that object carries both the id
-and the source — keyed per item, so not the "most recent source" trap. **Not built**, and worth one
-probe first: the 720p seen so far was from reels-tray playback, and if Facebook streams the story
-tray at 360p then the player holds nothing better either.
+To close the gap, the story half needs a route to the player. Its action does not have one: it
+holds a context and a card and nothing else. The shape that works is a small map from video id to
+source, filled where `VideoPlayerParams` is built, because that object carries both the id and the
+source. It is keyed per item, so it is not the "most recent source" trap.
+
+**Not built**, and worth one probe first. The 720p measured so far was reels-tray playback. If
+Facebook streams the story tray at 360p, the player holds nothing better either.
 
 ### Anchors that survive a bump
 

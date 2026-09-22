@@ -51,9 +51,9 @@ private const val CAPTION = ""
 /**
  * Which of the factory's handlers is the tap.
  *
- * Measured, not guessed. Every slot was given a handler that reported the event it received: the
- * touch slot fires twice per press with a `MotionEvent`, a visibility slot fires by itself, and
- * this one fires once per press with an event holding only the `View`, which is a click.
+ * Measured, not guessed. Every slot got a handler that reported the event it received. The touch
+ * slot fires twice per press with a `MotionEvent`. A visibility slot fires by itself. This one
+ * fires once per press with an event holding only the `View`, which is a click.
  */
 private const val TAP_SLOT = 1
 
@@ -64,18 +64,18 @@ private const val HELPER = "andrewDownloadButton"
  * Adds a download button beside every reel.
  *
  * Facebook has a download row and builds it only for a video that you posted. Ownership chooses
- * the whole viewer rather than a flag inside one, so for anybody else's reel the sheet that holds
+ * the whole viewer rather than a flag inside one. So for anybody else's reel the sheet that holds
  * that row is never asked for, and there is nothing to force. `docs/facebook-ads-map.md` records
  * the four device rounds that established this, and the two readings of it that were wrong.
  *
  * So this adds a button to the sidebar beside the reel, which every reel has. Nothing is invented.
- * The sidebar builds all of its own buttons through one factory, and that factory takes the label
- * as a plain string and the icon as an enum constant, so no resource and no downloaded string pack
- * is involved. This calls the same factory, with the icon Facebook's own download row draws.
+ * The sidebar builds all of its own buttons through one factory. That factory takes the label as a
+ * plain string and the icon as an enum constant, so no resource and no downloaded string pack is
+ * involved. This calls the same factory, with the icon Facebook's own download row draws.
  *
  * The handler holds the player of that one item, read off a field of the component, so the file
- * saved is the reel on the screen. The app prepares the reels that come next, so a handler reading
- * a shared place would save the wrong one.
+ * saved is the reel on the screen. The app prepares the reels that come next, so a handler that
+ * reads a shared place saves the wrong one.
  */
 @Suppress("unused")
 val downloadReelPatch = bytecodePatch(
@@ -91,10 +91,10 @@ val downloadReelPatch = bytecodePatch(
     execute {
         // ---- the real names of the two address fields -----------------------------------------
         //
-        // The source keeps a debug dump that pairs each field with the name it reports for it, so
-        // the patch reads those names out of the app rather than writing down letters that change
-        // every release. It matters: the third address on that object is the subtitles, so "the
-        // first Uri" would quietly save the wrong thing.
+        // The source keeps a debug dump that pairs each field with the name it reports for it.
+        // So the patch reads those names out of the app, rather than writing down letters that
+        // change every release. It matters: the third address on that object is the subtitles, so
+        // "the first Uri" saves the wrong thing without a word.
         val dump = mutableClassDefBy(VIDEO_DATA_SOURCE).methods.firstOrNull { method ->
             method.instructions().any { it.stringReference() == "videoHdUri" }
         }
@@ -191,7 +191,7 @@ val downloadReelPatch = bytecodePatch(
         val iconEnumType = iconWrapper.parameterTypes.single().toString()
 
         // The icon itself is whichever constant Facebook's own download row draws, so the button
-        // looks like the one Facebook would have shown.
+        // looks like the one Facebook draws itself.
         var icon: FieldReference? = null
 
         classDefForEach { classDef ->
@@ -266,9 +266,9 @@ val downloadReelPatch = bytecodePatch(
         // ---- the injection ----------------------------------------------------------------------
         //
         // The sidebar hands three lists to the call that assembles it: one of buttons, one of a
-        // marker for each, one of a name for each. The injection goes just before that call, where
-        // the low registers have been copied into the argument block and are free again, and where
-        // the list is still the same object the call will receive.
+        // marker for each, one of a name for each. The injection goes before that call. There the
+        // low registers have been copied into the argument block and are free again, and the list
+        // is still the same object that the call receives.
         val assemblyIndex = instructions.indexOfFirst { instruction ->
             instruction.methodReference()?.parameterTypes?.count { it.toString() == ARRAY_LIST } == 2
         }
@@ -293,12 +293,12 @@ val downloadReelPatch = bytecodePatch(
 
         check(sourceRegister != null) { "Could not trace the button list of $sidebarName" }
 
-        // The session and the scoped context are two of the arguments this very call receives, so
-        // their registers come from its own parameter list and their types are whatever it says.
+        // The session and the scoped context are two of the arguments this very call receives.
+        // So their registers come from its own parameter list, and it states their types.
         //
         // The parameter registers of the method itself cannot be used. This method reuses them as
-        // locals long before the end, so reading `p0` here yields whatever was last put there --
-        // which is how the first attempt earned a VerifyError.
+        // locals long before the end. So a read of `p0` here answers with whatever was last put
+        // there, which is how the first attempt earned a VerifyError.
         fun argumentRegister(type: String): Int {
             val at = assemblyReference.parameterTypes.indexOfFirst { it.toString() == type }
             check(at >= 0) { "The sidebar assembly takes no $type" }
@@ -386,7 +386,7 @@ val downloadReelPatch = bytecodePatch(
  *
  * Register use here is dictated by the instruction formats, not by taste. An `invoke-direct` with
  * arguments and an `iget` both take **4-bit** registers, so everything they touch has to sit in
- * `v0` to `v15`. The factory takes nineteen arguments and therefore needs nineteen **consecutive**
+ * `v0` to `v15`. The factory takes nineteen arguments, and thus needs nineteen **consecutive**
  * registers, so its block sits high at `v40` and each value is moved up once it is built.
  * `new-instance` and `const-string` take 8-bit registers, so those can write high directly.
  */
@@ -483,9 +483,9 @@ private fun handlers(hdField: String, sdField: String) = (0..6).joinToString("\n
  * Every `reported name -> field` pair that a debug dump of [owner] writes.
  *
  * The dump reads a field, then loads the name, then calls the reporter. Nearness alone does not
- * pair them: the tag of the whole class is loaded between the first field and its name, and is
- * nearer to it than the name is. So the pairing is made against the **call**, which is what
- * actually receives the name -- the last string loaded before the reporter runs.
+ * pair them. The tag of the whole class is loaded between the first field and its name, and sits
+ * nearer to it than the name does. So the pairing is made against the **call**, which is what
+ * receives the name: the last string loaded before the reporter runs.
  *
  * One class writes the name before the field instead of after, so a backward window is tried when
  * the forward one finds nothing.

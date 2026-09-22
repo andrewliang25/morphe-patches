@@ -21,12 +21,12 @@ import java.util.Map;
  *
  * <p>The target of these patches declares {@code minSdk 30}, so scoped storage is the only storage
  * there is and MediaStore is the only way in. Nothing here needs a permission: from API 29 an app
- * may insert media that it creates without asking for one.
+ * can insert media that it creates, and needs no permission for it.
  *
- * <p>The entry is created with {@code IS_PENDING} set and is only published once the last byte has
- * arrived. So a failed fetch never leaves a playable looking file of the wrong length in the
- * gallery, and a fetch that the system kills half way leaves a pending row that the platform
- * clears by itself after about a week.
+ * <p>The entry is created with {@code IS_PENDING} set, and it is published only after the last
+ * byte arrives. So a failed fetch never leaves a playable looking file of the wrong length in the
+ * gallery. A fetch that the system stops half way leaves a pending row, which the platform clears
+ * by itself after about a week.
  */
 final class MediaStoreWriter implements Downloader.Sink {
 
@@ -120,13 +120,13 @@ final class MediaStoreWriter implements Downloader.Sink {
      *
      * <p>The type decides the name, and never the other way round. Facebook itself gets this
      * wrong: its own save writes AVIF bytes into a file called {@code .jpg}, which leaves the
-     * gallery unable to draw a thumbnail for it. Copying that would be copying the fault.
+     * gallery unable to draw a thumbnail for it. A copy of that behaviour copies the fault.
      */
     private String mime(String fromServer) {
         if (fromServer != null && EXTENSIONS.containsKey(fromServer)) {
             boolean isVideo = fromServer.startsWith("video/");
             // A video request that answers with a picture, or the reverse, is an error page or a
-            // thumbnail. Saving it would look like success.
+            // thumbnail. A save of it looks like success.
             if (isVideo == video) return fromServer;
         }
 

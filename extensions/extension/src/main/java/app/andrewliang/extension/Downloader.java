@@ -12,14 +12,14 @@ import java.util.Locale;
  *
  * <p>Holds no Android type, for the same reason as {@link RenditionPicker}: everything here can be
  * run against a local web server with {@code javac} alone. {@link Sink} is what keeps it that way.
- * The real sink writes through MediaStore; a test sink writes to an array.
+ * The real sink writes through MediaStore. A test sink writes to an array.
  *
  * <p>The shape of this class comes from one measured fact. An address of Facebook carries an
  * {@code oh} and an {@code oe} parameter, the server signs them, and they stop working after a few
  * hours. So there is no queue, no scheduler and no retry anywhere in here. The fetch starts when
  * the user taps and either finishes or reports why not. That is also why this feature does not use
- * {@code DownloadManager}, which is otherwise the obvious choice: it queues, and a queued fetch of
- * an address with hours to live is the one thing that cannot be allowed.
+ * {@code DownloadManager}, which is otherwise the obvious choice. That class queues, and a queued
+ * fetch of an address with hours to live is the one thing that cannot be allowed.
  */
 final class Downloader {
 
@@ -35,7 +35,7 @@ final class Downloader {
         HTTP_ERROR,
         /** The fetch never completed. */
         NETWORK_ERROR,
-        /** The bytes arrived and could not be stored, or arrived incomplete. */
+        /** The bytes arrived incomplete, or they cannot be stored. */
         WRITE_ERROR
     }
 
@@ -64,8 +64,8 @@ final class Downloader {
      * Fetch [url] into [sink]. Blocking. Never throws.
      *
      * <p>No header is set on the request. A captured address was fetched from an unrelated machine
-     * with none at all and answered 200, so a guessed {@code User-Agent} or {@code Referer} could
-     * only make a refusal more likely, not less.
+     * with none at all and answered 200, so a guessed {@code User-Agent} or {@code Referer} can
+     * only make a refusal more likely.
      */
     static Status fetch(String url, Sink sink) {
         HttpURLConnection connection = null;

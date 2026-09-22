@@ -14,8 +14,8 @@ import android.widget.Toast;
  *
  * <p>The text is English and is written here rather than taken from the app. Facebook keeps the
  * words for its own menus in a pack that it downloads, not in the resources of the APK, so there
- * is nothing to borrow. Translating a few of the languages by hand and leaving the rest would read
- * worse than one language used consistently, and anyone who installed this patch has already read
+ * is nothing to borrow. A translation of a few languages by hand, with the rest left in English,
+ * reads worse than one language used everywhere. Anyone who installed this patch has already read
  * its English name and description.
  */
 final class Feedback {
@@ -30,8 +30,8 @@ final class Feedback {
         try {
             new Handler(Looper.getMainLooper()).post(() -> {
                 // This is the one place where this patch runs on the thread that draws the app,
-                // so it carries its own guard. An exception thrown from here would reach the
-                // looper and take Facebook down with it.
+                // so it carries its own guard. An exception from here reaches the
+                // looper and stops the app.
                 try {
                     Toast.makeText(
                         applicationContext,
