@@ -1,3 +1,9 @@
+## [3.2.0-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v3.1.0...v3.2.0-dev.1) (2026-09-22)
+
+### ✨ New Features
+
+* add an AMOLED black theme for Facebook ([799d0ae](https://github.com/andrewliang25/morphe-patches/commit/799d0aec55b4e409c6cec6b5f9d6b947240ab9ec)), closes [#108](https://github.com/andrewliang25/morphe-patches/issues/108) [#000000](https://github.com/andrewliang25/morphe-patches/issues/000000) [#108](https://github.com/andrewliang25/morphe-patches/issues/108)
+
 ## [3.1.0](https://github.com/andrewliang25/morphe-patches/compare/v3.0.0...v3.1.0) (2026-09-19)
 
 ### 🐛 Bug Fixes
