@@ -127,6 +127,22 @@ version with a map renderer. Google Play Services must still be installed. The t
 so they do not look like Google Maps. There is no satellite view. A **Root Mount** install keeps
 LINE's original signature and needs neither the patch nor MicroG-RE.
 
+### Facebook: other Meta apps do not install (re-signed builds)
+
+**What:** After you install a patched **Facebook** build, an official Meta app that shares the same
+permission names does not install. **Facebook Lite** is the reported example. The installer stops
+with `INSTALL_FAILED_DUPLICATE_PERMISSION`.
+
+**Why:** Meta apps declare the same family permissions, for example
+`com.facebook.permission.prod.FB_APP_COMMUNICATION`. Android permits only one owner of a permission
+name, unless the two apps have the same signing certificate. A patched build is re-signed, so its
+certificate is different from the certificate of Meta. The order of the installs does not change
+this. The same conflict occurs in
+[patched-apps](https://github.com/andrewliang25/patched-apps#meta-app-clones-duplicate-permission-conflict).
+
+**Workaround:** install the patched Facebook with **Root Mount**, which keeps the original
+signature. Or keep only one app of the two.
+
 ## 🙏 Special thanks
 
 - [@f870103](https://github.com/f870103) — lent a LINE account for tests, and found the redirect URL of the LINE Pay app.
