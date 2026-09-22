@@ -725,11 +725,40 @@ binding by construction — no static state and no matching by video id. The but
 the three parallel lists that `B34.A01` takes. Find the component with the string
 `updateState:UDDSideBarComponent.onUpdateUfiState`.
 
-The open question is the button itself. Data classes exist that take a `CharSequence` label, the
-`LX/1XR;` icon enum and four `Function1` handlers (`LX/ZI2;`, `LX/ZEW;`), so a plain hardcoded label
-is possible. But the sidebar's own buttons are `LX/B2u;`, which takes an icon and the player params
-and **no label**, so it derives one internally. Whether a label-carrying button can be put into the
-sidebar's collections is not resolved.
+**The button needs nothing invented.** The sidebar builds its own buttons through one factory, and
+every part of it takes a plain value:
+
+```
+LX/2Ui;->A00(FbUserSession, LX/22J;, LX/2wz;, LX/2Rb;, LX/2Rb;, LX/Ca5;,
+             Boolean, Boolean, Object, String, String,
+             Function1, Function1, Function1, Function1, I, Z, Z, Z)LX/B2s;
+```
+
+`LX/2wz;` and `LX/2Rb;` are `<init>(Ljava/lang/String;Lkotlin/jvm/functions/Function1;)V` — a label
+and a handler. `LX/Ca5;` is the icon, supplied as `LX/B2r;-><init>(LX/1XR;)V`, and `LX/1XR;->A82` is
+the download icon that Facebook's own download row already uses. One of the two `String` slots is a
+test id, and the sidebar's existing buttons pass `"like_button"`, `"comment_button"` and
+`"share_button"` there. So a label is a `const-string`, not a resource, and nothing has to come from
+the downloaded string pack.
+
+The handler is the one place this bundle can do better than the reference patch. That bundle had no
+extension, so it hijacked an existing multiplexed lambda of the app and its case numbers. The
+`.mpe` here already carries the Kotlin standard library, so a plain Java class in the extension can
+`implement Function1` and be passed straight in.
+
+The whole shape matches the reference patch on 573 position for position, which is worth recording
+because it means the mapping can be re-derived the same way on the next bump:
+
+| 573 | 577 |
+|---|---|
+| `LX/2iZ;->A00(...)LX/9yY;` | `LX/2Ui;->A00(...)LX/B2s;` |
+| `LX/2vk;`, `LX/2QZ;` label and handler | `LX/2wz;`, `LX/2Rb;` |
+| `LX/9yX;-><init>(LX/1Vq;)` icon | `LX/B2r;-><init>(LX/1XR;)` |
+| `LX/9vm;->A1K(LX/3QZ;)LX/3Pu;` | `LX/AyH;->A1N(LX/3Sr;)LX/3S3;` |
+
+What is still unresolved is only implementation detail: which of the three lists takes the button,
+and the register plumbing at the injection point. `Fb dump` prints no operand registers for an
+`invoke`, so that needs a disassembler that does.
 
 **The cost, stated plainly.** Such an injection reads locals of an 1100-instruction obfuscated
 method by register number and anchors on an 18-parameter signature. Facebook releases about every
