@@ -1,3 +1,15 @@
+## [3.2.0-dev.2](https://github.com/andrewliang25/morphe-patches/compare/v3.2.0-dev.1...v3.2.0-dev.2) (2026-09-22)
+
+### 🐛 Bug Fixes
+
+* make the borrowed registers a check, not a comment ([033d4ed](https://github.com/andrewliang25/morphe-patches/commit/033d4ed87f5b1c81f85e378dede35ce9c0777c52))
+* read the rendition Facebook states, not the word it happens to carry ([50f3252](https://github.com/andrewliang25/morphe-patches/commit/50f3252e4aa1d80790d68b88ccd3dfa986d3d4dc))
+* save stories with our own downloader, not Facebook's ([4f229a1](https://github.com/andrewliang25/morphe-patches/commit/4f229a1e6ac4fe5246a7582585cd1bde78bd1e2b)), closes [#110](https://github.com/andrewliang25/morphe-patches/issues/110)
+
+### ✨ New Features
+
+* add a download button beside every reel ([e0007d8](https://github.com/andrewliang25/morphe-patches/commit/e0007d8dca083ce50c4c81f38dfd6d21f45bbda8))
+
 ## [3.2.0-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v3.1.0...v3.2.0-dev.1) (2026-09-22)
 
 ### ✨ New Features
