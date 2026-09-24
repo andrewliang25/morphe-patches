@@ -13,16 +13,16 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * The source of each player that the app builds, kept by video id.
+ * The source of each player that the app builds, by video id.
  *
  * <p>A story card holds one video address, and it is 360p. The player of the same story holds a
- * DASH manifest that lists every rendition, up to 1080p. The save action holds the card and cannot
- * reach the player. The card does carry the video id of the player, so the patch records every
- * source here by that id, and the save looks it up.
+ * DASH manifest with tracks up to 1080p. The save action holds the card and cannot get to the
+ * player. But the card holds the video id of the player. So the patch records each source here by
+ * its id, and the save finds it.
  *
- * <p>The key is the reason this is safe. The app builds the players of the next items early, so a
- * record of "the last source built" saves the wrong video. A record keyed by video id answers for
- * the item that was tapped, or does not answer at all.
+ * <p>The id is what makes this safe. The app builds the players of the next items early, so "the
+ * last source" is often a different video. A search by id finds the video on the screen, or
+ * nothing.
  */
 public final class PlayerSources {
 
@@ -44,15 +44,15 @@ public final class PlayerSources {
     private static final String VIDEO_DATA_SOURCE = "com.facebook.video.engine.api.VideoDataSource";
 
     /**
-     * How many sources to keep. A manifest is about 20 KB of text, so this holds about 1 MB. It is
-     * much more than the players the app prepares ahead of the one on the screen.
+     * How many sources to keep. A manifest is about 20 KB of text, so 48 sources use about 1 MB.
+     * The app prepares far fewer players than this before the user gets to them.
      */
     private static final int MAX_SOURCES = 48;
 
     /** A video id: a long run of digits. */
     private static final Pattern ID = Pattern.compile("\\d{8,20}");
 
-    /** The fence of the walk over a card, the same as the walk that finds its addresses. */
+    /** The limits of the walk over a card. They are the same as for the walk for addresses. */
     private static final int MAX_NODES = 512;
     private static final int MAX_DEPTH = 3;
 
@@ -65,10 +65,11 @@ public final class PlayerSources {
         };
 
     /**
-     * Record the source of one player. The patch calls this at the end of every constructor of the
-     * player params, so it runs often and on any thread, and must never throw.
+     * Record the source of one player.
      *
-     * <p>The three names are the real names of the fields, which the patch reads from the app.
+     * <p>The patch calls this at the end of each constructor of the player params. So it runs
+     * often and on any thread, and it must never throw. The three names are the real names of the
+     * fields. The patch reads them from the app.
      */
     public static void remember(Object params, String idField, String hdField, String manifestField) {
         try {
@@ -86,16 +87,16 @@ public final class PlayerSources {
                 SOURCES.put(videoId, new Source(videoId, hd, manifest));
             }
         } catch (Throwable ignored) {
-            // This runs inside a constructor of the app. Nothing can leave it.
+            // This runs inside a constructor of the app. No error can go out of it.
         }
     }
 
     /**
      * The source of the video that [card] shows, or {@code null}.
      *
-     * <p>The card is walked for every string that has the shape of an id, and the first one that
-     * names a recorded player wins. Only players are recorded, so an id that matches is the id of
-     * a video, and the card shows one video.
+     * <p>The walk collects each string of the card that has the shape of an id. The first id of a
+     * recorded player is the answer. Only players are recorded, so that id is the id of a video,
+     * and a card shows one video.
      */
     static Source find(Object card) {
         if (card == null) return null;
@@ -169,8 +170,8 @@ public final class PlayerSources {
     }
 
     /**
-     * The ids in a short string. An address is skipped, because its path and its query carry long
-     * runs of digits that are not ids.
+     * The ids in a short string. The walk ignores an address. The path and the query of an address
+     * contain long runs of digits that are not ids.
      */
     private static void addIds(List<String> ids, String text) {
         if (text.length() > 40) return;

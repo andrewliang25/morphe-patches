@@ -107,8 +107,8 @@ final class RenditionPicker {
         // addresses of a reel carry it even when the path has no suffix.
         if (lower.contains("progressive")) return TIER_PROGRESSIVE;
 
-        // A picture on the same host is not a video. Without this a photo story ranks its own
-        // picture as a plausible video, and the picture is saved into Movies under a video name.
+        // A picture on the same host is not a video. Without this check, a photo story rates its
+        // picture as a plausible video. Then the picture goes into Movies with a video name.
         if (hasImageSuffix(path)) return TIER_NONE;
 
         return isFacebookHost(lower) ? TIER_PLAUSIBLE : TIER_NONE;

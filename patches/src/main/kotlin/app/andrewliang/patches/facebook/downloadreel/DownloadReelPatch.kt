@@ -94,19 +94,13 @@ val downloadReelPatch = bytecodePatch(
     extendWith("extensions/extension.mpe")
 
     execute {
-        // ---- the real names of the two address fields -----------------------------------------
+        // ---- the real names of the address fields ---------------------------------------------
         //
         // The source keeps a debug dump that pairs each field with the name it reports for it.
         // So the patch reads those names out of the app, rather than writing down letters that
         // change every release. It matters: the third address on that object is the subtitles, so
         // "the first Uri" saves the wrong thing without a word.
-        val dump = mutableClassDefBy(VIDEO_DATA_SOURCE).methods.firstOrNull { method ->
-            method.instructions().any { it.stringReference() == "videoHdUri" }
-        }
-
-        check(dump != null) { "$VIDEO_DATA_SOURCE reports no field names" }
-
-        val names = reportedFieldNames(dump)
+        val names = reportedFieldNames(VIDEO_DATA_SOURCE, marker = "videoHdUri")
         val hdField = names["videoHdUri"]
         val sdField = names["videoUri"]
         val manifestField = names["abrManifestContent"]
@@ -488,17 +482,16 @@ ${handlers(hdField, sdField, manifestField)}
  * factory is not documented to accept null, and a handler that returns without a word costs
  * nothing.
  */
-private fun handlers(hdField: String, sdField: String, manifestField: String) =
-    (0..6).joinToString("\n") { slot ->
+private fun handlers(hd: String, sd: String, manifest: String) = (0..6).joinToString("\n") { slot ->
     val saves = if (slot == TAP_SLOT) 1 else 0
 
     """
         new-instance v20, $HANDLER
         move-object/from16 v21, v4
         move-object/from16 v22, v5
-        const-string v23, "$hdField"
-        const-string v24, "$sdField"
-        const-string v25, "$manifestField"
+        const-string v23, "$hd"
+        const-string v24, "$sd"
+        const-string v25, "$manifest"
         const/16 v26, 0x$slot
         const/16 v27, 0x$saves
         invoke-direct/range { v20 .. v27 }, $HANDLER-><init>(Ljava/lang/Object;${CONTEXT}Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;IZ)V

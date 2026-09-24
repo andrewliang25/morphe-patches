@@ -19,7 +19,6 @@ import com.android.tools.smali.dexlib2.iface.instruction.Instruction
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
-import com.android.tools.smali.dexlib2.iface.reference.StringReference
 import com.android.tools.smali.dexlib2.iface.reference.TypeReference
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter
@@ -28,11 +27,11 @@ import com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter
 private const val SAVE_STORY = "Lapp/andrewliang/extension/MediaDownload;->" +
     "saveStory(Landroid/content/Context;Ljava/lang/Object;)Z"
 
-/** The extension call that records the source of each player the app builds. */
+/** The extension call that records the source of each player that the app builds. */
 private const val REMEMBER_SOURCE = "Lapp/andrewliang/extension/PlayerSources;->" +
     "remember(Ljava/lang/Object;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V"
 
-/** The helper this patch adds to the player params, so each constructor gains only one call. */
+/** The helper that this patch adds to the player params. Each constructor then gets one call. */
 private const val REMEMBER_HELPER = "andrewRememberSource"
 
 @Suppress("unused")
@@ -181,30 +180,20 @@ val downloadStoryPatch = bytecodePatch(
 }
 
 /**
- * Record the source of every player that the app builds, keyed by its video id.
+ * Record the source of each player that the app builds, by its video id.
  *
  * The story card holds one video address, and it is 360p. The player of the same story holds a
- * DASH manifest with every rendition up to 1080p. The save action cannot reach the player, but the
- * card carries the video id of the player. So the extension keeps each source by that id, and the
- * save looks it up. A record keyed by id is correct for prepared players too: the app builds the
- * next players early, and a record of the last one built would save the wrong video.
+ * DASH manifest with tracks up to 1080p. The save action cannot get to the player. But the card
+ * holds the video id of the player, so the save finds the source by that id.
  *
- * The field names come from the debug dumps of the two classes, so no Redex name is written down.
+ * The id is the key because the app builds the next players early. A record of the last player
+ * built then holds a different video from the one on the screen.
+ *
+ * The field names come from the debug dumps of the two classes. No Redex name is in this patch.
  */
 private fun BytecodePatchContext.rememberPlayerSources() {
-    fun reported(owner: String): Map<String, String> {
-        val dumps = mutableClassDefBy(owner).methods.filter { method ->
-            method.instructionsOrEmpty().any {
-                ((it as? ReferenceInstruction)?.reference as? StringReference)?.string ==
-                    REPORTED_NAME_MARKER[owner]
-            }
-        }
-        check(dumps.size == 1) { "Expected 1 debug dump on $owner, found ${dumps.size}" }
-        return reportedFieldNames(dumps.single())
-    }
-
-    val sourceNames = reported(VIDEO_DATA_SOURCE)
-    val paramNames = reported(VIDEO_PLAYER_PARAMS)
+    val sourceNames = reportedFieldNames(VIDEO_DATA_SOURCE, marker = "abrManifestContent")
+    val paramNames = reportedFieldNames(VIDEO_PLAYER_PARAMS, marker = "videoId")
 
     val videoId = paramNames["videoId"]
     val hd = sourceNames["videoHdUri"]
@@ -216,8 +205,8 @@ private fun BytecodePatchContext.rememberPlayerSources() {
 
     val params = mutableClassDefBy(VIDEO_PLAYER_PARAMS)
 
-    // Its own method, with its own registers. A constructor then needs one range call, and a
-    // range call reads `p0` whatever register number it has.
+    // A new method has its own registers. A constructor then needs only one range call, and a
+    // range call can read `p0` at any register number.
     val helper = ImmutableMethod(
         VIDEO_PLAYER_PARAMS,
         REMEMBER_HELPER,
@@ -242,8 +231,8 @@ private fun BytecodePatchContext.rememberPlayerSources() {
 
     params.methods.add(helper)
 
-    // Every constructor, at every return. The return is replaced by the call and a new return
-    // follows it. A branch that targeted the return thus lands on the call, so no exit skips it.
+    // Each constructor, at each return. The call replaces the return, and a new return comes after
+    // it. A branch to the old return thus goes to the call, so no exit skips the record.
     val constructors = params.methods.filter { it.name == "<init>" }
     var hooked = 0
 

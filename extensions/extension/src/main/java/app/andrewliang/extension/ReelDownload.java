@@ -53,7 +53,7 @@ public final class ReelDownload implements Function1<Object, Unit> {
     private final String hdField;
     private final String sdField;
 
-    /** The real name of the field that holds the DASH manifest, read the same way. */
+    /** The real name of the field that holds the DASH manifest. The patch reads it the same way. */
     private final String manifestField;
 
     public ReelDownload(

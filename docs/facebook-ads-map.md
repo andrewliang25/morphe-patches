@@ -823,61 +823,67 @@ and the register plumbing at the injection point. `Fb dump` prints no operand re
 register number, and anchors on an 18-parameter signature. Facebook releases about every two
 weeks, so it needs a new derivation on most of them. It can also fail quietly rather than loudly.
 
-### A video story saves from the player's DASH manifest
+### Stories and reels save from the player's DASH manifest
 
-The card of a video story holds one video address, and it is 360p. The card carries four
-addresses, and only two of them are different:
+The card of a video story holds one video address, and it is 360p. The card has four addresses,
+and only two of them are different:
 
 | Candidate | What it is |
 |---|---|
 | `…_n.jpg` (1080p), twice | the poster image |
 | `…_n.mp4` (360p), twice | the video, and the only one |
 
-The player of the same story holds no better single file. A probe logged every
-`VideoPlayerParams` as the app built it. For story-tray players, `videoHdUri` was `null` and
-`videoUri` was the same 360p file. But `abrManifestContent`, the inline DASH manifest, listed
-tracks up to 1080x1920. So the higher quality exists only as DASH: one file for the picture and one
-file for the sound.
+The player of the same story holds no better single file. A probe logged each `VideoPlayerParams`
+that the app built. For a story-tray player, `videoHdUri` was `null` and `videoUri` was the same
+360p file. But `abrManifestContent`, the inline DASH manifest, listed tracks up to 1080x1920. So the
+better quality is only in DASH, as one file for the picture and one file for the sound.
 
 Measured on 2026-09-24, on a re-signed 577.0.0.50.72 on Android 17:
 
-- **The card carries the player's video id.** It is not `getStoryCardIdUnencoded()`. It is a
-  string field further into the card. A walk of the card for strings that look like ids finds it.
-- **Story manifests list AV1 only.** One had seven 720x1280 tracks and one 1080x1920 track, all
-  `av01`, and four audio tracks of `mp4a.40.42` (xHE-AAC).
-- **Each track is one `BaseURL`**, a whole MP4 that one plain fetch gets, with no headers.
+- **The card holds the video id of the player.** It is not `getStoryCardIdUnencoded()`. It is a
+  string field deeper in the card. A walk of the card for strings with the shape of an id finds it.
+- **A story manifest lists only one video codec, AV1 or VP9.** One manifest had seven 720x1280
+  tracks and one 1080x1920 track, all `av01`. Another had four tracks up to 1080x1920, all `vp09`.
+  The audio tracks are `mp4a.40.42` (xHE-AAC).
+- **Each track has one `BaseURL`.** It is a whole MP4 file. One plain fetch with no headers gets it.
 
-How the patch uses this:
+How the story save uses this:
 
-1. At every return of both `VideoPlayerParams` constructors, it calls
-   `PlayerSources.remember`. That records the video id, `videoHdUri` and the manifest, keyed by the
-   id and bounded to 48 entries. The key is what makes this safe. The app builds the next players
-   early, so a record of the most recent source saves the wrong video.
-2. On a save, it walks the card for ids and takes the first one that names a recorded player.
-3. `DashManifest` picks the best video track (at the same size H.264, then H.265, then AV1) and the
-   best AAC track. It uses them only when the video track is larger than the best single file.
-4. `DashSave` downloads both tracks into the cache and joins them with `MediaMuxer`. Nothing is
-   decoded again. Then it copies the result into MediaStore. If any step fails, the best single
-   file is saved instead.
+1. At each return of the two `VideoPlayerParams` constructors, the patch calls
+   `PlayerSources.remember`. It records the video id, `videoHdUri` and the manifest, by id, for
+   up to 48 players. The id is the key because the app builds the next players early. A record of
+   the last player built then holds a different video.
+2. On a save, the extension walks the card for ids. The first id of a recorded player is the match.
+3. `DashManifest` picks the best video track and the best AAC track. At the same size, H.264 is
+   the first choice, then H.265, then AV1. The save uses the tracks only if the video track is
+   larger than the best single file.
+4. `DashSave` downloads the two tracks into the cache and joins them with `MediaMuxer`, with no
+   decode. Then it copies the result into MediaStore. If a step fails, the save gets the best
+   single file.
 
-AV1 is chosen only when `MediaMuxer` can write it into an MP4 (Android 14 or newer) **and** the
-device has an AV1 decoder. Otherwise a story falls back to 360p, as before. The field names come
-from each class's `EVr` debug dump (`videoId`, `videoHdUri`, `abrManifestContent`), so no Redex
-name is written down.
+The save uses AV1 only if `MediaMuxer` can write it into an MP4 (Android 14 or later) **and** the
+device has an AV1 decoder. If not, a story saves at 360p.
 
-A device run saved a 34-second story as 1080x1920 AV1 with AAC sound, 4.4 MB, in under a second
-after the download. Google Photos plays it.
+A VP9 story also saves at 360p. The MP4 muxer refuses VP9, on Android 17 too (`MPEG4Writer:
+Unsupported mime 'video/x-vnd.on2.vp9'`). The WebM muxer accepts VP9, but not AAC sound. Thus the
+save never picks VP9. A device test tried VP9 once, and the fallback saved the 360p file.
 
-**Reels use the same manifest.** The reel button already holds the player's `VideoDataSource`, so
-it needs no id lookup. The patch passes the real name of `abrManifestContent` next to the names of
-`videoHdUri` and `videoUri`. A reel whose `videoHdUri` was 720p H.264 listed a 1080x1920 AV1 track
-in its manifest. The button saved that track, 17 s and 6.2 MB, instead of the 720p file.
+The patch reads the field names from the `EVr` debug dump of each class (`videoId`, `videoHdUri`,
+`abrManifestContent`). No Redex name is in the patch.
 
-### A photo story used to save as a video
+A device run saved a 34-second story as 1080x1920 AV1 with AAC sound (4.4 MB). The join took less
+than a second after the download. Google Photos plays the file.
 
-`RenditionPicker.videoTier` rated every address on a Facebook host as a plausible video, a `.jpg`
-too. A photo story has no video, so the ranking chose its picture as the video. The file went into
-`Movies/Facebook` as `FB_VID_*.mp4`, and it held JPEG bytes (`ff d8 ff`). Now an address with a
+**Reels use the same manifest.** The reel button holds the `VideoDataSource` of its player, so it
+needs no search by id. The patch gives the button the real name of `abrManifestContent`, next to
+the names of `videoHdUri` and `videoUri`. On the device, one reel had a 720p `videoHdUri`, and its
+manifest listed a 1080x1920 AV1 track. The button saved that track (17 s, 6.2 MB).
+
+### A photo story saves as a picture
+
+`RenditionPicker.videoTier` rated each address on a Facebook host as a plausible video, and a
+`.jpg` too. A photo story has no video, so the ranking picked its picture as the video. The file
+went into `Movies/Facebook` as `FB_VID_*.mp4`, with JPEG bytes (`ff d8 ff`). Now an address with a
 picture suffix is never a video. A photo story saves to `Pictures/Facebook` as `FB_IMG_*.jpg`
 (device-confirmed on 2026-09-24).
 

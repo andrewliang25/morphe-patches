@@ -58,7 +58,7 @@ public final class MediaDownload {
             List<String> urls = collectStoryUrls(host);
 
             // The card holds one video address, and it is 360p. The player of the same video can
-            // hold better, so its recorded source is tried first.
+            // hold a better one. So the save tries the recorded source of the player first.
             PlayerSources.Source source = PlayerSources.find(host);
             if (source != null) {
                 addIfUsable(urls, source.hdUrl);
@@ -79,10 +79,10 @@ public final class MediaDownload {
      * Save the video that the player is streaming.
      *
      * <p>[hdField] and [sdField] are the real names of the two fields of the source that hold a
-     * single file address, and [manifestField] of the one that holds the DASH manifest. The patch
-     * reads those names out of the app while patching, so this file names no field of its own and
-     * neither does the patch. The manifest is tried first, because it can list a higher rendition
-     * than either single file.
+     * single file address. [manifestField] is the real name of the field that holds the DASH
+     * manifest. The patch reads those names out of the app while patching, so this file names no
+     * field of its own and neither does the patch. The save tries the manifest first, because it
+     * can list a better track than the two single files.
      *
      * <p>Asking by name matters here in a way that it does not for a story. The source carries a
      * third address of the same type, and it holds the subtitles. So "the first address on the
@@ -199,13 +199,13 @@ public final class MediaDownload {
     }
 
     /**
-     * Save the best video track and audio track of the player's DASH manifest, when that beats
-     * every single-file address the item holds.
+     * Save the best video track and audio track of a DASH manifest, if the video track is larger
+     * than all single-file addresses of the item.
      *
-     * <p>The manifest lists renditions that no single-file address offers: a story whose card and
-     * player both hold only 360p files lists tracks up to 1080p. The two tracks are joined into one
-     * file on the device. If that fails, the best single-file address is saved instead, so the
-     * user still gets a file.
+     * <p>The manifest can list tracks that no single file has. A story card and its player hold
+     * only 360p files, but the manifest lists tracks up to 1080p. The device joins the two tracks
+     * into one file. If this fails, the save gets the best single file, so the user still gets a
+     * file.
      *
      * @return whether a download started. {@code false} lets the caller save a single file.
      */
@@ -269,7 +269,7 @@ public final class MediaDownload {
         return application != null ? application : context;
     }
 
-    /** One save, run on the worker thread. It writes through [writer] and reports how it went. */
+    /** One save on the worker thread. It writes through [writer] and returns the result. */
     private interface Job {
         Downloader.Status run(MediaStoreWriter writer);
     }

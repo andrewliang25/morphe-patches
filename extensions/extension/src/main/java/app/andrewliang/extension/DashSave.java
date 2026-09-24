@@ -19,17 +19,16 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
 /**
- * Saves one DASH video track and one audio track as a single MP4.
+ * Saves one DASH video track and one audio track as one MP4 file.
  *
- * <p>A DASH manifest keeps the picture and the sound in separate files. Each file downloads with
- * one plain fetch, and {@code MediaMuxer} copies the samples of both into one file. Nothing is
- * decoded or encoded again, so the file has the exact quality that the player streams, and the
- * work takes about as long as the download.
+ * <p>A DASH manifest keeps the picture and the sound in two files. One plain fetch gets each file.
+ * Then {@code MediaMuxer} copies the samples of both into one file. It does not decode or encode
+ * them again. So the file has the quality that the player streams, and the join takes less than a
+ * second.
  *
- * <p>The two tracks and the result are written to the cache of the app first, because the muxer
- * needs a file it can seek in. Only the finished file goes into the gallery, through the same
- * {@link Downloader.Sink} as every other save. So a failure at any step leaves no entry in the
- * gallery.
+ * <p>The two tracks and the result go into the cache of the app first, because the muxer must seek
+ * in its files. Only the finished file goes into the gallery, through the same
+ * {@link Downloader.Sink} as all other saves. So an error at any step leaves nothing in the gallery.
  */
 final class DashSave {
 
@@ -39,44 +38,42 @@ final class DashSave {
 
     private static final String CACHE_FOLDER = "andrew-save";
 
-    /** A file older than this is left from a process that the system stopped during a save. */
+    /** A file older than this is from a save that the system stopped. */
     private static final long STALE_MS = 60L * 60L * 1000L;
 
     private static final int DEFAULT_SAMPLE_BUFFER = 2 * 1024 * 1024;
 
-    private static final String AV1 = "video/av01";
-
     private static volatile Boolean canWriteAv1;
 
     /**
-     * Whether an AV1 track can be saved: the muxer writes AV1 into an MP4 from Android 14, and the
-     * file is only worth saving when this device can also decode it.
+     * Whether this device can save an AV1 track. The muxer writes AV1 into an MP4 from Android 14.
+     * The device must also have an AV1 decoder, or it cannot play the file.
      */
     static boolean canWriteAv1() {
-        Boolean known = canWriteAv1;
-        if (known != null) return known;
+        if (canWriteAv1 == null) canWriteAv1 = hasAv1Decoder();
+        return canWriteAv1;
+    }
 
-        boolean answer = false;
-        if (Build.VERSION.SDK_INT >= 34) {
-            try {
-                for (MediaCodecInfo codec : new MediaCodecList(MediaCodecList.REGULAR_CODECS).getCodecInfos()) {
-                    if (codec.isEncoder()) continue;
-                    for (String type : codec.getSupportedTypes()) {
-                        if (AV1.equalsIgnoreCase(type)) answer = true;
-                    }
+    private static boolean hasAv1Decoder() {
+        if (Build.VERSION.SDK_INT < 34) return false;
+
+        try {
+            for (MediaCodecInfo codec : new MediaCodecList(MediaCodecList.REGULAR_CODECS).getCodecInfos()) {
+                if (codec.isEncoder()) continue;
+                for (String type : codec.getSupportedTypes()) {
+                    if ("video/av01".equalsIgnoreCase(type)) return true;
                 }
-            } catch (Throwable ignored) {
-                // No list, no AV1.
             }
+        } catch (Throwable ignored) {
+            // No codec list, so no decoder.
         }
 
-        canWriteAv1 = answer;
-        return answer;
+        return false;
     }
 
     /**
-     * Download [video] and [audio], join them, and write the result to [sink]. Blocking. Never
-     * throws. [audio] can be {@code null} for a video with no sound.
+     * Download [video] and [audio], join them, and write the result to [sink]. This blocks and
+     * never throws. [audio] is {@code null} for a video with no sound.
      */
     static Downloader.Status save(
         Context application,
@@ -122,9 +119,9 @@ final class DashSave {
     /**
      * Copy the samples of both files into [out], in order of time.
      *
-     * <p>The two tracks are written in turn, whichever sample comes first. A file with all of the
-     * video and then all of the sound plays, but a player then has to seek across the whole file
-     * to start, and some refuse it.
+     * <p>Each step writes the sample that comes first in time, from either track. A file with all
+     * of the video before all of the sound also plays. But a player must then seek across the whole
+     * file to start, and some players refuse that.
      */
     private static void join(File video, File audio, File out) throws IOException {
         MediaExtractor videoIn = new MediaExtractor();
@@ -209,7 +206,7 @@ final class DashSave {
         }
     }
 
-    /** Select the first track of [kind] and answer its format, or {@code null}. */
+    /** Select the first track of [kind] and return its format, or {@code null}. */
     private static MediaFormat selectTrack(MediaExtractor extractor, String kind) {
         for (int i = 0; i < extractor.getTrackCount(); i++) {
             MediaFormat format = extractor.getTrackFormat(i);
@@ -232,7 +229,7 @@ final class DashSave {
         }
     }
 
-    /** Copy the finished file into [sink], and remove the entry again on any failure. */
+    /** Copy the finished file into [sink]. If an error occurs, remove the entry again. */
     private static Downloader.Status publish(File file, Downloader.Sink sink) {
         boolean opened = false;
 
@@ -276,7 +273,7 @@ final class DashSave {
             //noinspection ResultOfMethodCallIgnored
             file.delete();
         } catch (Throwable ignored) {
-            // A file left behind is removed by the next save, or with the cache.
+            // The next save removes a file that stays, or the system clears the cache.
         }
     }
 
