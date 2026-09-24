@@ -14,6 +14,10 @@ Thus the versionCode alone does not identify a download. The decompile uses this
 
 To get the same bytecode, select the variant by its title. Do not search for the number.
 
+Each variant is a separate build with different DEX, not an ABI split of one bundle. Thus
+`COMPATIBILITY_FACEBOOK` pins the versionCode and the minSdk of the tested variant.
+**At each version bump, update the versionCode and the minSdk together with the version.**
+
 > ⚠️ **Obfuscation drift.** `LX/1lD;`, `LX/awi;` and `LX/50Q;` are Redex names. They change on
 > **every** Facebook release, which is about every two weeks. No patch hard-codes one — see
 > [Anchoring](#anchoring). Confirm them again on a version bump.
