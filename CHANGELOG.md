@@ -11,7 +11,7 @@
 
 * LINE: hide the Agent i and AI Friends buttons in LINE ([0ddc176](https://githubpatches/commit/0ddc1760a4f15edca734890968f0818b7cbb6215)), closes [#133](https://github.comhes/issues/133)
 * LINE: hide the "CHECK" tips under LINE chat messages ([c2f234d](https://githubpatches/commit/c2f234da10ff8e7d856fa188d88047eb06a5244f))
-* Facebook: add an AMOLED black the(https://github.com/andrewliang25/morphe-patches/commit/799d0aec55b4e409c6cec6b5f9d6b947240ab9ec)), closes [#108](https://githe-patches/issues/108)
+* Facebook: add an AMOLED black theme for Facebook ([799d0ae](https://github.com/andrewliang25/morphe-patches/commit/799d0aec55b4e409c6cec6b5f9d6b947240ab9ec)), closes [#108](https://github.com/andrewliang25/morphe-patches/issues/108)
 * Facebook: add a download button beside every reel ([e0007d8](https://github.com/andrewliang25/morphe-patches/co1f38dfd6d21f45bbda8))
 * Facebook: save stories and reels at the quality the player streams ([d250464](https://githubpatches/commit/d250464794c1882aac02d7617a06742efdbe75f4), [16a9184](https://github.com/andrewliang25/morphe-patches/commit/16a9184e9284d1))
 
