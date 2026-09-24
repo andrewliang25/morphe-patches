@@ -16,9 +16,8 @@ private const val FILTER_DESC = "(Ljava/util/List;)Ljava/util/List;"
 @Suppress("unused")
 val hideHomeFeedPatch = bytecodePatch(
     name = "[Home] Hide Home content feed",
-    description = "Removes the content feed below the friends list on the Home tab. The feed " +
-        "shows LINE NEWS posts, official account posts, live cards, content units, and ranking " +
-        "units. The friends list, the service icons, and the other Home modules do not change.",
+    description = "Removes the content feed below the friends list on the Home tab: LINE NEWS, " +
+        "official account posts and rankings.",
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_LINE)

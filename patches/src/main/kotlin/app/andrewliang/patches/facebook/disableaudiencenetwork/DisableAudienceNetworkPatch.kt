@@ -21,10 +21,8 @@ private val COMPONENT_TAGS = setOf("activity", "activity-alias", "service", "rec
 @Suppress("unused")
 val disableAudienceNetworkPatch = resourcePatch(
     name = "[Ad] Disable Audience Network",
-    description = "Stops the Facebook app acting as the ad server for other apps on your device. " +
-        "This is the one patch that changes how other apps behave rather than how Facebook " +
-        "behaves: apps that show Facebook ads fall back to their own ad sources or show nothing, " +
-        "and an app that makes you watch an ad for a reward may not be able to give you one.",
+    description = "Stops Facebook serving ads to other apps. Those apps then show their own ads " +
+        "or none, and rewarded ads can fail.",
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_FACEBOOK)

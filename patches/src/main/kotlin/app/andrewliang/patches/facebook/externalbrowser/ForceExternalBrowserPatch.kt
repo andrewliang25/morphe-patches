@@ -37,9 +37,8 @@ private val IN_APP_BROWSERS = listOf(
 @Suppress("unused")
 val forceExternalBrowserPatch = bytecodePatch(
     name = "[General] Open links in external browser",
-    description = "A web link that you tap opens in your default browser, and not in the " +
-        "in-app browser of Facebook. The pages of Facebook still open in the app. Thus login " +
-        "and checkout still work.",
+    description = "Opens web links in your default browser instead of Facebook's in-app " +
+        "browser. Facebook pages still open in the app.",
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_FACEBOOK)

@@ -108,9 +108,8 @@ private fun isDarkBackground(value: String): Boolean {
 @Suppress("unused")
 val amoledThemePatch = bytecodePatch(
     name = "[General] AMOLED black theme",
-    description = "Makes the dark mode of Facebook black instead of dark grey, which saves power " +
-        "on an OLED screen. Turn on dark mode in Facebook first. Dividers, borders, text, icons " +
-        "and the coloured banners do not change.",
+    description = "Makes Facebook's dark mode black instead of dark grey. Turn on dark mode in " +
+        "Facebook first.",
     default = false,
 ) {
     compatibleWith(COMPATIBILITY_FACEBOOK)

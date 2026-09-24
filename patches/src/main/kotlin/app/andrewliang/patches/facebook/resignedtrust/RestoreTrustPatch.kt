@@ -14,10 +14,8 @@ private const val ORIGINAL_SIGNERS = "Lapp/andrewliang/extension/FacebookSignatu
 @Suppress("unused")
 val restoreTrustPatch = bytecodePatch(
     name = "[Fix] Restore screens on re-signed builds",
-    description = "On a build that is not signed by Facebook, taps open profiles and Settings " +
-        "pages such as Media, Dark mode and Active status again. Facebook checks its own signing " +
-        "certificate before it opens these screens, and a re-signed build fails that check " +
-        "without a message. A Root Mount install does not need this patch.",
+    description = "Makes profiles and some Settings pages open again on a re-signed build. A " +
+        "Root Mount install does not need this patch.",
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_FACEBOOK)
