@@ -1,13 +1,15 @@
 package app.andrewliang.extension;
 
+import android.graphics.Color;
+
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
 /**
- * Helper for the "[General] AMOLED black theme" patch. It answers the first of the three routes
- * that a colour takes. See {@code docs/facebook-theme-map.md}.
+ * Helper for the "[General] AMOLED black theme" patch. It holds the rule for route one and route
+ * four. See {@code docs/facebook-theme-map.md}.
  *
  * <p>The decision needs the token, because a colour alone cannot show the difference between a card
  * and a dark divider. The names of the tokens carry that difference, and R8 cannot rename an enum
@@ -79,21 +81,43 @@ public final class AmoledTheme {
                     "BACKGROUND_PRIMARY_UI")));
 
     /**
+     * Route one: a colour that a resolver returns.
+     *
      * @param token an enum constant. Only its name is used.
      * @return black if this is a background that is already dark, or {@code color} unchanged.
      */
     public static int apply(int color, Object token) {
-        if ((color >>> 24) != 0xFF) return color;
+        if (!isDarkNeutral(color)) return color;
+        if (!(token instanceof Enum)) return color;
+
+        return BACKGROUND_TOKENS.contains(((Enum<?>) token).name()) ? 0xFF000000 : color;
+    }
+
+    /**
+     * Route four: a colour that the server sends as text.
+     *
+     * <p>The patch replaces each call to {@link Color#parseColor} in the app with a call to this
+     * method. A server-driven screen, such as Settings, gets its colours as strings like
+     * {@code "#FF252728"}. No token comes with a string, so the colour alone decides, as in route
+     * two and route three.
+     *
+     * <p>A text that is not a colour throws the same exception as before, so the callers see no
+     * change.
+     */
+    public static int parseColor(String text) {
+        int color = Color.parseColor(text);
+        return isDarkNeutral(color) ? 0xFF000000 : color;
+    }
+
+    /** True for an opaque grey with each channel at or below {@link #MAX_CHANNEL}. */
+    private static boolean isDarkNeutral(int color) {
+        if ((color >>> 24) != 0xFF) return false;
 
         int red = (color >> 16) & 0xFF;
         int green = (color >> 8) & 0xFF;
         int blue = color & 0xFF;
         int high = Math.max(red, Math.max(green, blue));
         int low = Math.min(red, Math.min(green, blue));
-        if (high > MAX_CHANNEL || high - low > MAX_SPREAD) return color;
-
-        if (!(token instanceof Enum)) return color;
-
-        return BACKGROUND_TOKENS.contains(((Enum<?>) token).name()) ? 0xFF000000 : color;
+        return high <= MAX_CHANNEL && high - low <= MAX_SPREAD;
     }
 }

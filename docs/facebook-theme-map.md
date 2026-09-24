@@ -14,15 +14,17 @@ Credit to [SapitoSucio/FroggoMorphePatches](https://github.com/SapitoSucio/Frogg
 
 ## Who decides
 
-Facebook resolves each colour **in its own process**, with no network call. Thus it is a client
-decision and patchable. A Bloks screen is the opposite: the server sends the colour.
+Facebook resolves each colour **in its own process**. Thus it is a client decision and patchable.
+A Bloks screen gets its colour from the server, but as text that the app parses in its own
+process. Thus that colour is patchable too (route four).
 
 ---
 
-## The three routes
+## The four routes
 
-A colour reaches the screen three ways. The patch covers all three with one rule, and it took three
-device rounds to find them all. Covering only the first leaves most of the app grey.
+A colour reaches the screen four ways. The patch covers all four with one rule. The first three took
+three device rounds to find, and the fourth came from issue #108. Covering only the first leaves
+most of the app grey.
 
 ### Route 1 — a component asks the design system
 
@@ -88,6 +90,28 @@ The patch sweeps every class with `classDefForEach` and rewrites each dark grey 
 costs about 30 seconds. Two narrower anchors were tried first and both fell short: the name-kept
 chrome classes, and the methods that return `ColorData`.
 
+### Route 4 — the server sends the colour as text
+
+Server-driven screens get their colours as strings, such as `"#FF252728"`, and the app parses them
+with `Color.parseColor`. No resolver, resource or literal holds these colours. This is why the
+profile cards and Settings stayed `#252728` after routes 1 to 3 (issue #108).
+
+The patch replaces each call to `Color.parseColor` in the app with a call to
+`AmoledTheme.parseColor`, which has the same signature. That method parses the text and applies the
+rule to the result. On 577.0.0.50.72 the sweep changes **289 calls in 163 classes**. It skips the
+classes of the extension, because the replacement calls the original.
+
+How the source was found, so that nobody does it again:
+
+- A probe logged each dark grey that the route-1 hooks returned unchanged. For these screens it
+  logged nothing, so the grey does not reach a hook.
+- A second probe blackened each grey `ColorData` at construction. The screens stayed grey, and no
+  grey `ColorData` was built, so the DSP palette is not the source.
+- Every card-grey resource was already black in the patched APK. A scan of the dex found no card
+  grey as an array element, a wide constant or a string.
+- A third probe sent `Color.parseColor` through the extension. The log showed `"#FF252728"` parsed
+  at `X.438.BAN` and `X.4fl.A03`, and both screens turned black.
+
 ### Seams rejected
 
 - **`LX/Dir;->A00`** — downstream of `DarkColorScheme.EYJ` with no extra reach (22 callers), on an
@@ -100,7 +124,7 @@ chrome classes, and the methods that return `ColorData`.
 
 ## The rule
 
-One rule for all three routes and for the extension. A colour becomes black when it is **opaque**
+One rule for all four routes and for the extension. A colour becomes black when it is **opaque**
 and every channel is at or below `MAX_CHANNEL = 0x2A`, and when it is **near-neutral**: the channels
 are within `MAX_SPREAD = 8` of each other.
 
@@ -118,7 +142,7 @@ are within `MAX_SPREAD = 8` of each other.
 
 Route 1 also tests the **token**, because a colour alone cannot tell a card from a dark divider. The
 opaque and dark test is what keeps light mode correct with no mode check: a light-mode card is white
-and falls through.
+and falls through. Route 4 has no token, so it uses the colour alone, like routes 2 and 3.
 
 ---
 
@@ -130,9 +154,10 @@ R8 keeps three things. The class names `DarkColorScheme`, `LightColorScheme`, `B
 field names `LX/1s9;->attr`, `lightModeFallBackColorInt`, `lightModeFallBackColorRes` and
 `LX/DkZ;->dspUsageColor`.
 
-R8 renames **every method**, so no fingerprint uses a method name. Routes 2 and 3 use no name at
-all: they match on the value, which is what makes them survive both the renaming and the stripped
-resource names.
+R8 renames **every method**, so no fingerprint uses a method name. Routes 2, 3 and 4 use no
+Facebook name at all. Routes 2 and 3 match on the value, and route 4 matches on the framework call
+`Color.parseColor`. That is what makes them survive both the renaming and the stripped resource
+names.
 
 `DarkColorScheme->BJX()I` returns the dark theme style id and `LightColorScheme->BJX()I` the light
 one (`0x7f1f039e` / `0x7f1f039f` here). Read them from those methods instead of hard-coding them.
@@ -173,6 +198,12 @@ crash, no `Resources$NotFoundException`.
 | Bottom bar | `#252728` | `#000000` |
 | Reels top bar | `#252728` | `#000000` |
 | Comments sheet | `#101011` | `#000000` |
+| Profile header card and "At a glance" rows (route 4, 2026-09-24) | `#252728` | `#000000` |
+| Settings & privacy, and its Notifications page (route 4, 2026-09-24) | `#252728` | `#000000` |
+
+After route 4, the buttons and the search field on those screens are `#191919`. They are a
+translucent layer, so they darken with the page and stay visible. Light mode keeps these screens
+white.
 
 Black went from 19% of the feed to 47%.
 
@@ -205,7 +236,8 @@ push the probe commit.
 
 ## Known gaps
 
-1. **Bloks screens** — the server sends the colours.
+1. **Bloks screens that do not use `Color.parseColor`** — route 4 covers the screens that parse a
+   colour string with it. A screen that parses colours another way stays grey.
 2. **WebViews and the in-app browser** — the page decides.
 3. **Blends and drawable assets** — a translucent layer over another colour, a gradient or a bitmap.
    The base of the "Create story" tile (`#202021`, about 2% of the feed) is the one visible case. It

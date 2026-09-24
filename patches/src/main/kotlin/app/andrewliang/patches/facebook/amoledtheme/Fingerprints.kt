@@ -7,7 +7,7 @@ import app.morphe.patcher.opcode
 import com.android.tools.smali.dexlib2.Opcode
 
 /**
- * The four resolvers, which answer the first of the three routes that a colour takes.
+ * The four resolvers, which answer the first of the four routes that a colour takes.
  *
  * Facebook has two colour systems and they share no code. Mig is the older one, and each of its
  * ~120 getters ends in one method per colour scheme. FDS is the newer one and carries most of the
