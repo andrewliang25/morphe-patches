@@ -278,7 +278,7 @@ pages. It delivered 28 organic reels. There was no reflection fallback, no stall
 screen. If a page becomes empty, the app fetches the next page in about 6 ms. Thus the removal of a
 whole section is safe.
 
-### Reels banner ads are a separate fetch
+### Ads fetched while a reel plays
 
 Issue #121 reported a product card with a "Sponsored" tag over an organic reel. The ad reel
 filters did not remove it, and they cannot. The card is not an item in the page. Facebook fetches
@@ -315,12 +315,37 @@ through its own error callback. That is a side effect, and it is also an ad.
 The anchor is the log literal in `SQq.A02`. The patch takes the last call before the literal that
 returns a `ListenableFuture`. The literal is unique in the APK.
 
-**The mid-roll half is found but not built.** The second comment on issue #121 shows
-"Werbung startet in 2" ("Ad starts in 2"). This is the countdown of an in-content video ad. The
-same two states fetch it: `LX/7ez;->A0B` sends `FBFetchReelsVideoAdsQuery`, and `SQq.A02` logs
-`"Kicking off video ad fetch"` on its other branch. The branch is chosen by the ad placement enum
-`LX/6hz;` (`BANNER`, `MID_ROLL`, `POST_ROLL`, `PRE_ROLL`, `OVERLAY`, `NON_INTERRUPTIVE`,
-`DOWNSTREAM`). The patch description still says that mid-rolls are not covered.
+**Mid-rolls use a second helper.** The second comment on issue #121 shows "Werbung startet in 2"
+("Ad starts in 2"). This is the countdown of an in-content video ad. The branch in `SQq.A02` is
+chosen by the ad placement enum `LX/6hz;` (`BANNER`, `MID_ROLL`, `POST_ROLL`, `PRE_ROLL`, `OVERLAY`,
+`NON_INTERRUPTIVE`, `DOWNSTREAM`). The video ad fetches go through three sites:
+
+| Site | Callers | What the patch does |
+|---|---|---|
+| `LX/6lf;->A02` | `SQq.A02` (logs `"Kicking off video ad fetch"`) and `AdBreakFetchHelper` (`LX/SMj;->A05`, the classic in-stream ad breaks) | returns the failed future |
+| `LX/6lf;->A03` | the scrubber ad page (`LX/7f5;`, `"NextPageScrubberState"`) and `LX/SOw;` | returns the failed future |
+| `LX/7ez;->A0B` | the idle state. It builds `FBFetchReelsVideoAdsQuery` itself and runs it on the generic GraphQL executor `LX/6dp;->A11` | that one call is replaced by the helper |
+
+`LX/6lf;` is the ad-break server API (its failure log is tagged `"AdBreakServerAPI"`). Every method
+on it that returns a future is an ad query, so the patch fails all of them and does not pick by name.
+
+The executor `6dp.A11` has 243 callers across the app. The patch therefore changes only the one call
+in `A0B`. The replacement is also an `invoke-static` of three code units. Thus the
+`move-result-object` after it takes the failed future, and no branch offset changes.
+
+Each failure callback is Facebook's own error path. `LX/Uc0;` and `LX/SOz;` log
+`"Failed to fetch video ad"`, `LX/Uc1;` logs an `AdBreakServerAPI` failure, `LX/6lk;` logs
+`"scrubber fetch failed"`, and `A0B`'s callback goes to `UAl.A04`. Each one clears its in-flight flag
+or sets the state to `FETCHING_COMPLETED`. None of them holds playback.
+
+**One helper per class.** The patch adds a static `failedAdFetch()` to each patched class. It
+returns a `SettableFuture` that failed with an `IOException`. Each site is then one branchless
+`invoke-static`, and no register must be borrowed. The whole bundle strips 35 classes, and the
+patch adds 3 methods.
+
+**Still open.** `A0B` still logs `"reels_ad_query_send"` after the fetch, so the telemetry event goes
+out without a query. Pause ads are blocked as a side effect of the banner site. Neither change has
+been tested on a device.
 
 **Why it is hard to reproduce.** The banner is fetched only while you stay on one reel. The server
 decides per account and per country whether to send one. Fast scrolling skips most fetches, and a
@@ -369,10 +394,10 @@ manifest. It includes the parts that are not worth a patch, so that nobody finds
 | Story-viewer ads | The 4 ad sources in the `processBucketData` chain: `LX/Apf;`, `LX/awi;`, `LX/A2v;`, `LX/gq4;` | ✅ |
 | Stories **tray** ads (the row on the feed) | Not traced. Every `B5t` source found so far is viewer-side | ❌ inserter not located |
 | Reels and Watch feed ads | `LX/50Q;->Cwp` plus the 3 on-demand inserts: `LX/54e;->A02` (realtime intent), `LX/6S7;` (SFD), `LX/6SZ;` (POE) | ✅ |
-| Reels banner ads (the product card over an organic reel) | The banner fetch helper `LX/9ft;->A07`. See [Reels banner ads are a separate fetch](#reels-banner-ads-are-a-separate-fetch) | ✅ |
+| Reels banner ads (the product card over an organic reel) | The banner fetch helper `LX/9ft;->A07`. See [Ads fetched while a reel plays](#ads-fetched-while-a-reel-plays) | ✅ |
 | Other Reels ad chrome | `FbShortsAdsRootKComponent`, `ReelsAdsFloatingCtaPlugin`, `FbShortsAdsPostScrollNudge*` | Not necessary once insertion stops |
-| In-stream ads (pre-roll, mid-roll, post-roll) | `AdBreakStateMachineImpl`, `AdBreakFetchHelper`, `UnifiedAdBreakController`, `InstreamAdFetchUtil`. For Reels, the video ad fetch is found — see [Reels banner ads are a separate fetch](#reels-banner-ads-are-a-separate-fetch) | ❌ not built |
-| Pause ads | `PauseAdComponent`, `PauseAdUtil` | ❌ no anchor |
+| In-stream ads (pre-roll, mid-roll, post-roll) | The ad-break server API `LX/6lf;` and the idle-state query `LX/7ez;->A0B`. See [Ads fetched while a reel plays](#ads-fetched-while-a-reel-plays) | ✅ not device-tested |
+| Pause ads | `PauseAdComponent`, `PauseAdUtil`. The fetch `LX/7f8;->A03` goes through the banner helper | ✅ as a side effect of the banner site, not device-tested |
 | Squeezeback ads (the live video becomes smaller) | `SqueezebackAdPlugin` (`LX/TZ5;`) | ❌ not built |
 | Story-viewer ad chrome | `StoryViewerAdsRootContainerComponentSpec`, `StoryViewerAdsVideoComponent`, `FBStoryAdsDelayedSkipManager` | Not necessary once insertion stops |
 | Search results sponsored | `LX/KoE;->A1N`, `LX/LhI;->A00`, `SearchAdActions` | ❌ not built |
