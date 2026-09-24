@@ -1,5 +1,6 @@
 package app.andrewliang.patches.facebook.downloadreel
 
+import app.andrewliang.patches.facebook.shared.reportedFieldNames
 import app.andrewliang.patches.shared.Constants.COMPATIBILITY_FACEBOOK
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.bytecodePatch
@@ -93,24 +94,19 @@ val downloadReelPatch = bytecodePatch(
     extendWith("extensions/extension.mpe")
 
     execute {
-        // ---- the real names of the two address fields -----------------------------------------
+        // ---- the real names of the address fields ---------------------------------------------
         //
         // The source keeps a debug dump that pairs each field with the name it reports for it.
         // So the patch reads those names out of the app, rather than writing down letters that
         // change every release. It matters: the third address on that object is the subtitles, so
         // "the first Uri" saves the wrong thing without a word.
-        val dump = mutableClassDefBy(VIDEO_DATA_SOURCE).methods.firstOrNull { method ->
-            method.instructions().any { it.stringReference() == "videoHdUri" }
-        }
-
-        check(dump != null) { "$VIDEO_DATA_SOURCE reports no field names" }
-
-        val names = fieldNames(dump.instructions(), VIDEO_DATA_SOURCE)
+        val names = reportedFieldNames(VIDEO_DATA_SOURCE, marker = "videoHdUri")
         val hdField = names["videoHdUri"]
         val sdField = names["videoUri"]
+        val manifestField = names["abrManifestContent"]
 
-        check(hdField != null && sdField != null) {
-            "Expected videoHdUri and videoUri on the source, found ${names.keys}"
+        check(hdField != null && sdField != null && manifestField != null) {
+            "Expected videoHdUri, videoUri and abrManifestContent on the source, found ${names.keys}"
         }
 
         // ---- the sidebar ------------------------------------------------------------------------
@@ -261,6 +257,7 @@ val downloadReelPatch = bytecodePatch(
                     contextField = contextField.name,
                     hdField = hdField,
                     sdField = sdField,
+                    manifestField = manifestField,
                 ),
             )
         }
@@ -398,7 +395,7 @@ val downloadReelPatch = bytecodePatch(
         println("REEL sidebar=$sidebarClass->$sidebarName assembly@$assemblyIndex list=v$sourceRegister player=v$playerRegister")
         println("REEL factory=${factory.definingClass}->${factory.name}${factory.returnType}")
         println("REEL icon=${icon!!.definingClass}->${icon!!.name}")
-        println("REEL fields hd=$hdField sd=$sdField player=${playerField.name} session=${sessionField.name}")
+        println("REEL fields hd=$hdField sd=$sdField manifest=$manifestField player=${playerField.name} session=${sessionField.name}")
     }
 }
 
@@ -424,6 +421,7 @@ private fun buildButton(
     contextField: String,
     hdField: String,
     sdField: String,
+    manifestField: String,
 ): String {
     val signature = "${factory.definingClass}->${factory.name}" +
         parameters.joinToString("", "(", ")") + factory.returnType
@@ -435,7 +433,7 @@ private fun buildButton(
         move-object/from16 v4, p2
         move-object/from16 v6, p0
 
-${handlers(hdField, sdField)}
+${handlers(hdField, sdField, manifestField)}
         const-string v1, "$LABEL"
 
         new-instance v2, $primaryType
@@ -484,63 +482,21 @@ ${handlers(hdField, sdField)}
  * factory is not documented to accept null, and a handler that returns without a word costs
  * nothing.
  */
-private fun handlers(hdField: String, sdField: String) = (0..6).joinToString("\n") { slot ->
+private fun handlers(hd: String, sd: String, manifest: String) = (0..6).joinToString("\n") { slot ->
     val saves = if (slot == TAP_SLOT) 1 else 0
 
     """
         new-instance v20, $HANDLER
         move-object/from16 v21, v4
         move-object/from16 v22, v5
-        const-string v23, "$hdField"
-        const-string v24, "$sdField"
-        const/16 v25, 0x$slot
-        const/16 v26, 0x$saves
-        invoke-direct/range { v20 .. v26 }, $HANDLER-><init>(Ljava/lang/Object;${CONTEXT}Ljava/lang/String;Ljava/lang/String;IZ)V
+        const-string v23, "$hd"
+        const-string v24, "$sd"
+        const-string v25, "$manifest"
+        const/16 v26, 0x$slot
+        const/16 v27, 0x$saves
+        invoke-direct/range { v20 .. v27 }, $HANDLER-><init>(Ljava/lang/Object;${CONTEXT}Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;IZ)V
         move-object/from16 v${8 + slot}, v20
     """
-}
-
-/**
- * Every `reported name -> field` pair that a debug dump of [owner] writes.
- *
- * The dump reads a field, then loads the name, then calls the reporter. Nearness alone does not
- * pair them. The tag of the whole class is loaded between the first field and its name, and sits
- * nearer to it than the name does. So the pairing is made against the **call**, which is what
- * receives the name: the last string loaded before the reporter runs.
- *
- * One class writes the name before the field instead of after, so a backward window is tried when
- * the forward one finds nothing.
- */
-private fun fieldNames(instructions: List<Instruction>, owner: String): Map<String, String> {
-    val names = mutableMapOf<String, String>()
-
-    fun scan(from: Int, step: Int): String? {
-        var name: String? = null
-
-        var index = from
-        while (index in instructions.indices) {
-            val instruction = instructions[index]
-
-            // The reporter call ends the window: everything loaded before it is its arguments.
-            if (instruction.opcode.name.startsWith("invoke")) return name
-
-            instruction.stringReference()?.let { name = it }
-            index += step
-        }
-
-        return name
-    }
-
-    instructions.forEachIndexed { index, instruction ->
-        val field = instruction.fieldReference() ?: return@forEachIndexed
-        if (field.definingClass != owner) return@forEachIndexed
-        if (!instruction.opcode.name.startsWith("iget")) return@forEachIndexed
-
-        val name = scan(index + 1, 1) ?: scan(index - 1, -1)
-        if (name != null) names.putIfAbsent(name, field.name)
-    }
-
-    return names
 }
 
 /**

@@ -14,6 +14,12 @@ internal const val STORY_VIEWER_MORE_MENU =
  */
 internal const val STORY_CARD = "Lcom/facebook/stories/model/StoryCard;"
 
+/** Kept name. The source of a player: its addresses and its DASH manifest. */
+internal const val VIDEO_DATA_SOURCE = "Lcom/facebook/video/engine/api/VideoDataSource;"
+
+/** Kept name. The app builds one for each player. It holds the video id and the source. */
+internal const val VIDEO_PLAYER_PARAMS = "Lcom/facebook/video/engine/api/VideoPlayerParams;"
+
 /**
  * The action behind the save item. The analytics event that it reports is what finds it.
  *

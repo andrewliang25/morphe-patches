@@ -107,6 +107,10 @@ final class RenditionPicker {
         // addresses of a reel carry it even when the path has no suffix.
         if (lower.contains("progressive")) return TIER_PROGRESSIVE;
 
+        // A picture on the same host is not a video. Without this check, a photo story rates its
+        // picture as a plausible video. Then the picture goes into Movies with a video name.
+        if (hasImageSuffix(path)) return TIER_NONE;
+
         return isFacebookHost(lower) ? TIER_PLAUSIBLE : TIER_NONE;
     }
 
@@ -122,15 +126,7 @@ final class RenditionPicker {
             return TIER_NONE;
         }
 
-        String path = pathOf(lower);
-        if (path.endsWith(".jpg")
-            || path.endsWith(".jpeg")
-            || path.endsWith(".png")
-            || path.endsWith(".webp")
-            || path.endsWith(".heic")
-            || path.endsWith(".avif")) {
-            return TIER_PROGRESSIVE;
-        }
+        if (hasImageSuffix(pathOf(lower))) return TIER_PROGRESSIVE;
 
         return isFacebookHost(lower) ? TIER_PLAUSIBLE : TIER_NONE;
     }
@@ -296,6 +292,16 @@ final class RenditionPicker {
     }
 
     // ---------------------------------------------------------------- internals
+
+    private static boolean hasImageSuffix(String lowerPath) {
+        return lowerPath.endsWith(".jpg")
+            || lowerPath.endsWith(".jpeg")
+            || lowerPath.endsWith(".png")
+            || lowerPath.endsWith(".webp")
+            || lowerPath.endsWith(".heic")
+            || lowerPath.endsWith(".avif")
+            || lowerPath.endsWith(".gif");
+    }
 
     private static void collect(
         Object value,

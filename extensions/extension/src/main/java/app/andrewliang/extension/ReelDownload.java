@@ -53,11 +53,15 @@ public final class ReelDownload implements Function1<Object, Unit> {
     private final String hdField;
     private final String sdField;
 
+    /** The real name of the field that holds the DASH manifest. The patch reads it the same way. */
+    private final String manifestField;
+
     public ReelDownload(
         Object playerParams,
         Context context,
         String hdField,
         String sdField,
+        String manifestField,
         int slot,
         boolean saves
     ) {
@@ -65,6 +69,7 @@ public final class ReelDownload implements Function1<Object, Unit> {
         this.context = context;
         this.hdField = hdField;
         this.sdField = sdField;
+        this.manifestField = manifestField;
         this.slot = slot;
         this.saves = saves;
     }
@@ -98,7 +103,7 @@ public final class ReelDownload implements Function1<Object, Unit> {
             return;
         }
 
-        MediaDownload.saveVideo(context, source, hdField, sdField);
+        MediaDownload.saveVideo(context, source, hdField, sdField, manifestField);
     }
 
     /**
