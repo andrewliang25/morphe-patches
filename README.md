@@ -17,9 +17,9 @@ Morphe Manager to build a modified APK.
 ## 🩹 Patches list
 
 <!-- PATCHES_START EXPANDED -->
-> **[v3.2.0-dev.4](https://github.com/andrewliang25/morphe-patches/releases/tag/v3.2.0-dev.4)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;36 patches total
+> **[v3.2.0-dev.5](https://github.com/andrewliang25/morphe-patches/releases/tag/v3.2.0-dev.5)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;37 patches total
 <details open>
-<summary>📦 Facebook&nbsp;&nbsp;•&nbsp;&nbsp;11 patches</summary>
+<summary>📦 Facebook&nbsp;&nbsp;•&nbsp;&nbsp;12 patches</summary>
 <br>
 
 **🎯 Supported versions:**
@@ -34,6 +34,7 @@ Morphe Manager to build a modified APK.
 | [[Ad] Disable Audience Network](#ad-disable-audience-network) | Stops the Facebook app acting as the ad server for other apps on your device. This is the one patch that changes how other apps behave rather than how Facebook behaves: apps that show Facebook ads fall back to their own ad sources or show nothing, and an app that makes you watch an ad for a reward may not be able to give you one. |  |
 | [[Feed] Hide sponsored posts](#feed-hide-sponsored-posts) | Removes sponsored posts from the news feed. The ad is dropped before it reaches the feed list, so it leaves no gap and its impression is never logged. Covers both server-delivered ads and the ones the app ranks and inserts locally. |  |
 | [[Feed] Hide suggested and promoted posts](#feed-hide-suggested-and-promoted-posts) | Removes feed units Facebook injects rather than units your friends and pages posted: "Pages you may like" and its variants, the in-feed upsell nags and surveys, and the ad-experiment slots. Paid ads are a separate patch. |  |
+| [[Fix] Restore screens on re-signed builds](#fix-restore-screens-on-re-signed-builds) | On a build that is not signed by Facebook, taps open profiles and Settings pages such as Media, Dark mode and Active status again. Facebook checks its own signing certificate before it opens these screens, and a re-signed build fails that check without a message. A Root Mount install does not need this patch. |  |
 | [[General] AMOLED black theme](#general-amoled-black-theme) | Makes the dark mode of Facebook black instead of dark grey, which saves power on an OLED screen. Turn on dark mode in Facebook first. Dividers, borders, text, icons and the coloured banners do not change. |  |
 | [[General] Open links in external browser](#general-open-links-in-external-browser) | A web link that you tap opens in your default browser, and not in the in-app browser of Facebook. The pages of Facebook still open in the app. Thus login and checkout still work. |  |
 | [[Reels] Download any reel](#reels-download-any-reel) | Adds a Download button beside every reel, and not only the reels that you posted. It saves the video the player is streaming, at the best quality the player holds, to Movies/Facebook. |  |

@@ -1,3 +1,10 @@
+## [3.2.0-dev.5](https://github.com/andrewliang25/morphe-patches/compare/v3.2.0-dev.4...v3.2.0-dev.5) (2026-09-24)
+
+### 🐛 Bug Fixes
+
+* make the profile and Settings black in the AMOLED theme ([9a64a3d](https://github.com/andrewliang25/morphe-patches/commit/9a64a3db74e2fea9d1d1015b8191089457fd53d8)), closes [#252728](https://github.com/andrewliang25/morphe-patches/issues/252728) [#108](https://github.com/andrewliang25/morphe-patches/issues/108)
+* open profiles and settings on re-signed Facebook builds ([69a2f20](https://github.com/andrewliang25/morphe-patches/commit/69a2f20cbea21ffe49b3421c3ab56b0ec62cdf57)), closes [#117](https://github.com/andrewliang25/morphe-patches/issues/117) [#99](https://github.com/andrewliang25/morphe-patches/issues/99)
+
 ## [3.2.0-dev.4](https://github.com/andrewliang25/morphe-patches/compare/v3.2.0-dev.3...v3.2.0-dev.4) (2026-09-24)
 
 ### 🐛 Bug Fixes

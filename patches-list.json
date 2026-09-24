@@ -1,6 +1,6 @@
 {
   "NOTE": "Do NOT manually edit this file. This file is automatically updated when semantic release (release.yml) runs. Manually editing this file can break your releases and break third party tools that use this file.",
-  "version": "3.2.0-dev.4",
+  "version": "3.2.0-dev.5",
   "patches": [
     {
       "name": "[Ad] Block ad telemetry",
@@ -477,6 +477,34 @@
               "versionCodes": null,
               "isExperimental": false,
               "minSdk": null,
+              "description": null
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "[Fix] Restore screens on re-signed builds",
+      "description": "On a build that is not signed by Facebook, taps open profiles and Settings pages such as Media, Dark mode and Active status again. Facebook checks its own signing certificate before it opens these screens, and a re-signed build fails that check without a message. A Root Mount install does not need this patch.",
+      "default": true,
+      "dependencies": [],
+      "compatiblePackages": [
+        {
+          "packageName": "com.facebook.katana",
+          "name": "Facebook",
+          "description": null,
+          "apkFileType": "APKM",
+          "appIconColor": "#0864FF",
+          "signatures": null,
+          "targets": [
+            {
+              "version": "577.0.0.50.72",
+              "versionCodes": {
+                "ARM64_V8A": 474426275
+              },
+              "isExperimental": false,
+              "minSdk": 30,
               "description": null
             }
           ]
