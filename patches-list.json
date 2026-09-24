@@ -1,6 +1,6 @@
 {
   "NOTE": "Do NOT manually edit this file. This file is automatically updated when semantic release (release.yml) runs. Manually editing this file can break your releases and break third party tools that use this file.",
-  "version": "3.2.0-dev.6",
+  "version": "3.2.0-dev.7",
   "patches": [
     {
       "name": "[Ad] Block ad telemetry",
@@ -115,6 +115,32 @@
     {
       "name": "[Ad] Remove banner ads",
       "description": "LINE no longer loads the Smart Channel banner ads. This patch makes the getBanners and getPrefetchableBanners responses null.",
+      "default": true,
+      "dependencies": [],
+      "compatiblePackages": [
+        {
+          "packageName": "jp.naver.line.android",
+          "name": "LINE",
+          "description": null,
+          "apkFileType": "APKM",
+          "appIconColor": "#06C755",
+          "signatures": null,
+          "targets": [
+            {
+              "version": "26.14.0",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "[Chat] Hide AI Friends button",
+      "description": "Removes the AI Friends button from the Chats tab header. The Album button shows in its place.",
       "default": true,
       "dependencies": [],
       "compatiblePackages": [
@@ -571,6 +597,32 @@
     {
       "name": "[General] Disable VOOM",
       "description": "VOOM deep links, shares, and notifications do nothing. If you open the standalone VOOM feed, it closes. Messaging and the other tabs do not change.",
+      "default": true,
+      "dependencies": [],
+      "compatiblePackages": [
+        {
+          "packageName": "jp.naver.line.android",
+          "name": "LINE",
+          "description": null,
+          "apkFileType": "APKM",
+          "appIconColor": "#06C755",
+          "signatures": null,
+          "targets": [
+            {
+              "version": "26.14.0",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "[General] Hide Agent i buttons",
+      "description": "Removes the Agent i button from the Home header and from the search bar.",
       "default": true,
       "dependencies": [],
       "compatiblePackages": [

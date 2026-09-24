@@ -1,3 +1,9 @@
+## [3.2.0-dev.7](https://github.com/andrewliang25/morphe-patches/compare/v3.2.0-dev.6...v3.2.0-dev.7) (2026-09-24)
+
+### ✨ New Features
+
+* hide the Agent i and AI Friends buttons ([0ddc176](https://github.com/andrewliang25/morphe-patches/commit/0ddc1760a4f15edca734890968f0818b7cbb6215)), closes [#133](https://github.com/andrewliang25/morphe-patches/issues/133)
+
 ## [3.2.0-dev.6](https://github.com/andrewliang25/morphe-patches/compare/v3.2.0-dev.5...v3.2.0-dev.6) (2026-09-24)
 
 ### ✨ New Features

@@ -1,7 +1,7 @@
 {
-  "created_at": "2026-09-24T18:00:17",
-  "description": "## [3.2.0-dev.6](https://github.com/andrewliang25/morphe-patches/compare/v3.2.0-dev.5...v3.2.0-dev.6) (2026-09-24)\n\n### ✨ New Features\n\n* hide the \"CHECK\" tips under chat messages ([c2f234d](https://github.com/andrewliang25/morphe-patches/commit/c2f234da10ff8e7d856fa188d88047eb06a5244f))",
-  "download_url": "https://github.com/andrewliang25/morphe-patches/releases/download/v3.2.0-dev.6/patches-3.2.0-dev.6.mpp",
+  "created_at": "2026-09-24T18:05:36",
+  "description": "## [3.2.0-dev.7](https://github.com/andrewliang25/morphe-patches/compare/v3.2.0-dev.6...v3.2.0-dev.7) (2026-09-24)\n\n### ✨ New Features\n\n* hide the Agent i and AI Friends buttons ([0ddc176](https://github.com/andrewliang25/morphe-patches/commit/0ddc1760a4f15edca734890968f0818b7cbb6215)), closes [#133](https://github.com/andrewliang25/morphe-patches/issues/133)",
+  "download_url": "https://github.com/andrewliang25/morphe-patches/releases/download/v3.2.0-dev.7/patches-3.2.0-dev.7.mpp",
   "signature_download_url": "",
-  "version": "3.2.0-dev.6"
+  "version": "3.2.0-dev.7"
 }
