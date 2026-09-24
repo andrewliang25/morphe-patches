@@ -1,3 +1,9 @@
+## [3.2.0-dev.6](https://github.com/andrewliang25/morphe-patches/compare/v3.2.0-dev.5...v3.2.0-dev.6) (2026-09-24)
+
+### ✨ New Features
+
+* hide the "CHECK" tips under chat messages ([c2f234d](https://github.com/andrewliang25/morphe-patches/commit/c2f234da10ff8e7d856fa188d88047eb06a5244f))
+
 ## [3.2.0-dev.5](https://github.com/andrewliang25/morphe-patches/compare/v3.2.0-dev.4...v3.2.0-dev.5) (2026-09-24)
 
 ### 🐛 Bug Fixes
