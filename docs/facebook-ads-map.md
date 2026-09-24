@@ -922,16 +922,95 @@ None of these is a Redex name.
   its own process. Saving media that the server chose not to offer belongs in the patch description,
   not in a footnote.
 
+## Re-signed builds: Facebook trusts its own certificate
+
+On a re-signed build, some taps did nothing:
+
+- A personal profile (issue #117), from a search result, from the Friends list of a profile, and
+  from the author of a group post. A Page and a public figure opened.
+- Some Settings rows (issue #99): Media, Dark mode and Active status. Notifications opened.
+
+A **Root Mount** install worked, so the cause is the signature. Other patch bundles that re-sign
+Facebook had the same fault.
+
+The tap wrote nothing to the log, and the system started no activity. Facebook dropped it before
+any navigation.
+
+**The mechanism.** Facebook's security code compares the signing certificate of a package with a
+table of Meta certificates. `LX/04Y;` holds the table as SHA-256 hashes in URL-safe Base64, and
+Facebook's own hash `4_nh4M-Z0OVqBVumXiQbM5n3zqUkMmsM3W7BMn7Q_cE` is `04Y.A0m`. `LX/NuT;` holds
+SHA-1 hashes, with `ijxLJi1yGs1JpL-X1SExmchvork` for Facebook. Facebook applies the check to its
+own package too. A re-signed build has a different certificate, so it does not trust itself.
+
+**The choke point.** Each check reads the signers through one method, `LX/0Hj;->A00()LX/0Hr;`.
+`0Hj` wraps a `PackageInfo`. Two places build one: `LX/14B;->A06` (a `getPackageInfo`) and
+`LX/0Wk;->A0C` (the activities that an intent resolves to). `0Hj.A00` prefers
+`SigningInfo.getApkContentsSigners`, then `getSigningCertificateHistory`, then the old
+`PackageInfo.signatures`.
+
+One path that uses this: Facebook attaches a caller identity to its own internal launches, a
+`PendingIntent` in the `_ci_` extra. `LX/08G;->A00` reads the creator package of that
+`PendingIntent` and checks its certificate through `0Hj.A00`.
+
+**The fix.** The patch hooks the start of `0Hj.A00`. If the package is `com.facebook.katana`, the
+extension returns the original certificate of Facebook (SHA-1 `8a3c4b26…fa2b9`, from
+`META-INF/IMPORTED.RSA` of the stock APK). For any other package, the body runs as before. The
+package name is enough, because Android lets only one installed app have it, and the patch does
+not rename Facebook. On a Root Mount install the certificate is already the original, so the hook
+changes nothing.
+
+**Anchoring.** `0Hj.A00` is the only method with no parameters that reads both signer lists of
+`SigningInfo` and also `PackageInfo.signatures`. The fingerprint uses only these framework
+references. The patch finds the `PackageInfo` field by its type, and it checks that the return type
+has a `(List, boolean, boolean)` constructor.
+
+**Device-confirmed on 2026-09-25** on a re-signed 577.0.0.50.72, Android 17:
+
+| Tap | Without the patch | With the patch |
+|---|---|---|
+| A friend in the search results | no response | the profile opens |
+| A friend in the Friends list of a profile | — | the profile opens |
+| A group post author, then "View profile" | — | the profile opens |
+| Settings > Media | no response | the page opens |
+| Settings > Dark mode | no response | the page opens |
+| Settings > Active status | no response | the page opens |
+
+**Not verified: why #99 starts after the first launch.** The reporters said that a fresh install
+worked until they restarted the app. The trust code reads MobileConfig flags (for example in
+`FirstPartySecureContentProviderDelegate.A0Z`), and the server sends MobileConfig after the first
+session. A flag that turns a check on in the second session matches the report. This also explains
+why the fault is different between accounts.
+
+**The other readers of a certificate.** A scan found 45 methods that read a signing certificate.
+Only the paths that follow check Facebook's own package. Each reads the signers through
+`0Hj.A00`:
+
+- `LX/0Hq;->A00`, `A01`, `A02` (the signer, the package, the hash).
+- `LX/0Hs;->A01` (the app identity that `LX/04d;->isAppIdentityTrusted` judges).
+- `LX/08G;->A00` (the caller identity of an internal launch).
+- `LX/0xB;->A01` (the family device id sync, used by `FDIDLiteProvider` and `FDIDSyncLiteReceiver`).
+
+The other readers check a different package, so a re-signed Facebook does not change them:
+
+- Google: Play services availability (`LX/5Up;->A04`), Play Core and in-app review (`LX/kZY`,
+  `LX/lkH`, `LX/lkI`, `LX/nAg`), the font provider (`LX/0YV`, `LX/lq2`) and split install.
+- Meta apps: App Manager and preloads (`LX/68I`, `LX/OKz`, `LX/OKo`, `LX/8cQ`), SSO
+  (`LX/8Co;->A03`, `PostInstallSsoReceiver`, `ProxyAuthDialog`), and the caller of a provider
+  (`LX/O7R`, `LX/O85`, and the `NuT` step of `FirstPartySecureContentProviderDelegate`).
+- `PackageManager.checkSignatures` (`LX/0Hq;->A03`, `LX/0py`, `LX/OJn`): the system compares two
+  installed apps, so Facebook compared with itself still matches.
+
 ## Risks
 
 * **Play Integrity.** Facebook sends attestation results to the servers of Meta
   (`performPlayIntegrityAttestation…`, `caa_play_integrity_attestation_result`,
   `zca_play_integrity_last_attested_token`). No code in the client acts on the result. But the
   signal can show its effect after some days, not in one session. Use a throwaway account first.
-* **There is no check of the app signature.** The APK holds no signing-cert hash for Facebook. The
-  checks that do exist (`"Incorrect signature for package "`, `LX/lZa;->A00`) are **cross-app SSO**
-  against other Meta apps. Thus account SSO with Messenger and Instagram breaks on any re-signed
-  build.
+* **Facebook checks its own signature before it opens some screens.** On a re-signed build, a tap
+  on a personal profile or on some Settings rows did nothing (issues #117 and #99). "[Fix] Restore
+  screens on re-signed builds" corrects this. See [Re-signed builds](#re-signed-builds-facebook-trusts-its-own-certificate).
+  The checks against other Meta apps (`"Incorrect signature for package "`, `LX/lZa;->A00`) still
+  fail. Thus account SSO with Messenger and Instagram breaks on any re-signed build.
 * **Audience Network reaches outside Facebook.** A test of Facebook shows that Facebook is correct.
   It does not show that the reward flow in another app survives the loss of the bridge.
 * **Release cadence.** Facebook releases about every two weeks, which is about 6 times the rate of
