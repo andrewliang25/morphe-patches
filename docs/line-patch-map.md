@@ -496,6 +496,8 @@ starting point, so no one needs to sweep the APK again.
 | [Chat] Keep unsent messages | `line.keepunsent` | `la8.x.invoke` — the unsend DB write (see below) |
 | [Tab] Hide Shopping tab | `line.hideshoppingtab` | `COMMERCE` + `COMMERCE_TW` in `wy7.b.a()` (see above) |
 | [Fix] Restore location maps via MicroG-RE | `line.fixlocationmaps` | `fo/p.b` — the maps module context (see below) |
+| [General] Hide Agent i buttons | `line.hideagenti` | `wm2.j` Home header icon + `function.search.line_ai_entry.enabled` (see below) |
+| [Chat] Hide AI Friends button | `line.chatheaderbuttons` | `function.ai.character.display_button` (see below) |
 
 Each is an independent, `default = true`, user-facing `bytecodePatch` — one feature (or one
 feature's full set of entry points) per patch. Most are instruction-level edits. *Redirect LINE
@@ -670,6 +672,46 @@ draw the notice twice.
 | `na8.c` db values | `MESSAGE` = 1, `UNSENT` = 27, `UNSENT_NO_MARK` = 28, `SQUARE_UNSENT_MESSAGE` = 35, `UNSENT_SILENT` = 38 — the extension hardcodes 27 (the type it writes) and 27/28/38 (`na8.c.h()`'s set, the rows it refuses to annotate) |
 | `cb8.q7.NONE` | 0 (`attachement_type`) |
 | chat-list unread badge | `chat.message_count - chat.read_message_count` (`c23.d` columns, read in `z13.o`) — a stored counter pair, **not** a `count(*)` over `chat_history`, so the inserted placeholder cannot move it |
+
+---
+
+## AI entry points & the "Hide Agent i buttons" / "Hide AI Friends button" patches
+
+Three buttons open LINE's AI features. Each button has a boolean gate. Two of the gates are server
+flags in the config classes `g45.c` and `g45.i2`, and each of these flags has a one-field accessor.
+
+| Button | Where | Gate (26.14.0) | Readers |
+|---|---|---|---|
+| Agent i | Home header, before the services grid | `wm2.j.a`, then label `access_agenti` (0x7f15006c) | `wm2.j` only |
+| Agent i / AI entry | end of the search bar (`main_tab_ai_entry_icon_container`) | `function.search.line_ai_entry.enabled` → `g45.i2.b()` | `m25.i` constructor, `qz1.f.x()` |
+| AI Friends | Chats tab header | `function.ai.character.display_button` → `g45.c.t()` | `qz1.f` constructor, `qz1.g`, `qy1.j0` (twice) |
+
+**One parse pattern finds both accessors.** The parser `g45.e` reads each flag as
+`const-string "<key>"`, then the accessor for its default value, then `h45.a.a(key, map, default)`.
+R8 renames the accessor but keeps the key. `line/shared/ServerFlag.kt` matches the key and the
+`()Z` call right after it, then makes that accessor return false. Every reader then sees the value
+that LINE gets when the server turns the flag off.
+
+**Why the Home header is hidden at the view, not at a flag.** The Home header value comes from
+`b3.hb.b()` → `g45.c.z()`, the master Agent i flag. The APK reads it 24 times, for example in the
+AI talk suggestions settings. A false value there changes much more than one button. Thus the patch
+replaces only the `iget-boolean wm2.j.a` in the header lambda with `const 0`.
+
+**AI Friends and Album share one slot.** The header builder in `qz1.f` adds `AI_FRIEND` if `t()`
+is true, and `ALBUM` if it is false. `qy1.j0` reads `t()` too, for the Album button and its green
+dot. The patch turns off the flag, not the list entry, so the Album button comes back and all
+readers agree.
+
+**The search bar hides its own layout.** If `i2.b()` is false, the `m25.i` constructor sets the
+container to GONE, moves the guideline back and attaches no click listener. This is the same state
+as an account without the feature.
+
+**Verification.** None of the three buttons shows on the test account (Taiwan). Thus a hidden
+button proves nothing. A local probe forced the three sites to true. The AI Friends button then
+replaced Album, and the AI button showed at the end of the Home and Chats search bars. The real
+patch gives back the stock layout, with no crash. The probe cannot show the `wm2.j` site, because
+this account has the older Home header (bookmark, bell, add friend, Settings). Only disassembly
+confirms that site.
 
 ---
 

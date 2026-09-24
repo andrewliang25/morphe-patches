@@ -1,5 +1,6 @@
 package app.andrewliang.patches.line.chatheaderbuttons
 
+import app.andrewliang.patches.line.shared.ServerFlagFingerprint
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.fieldAccess
 import app.morphe.patcher.methodCall
@@ -31,3 +32,10 @@ internal object CommunityButtonFingerprint : Fingerprint(
         methodCall(definingClass = HEADER_LIST_ADD, name = "add"),
     ),
 )
+
+/**
+ * The server flag for the AI Friends button (`g45.c.t()` in 26.14.0). The header builder adds
+ * `AI_FRIEND` if this flag is true, and `ALBUM` in its place if it is false.
+ */
+internal object AiFriendsFlagFingerprint :
+    ServerFlagFingerprint("function.ai.character.display_button")
