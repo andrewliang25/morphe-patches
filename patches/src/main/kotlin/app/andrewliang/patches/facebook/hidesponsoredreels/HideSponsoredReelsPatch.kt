@@ -140,18 +140,11 @@ val hideSponsoredReelsPatch = bytecodePatch(
             PoeAdRenderFingerprint,
         ).forEach { it.method.addInstructions(0, "return-void") }
 
-        // Ads fetched while you watch one reel are a separate route (issue #121). A product banner
-        // over an organic reel, and a mid-roll with its "Ad starts in" countdown, are not items in
-        // the page, so neither filter above ever sees them. Each Reels ad state asks for them on its
-        // own, through a few fetch helpers that each build one query and return its future.
-        //
-        // Those fetches now answer with a future that has already failed. Every caller handles
-        // that, because it is what a network error produces: the callers mark the fetch complete
-        // and log "Failed to fetch banner ad" or "Failed to fetch video ad". No ad is stored, and
-        // no query leaves the device.
-        //
-        // The failed future is built in a new method on each class that needs it, so every call
-        // site is a single branchless invoke with no register to borrow.
+        // Banners over a reel and mid-rolls are fetched while a reel plays, never inside the page,
+        // so the filters above cannot see them. Their fetches answer an already failed future
+        // instead. Every caller treats that as a network error: it marks the fetch complete and
+        // stores no ad, and no query leaves the device. The future comes from a method added to
+        // each class, so each site is one branchless invoke.
         val adBreakFetch = AdBreakFetchFingerprint.method.instructions()
 
         // The banner helper. The idle state, the shared ad-break fetch and the pause-ad path all
@@ -161,9 +154,9 @@ val hideSponsoredReelsPatch = bytecodePatch(
             .single { it.matches(bannerFetch) }
             .let(::returnFailedFuture)
 
-        // The video ad fetcher. The shared ad-break fetch reaches one of its queries, the classic
-        // in-stream ad breaks the same one, and the scrubber ad page the other. Every method of the
-        // class that answers a future is an ad query, so all of them fail.
+        // The ad-break server API: the shared ad-break fetch, the classic in-stream ad breaks and
+        // the insertion-point lookup all query through it. Every method of it that answers a
+        // future is an ad query, so all of them fail.
         val videoFetcher = adBreakFetch.futureCallBefore(VIDEO_FETCH_LOG).definingClass
         mutableClassDefBy(videoFetcher).methods
             .filter { it.returnType == LISTENABLE_FUTURE }
@@ -191,6 +184,21 @@ val hideSponsoredReelsPatch = bytecodePatch(
             executeIndex,
             "invoke-static { }, ${failedFutureOn(idleVideoFetch.definingClass)}",
         )
+
+        // The state that looks up where a reel's ad breaks go retries a failed lookup every second
+        // for as long as the reel plays. Its tick now gives the answer it gives for a reel with no
+        // media, -1, which stops the progress poller. The state then never looks up, never
+        // resolves, and never moves on to the ad-break states.
+        val unresolvedState = mutableClassDefBy(UnresolvedAdStateFingerprint.method.definingClass)
+        unresolvedState.methods
+            .single { it.returnType == "J" && it.parameterTypes.size == 2 && it.parameterTypes[1] == "I" }
+            .addInstructions(
+                0,
+                """
+                    const-wide/16 v0, -0x1
+                    return-wide v0
+                """,
+            )
     }
 }
 

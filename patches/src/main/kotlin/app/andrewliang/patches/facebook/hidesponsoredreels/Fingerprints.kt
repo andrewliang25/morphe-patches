@@ -85,3 +85,13 @@ internal object ReelsVideoAdQueryFingerprint : Fingerprint(
 )
 
 internal const val REELS_VIDEO_AD_QUERY = "FBFetchReelsVideoAdsQuery"
+
+/**
+ * The name that the Reels ad state which resolves ad-break insertion points gives itself. Its class
+ * holds the tick that starts that lookup.
+ */
+internal object UnresolvedAdStateFingerprint : Fingerprint(
+    returnType = "Ljava/lang/String;",
+    parameters = listOf(),
+    strings = listOf("UnresolvedWithDeferredCardState"),
+)

@@ -323,8 +323,27 @@ chosen by the ad placement enum `LX/6hz;` (`BANNER`, `MID_ROLL`, `POST_ROLL`, `P
 | Site | Callers | What the patch does |
 |---|---|---|
 | `LX/6lf;->A02` | `SQq.A02` (logs `"Kicking off video ad fetch"`) and `AdBreakFetchHelper` (`LX/SMj;->A05`, the classic in-stream ad breaks) | returns the failed future |
-| `LX/6lf;->A03` | the scrubber ad page (`LX/7f5;`, `"NextPageScrubberState"`) and `LX/SOw;` | returns the failed future |
+| `LX/6lf;->A03` | the insertion-point lookup of `UnresolvedWithDeferredCardState` (`LX/7f5;->A0g`), the scrubber page `LX/7fE;`, and `LX/SOw;` | returns the failed future |
 | `LX/7ez;->A0B` | the idle state. It builds `FBFetchReelsVideoAdsQuery` itself and runs it on the generic GraphQL executor `LX/6dp;->A11` | that one call is replaced by the helper |
+
+**The insertion-point state must not be failed. Stop its tick instead.** The Reels ad states run on
+a progress poller (`StateMachineController$SendProgressUpdateRunnable`, `LX/7Dr;`). The poller asks
+the current state for a delay through `A0g(…, position)J`. For `-1` it stops, for `-2` ("in flight")
+it asks again after 1000 ms, and for any other value it waits until that position.
+`UnresolvedWithDeferredCardState` (`LX/7f5;`) looks up where the ad breaks of a reel go. Its flag
+`7f7.A03` means "lookup in flight", and its failure callback `LX/6lk;` clears that flag. A failed
+lookup therefore runs again at the next poll. On the device this was one retry each second while a
+reel played, each with a stack trace at error level.
+
+The patch thus makes `7f5.A0g` return `-1`, which is the answer the state already gives for a reel
+with no media. The poller stops, the state never looks up, and the machine never reaches the
+ad-break states. `LX/7fD;` inherits this tick. The scrubber page `LX/7fE;` has its own tick, and the
+failed future on `6lf.A03` stays as its backstop. The anchor is the state name
+`"UnresolvedWithDeferredCardState"`, returned by `A0k()`. It is unique in the APK.
+
+There is no "ads disabled" state to move the machine into. `VoidState` (`LX/SH5;`) is the base
+class of this machine and of several other machines. `LX/SZx;`, the one state for which the tick
+gate `SH5.A0o()` answers false, is the base class of `AdTransitionState`.
 
 `LX/6lf;` is the ad-break server API (its failure log is tagged `"AdBreakServerAPI"`). Every method
 on it that returns a future is an ad query, so the patch fails all of them and does not pick by name.
@@ -343,9 +362,14 @@ returns a `SettableFuture` that failed with an `IOException`. Each site is then 
 `invoke-static`, and no register must be borrowed. The whole bundle strips 35 classes, and the
 patch adds 3 methods.
 
+**Device result, 2026-09-24,** on a re-signed 577.0.0.50.72 with the full default bundle. Reels
+played and scrolled normally for 3 minutes, across about 16 reels. There was no ad, no crash and no
+`VerifyError`. With the tick stop, the log held **no** ad fetch and no retry. The earlier build without
+the tick stop logged 56 failed lookups from `7f5.A0g` in the same time. The banner helper, `6lf.A02`
+and `7ez.A0B` did not run in either session. Thus they are verified in the dex only.
+
 **Still open.** `A0B` still logs `"reels_ad_query_send"` after the fetch, so the telemetry event goes
-out without a query. Pause ads are blocked as a side effect of the banner site. Neither change has
-been tested on a device.
+out without a query. Pause ads are blocked as a side effect of the banner site.
 
 **Why it is hard to reproduce.** The banner is fetched only while you stay on one reel. The server
 decides per account and per country whether to send one. Fast scrolling skips most fetches, and a
