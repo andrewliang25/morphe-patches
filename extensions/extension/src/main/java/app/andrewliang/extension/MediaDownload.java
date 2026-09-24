@@ -55,7 +55,17 @@ public final class MediaDownload {
      */
     public static boolean saveStory(Context context, Object host) {
         try {
-            return begin(context, collectStoryUrls(host));
+            List<String> urls = collectStoryUrls(host);
+
+            // The card holds one video address, and it is 360p. The player of the same video can
+            // hold better, so its recorded source is tried first.
+            PlayerSources.Source source = PlayerSources.find(host);
+            if (source != null) {
+                addIfUsable(urls, source.hdUrl);
+                if (beginDash(context, source, urls)) return true;
+            }
+
+            return begin(context, urls);
         } catch (Throwable t) {
             // Throwable and not Exception. A renamed field surfaces as NoSuchFieldError, and a
             // reflective call on a changed class surfaces as a LinkageError. Neither is an
@@ -139,14 +149,7 @@ public final class MediaDownload {
      * releases, and one constant mistaken for another saves the wrong file without a word.
      */
     private static boolean begin(Context context, List<String> urls) {
-        if (Build.VERSION.SDK_INT < MIN_SDK) {
-            // The module is shared with the LINE patches and declares an older floor than this
-            // needs, so the check belongs here rather than in the manifest.
-            Log.w(TAG, "saving needs Android 10 or newer");
-            return false;
-        }
-
-        if (context == null || urls == null || urls.isEmpty()) {
+        if (urls == null || urls.isEmpty()) {
             Log.w(TAG, "nothing to save: the item carried no address");
             return false;
         }
@@ -162,15 +165,8 @@ public final class MediaDownload {
             return false;
         }
 
-        if (IN_FLIGHT.get() >= MAX_IN_FLIGHT) {
-            Log.w(TAG, "too many saves at once");
-            return false;
-        }
-
-        Context application = context.getApplicationContext();
-        // Never the Activity. A download outlives the screen that started it, and holding the
-        // Activity across it is a leak, and Facebook's own tooling reports it.
-        Context safe = application != null ? application : context;
+        Context safe = ready(context);
+        if (safe == null) return false;
 
         // Every candidate, so a saved file that is smaller than expected can be told apart from
         // a ranking that chose badly. Names and sizes only: a whole address is a signed, working
@@ -185,11 +181,88 @@ public final class MediaDownload {
             + " " + describe(chosen)
             + " from " + urls.size() + " candidate(s): " + all);
 
-        start(safe, chosen, isVideo);
+        start(safe, isVideo, writer -> Downloader.fetch(chosen, writer));
         return true;
     }
 
-    private static void start(Context application, String url, boolean video) {
+    /**
+     * Save the best video track and audio track of the player's DASH manifest, when that beats
+     * every single-file address the item holds.
+     *
+     * <p>The manifest lists renditions that no single-file address offers: a story whose card and
+     * player both hold only 360p files lists tracks up to 1080p. The two tracks are joined into one
+     * file on the device. If that fails, the best single-file address is saved instead, so the
+     * user still gets a file.
+     *
+     * @return whether a download started. {@code false} lets the caller save a single file.
+     */
+    private static boolean beginDash(Context context, PlayerSources.Source source, List<String> urls) {
+        List<DashManifest.Track> tracks = DashManifest.parse(source.manifest);
+        DashManifest.Track video = DashManifest.bestVideo(tracks, DashSave.canWriteAv1());
+
+        if (video == null) {
+            if (source.manifest != null) {
+                Log.i(TAG, "the manifest of video " + source.videoId + " has no track to save: "
+                    + tracks);
+            }
+            return false;
+        }
+
+        String fallback = RenditionPicker.bestOf(urls, true);
+        int fallbackQuality = fallback == null ? 0 : RenditionPicker.qualityOf(fallback);
+
+        if (video.shortSide() <= fallbackQuality) return false;
+
+        Context safe = ready(context);
+        if (safe == null) return false;
+
+        DashManifest.Track audio = DashManifest.bestAudio(tracks);
+
+        Log.i(TAG, "saving video " + source.videoId + " from its DASH manifest: " + video
+            + (audio == null ? ", no sound track" : " + " + audio)
+            + ", instead of " + (fallback == null ? "nothing" : describe(fallback)));
+
+        start(safe, true, writer -> {
+            Downloader.Status status = DashSave.save(safe, video, audio, writer);
+            if (status == Downloader.Status.OK || fallback == null) return status;
+
+            Log.w(TAG, "the DASH save ended with " + status + ", saving " + describe(fallback));
+            return Downloader.fetch(fallback, writer);
+        });
+        return true;
+    }
+
+    /**
+     * The context to save with, or {@code null} when a save cannot start now.
+     *
+     * <p>Never the Activity. A download outlives the screen that started it, and holding the
+     * Activity across it is a leak, and Facebook's own tooling reports it.
+     */
+    private static Context ready(Context context) {
+        if (Build.VERSION.SDK_INT < MIN_SDK) {
+            // The module is shared with the LINE patches and declares an older floor than this
+            // needs, so the check belongs here rather than in the manifest.
+            Log.w(TAG, "saving needs Android 10 or newer");
+            return null;
+        }
+
+        if (context == null) return null;
+
+        if (IN_FLIGHT.get() >= MAX_IN_FLIGHT) {
+            Log.w(TAG, "too many saves at once");
+            return null;
+        }
+
+        Context application = context.getApplicationContext();
+        return application != null ? application : context;
+    }
+
+    /** One save, run on the worker thread. It writes through [writer] and reports how it went. */
+    private interface Job {
+        Downloader.Status run(MediaStoreWriter writer);
+    }
+
+    private static void start(Context application, boolean video, Job job) {
         IN_FLIGHT.incrementAndGet();
         Feedback.show(application, "Saving...", false);
 
@@ -197,7 +270,7 @@ public final class MediaDownload {
             MediaStoreWriter writer = new MediaStoreWriter(application, video);
 
             try {
-                Downloader.Status status = Downloader.fetch(url, writer);
+                Downloader.Status status = job.run(writer);
                 Log.i(TAG, "save finished: " + status);
                 Feedback.show(application, message(status, writer.savedLocation()), status != Downloader.Status.OK);
             } catch (Throwable t) {

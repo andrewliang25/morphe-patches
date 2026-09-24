@@ -823,28 +823,50 @@ and the register plumbing at the injection point. `Fb dump` prints no operand re
 register number, and anchors on an 18-parameter signature. Facebook releases about every two
 weeks, so it needs a new derivation on most of them. It can also fail quietly rather than loudly.
 
-### A reel opened from the story tray saves at 360p, and that is the source
+### A video story saves from the player's DASH manifest
 
-Measured, so that nobody re-investigates the ranking for it. A reel reached through the story tray
-is saved by the **story** half. That half reads the card rather than the player, and the card
-carries four addresses of which only two are distinct:
+The card of a video story holds one video address, and it is 360p. The card carries four
+addresses, and only two of them are different:
 
 | Candidate | What it is |
 |---|---|
 | `…_n.jpg` (1080p), twice | the poster image |
 | `…_n.mp4` (360p), twice | the video, and the only one |
 
-There is no high quality video address on the card at all. The ranking picks the only video there
-is, so it is right; the ceiling is the source. A reel reached through the reels tray is saved by the
-sidebar button instead, which reads `videoHdUri` off the player, and comes back at 720p.
+The player of the same story holds no better single file. A probe logged every
+`VideoPlayerParams` as the app built it. For story-tray players, `videoHdUri` was `null` and
+`videoUri` was the same 360p file. But `abrManifestContent`, the inline DASH manifest, listed
+tracks up to 1080x1920. So the higher quality exists only as DASH: one file for the picture and one
+file for the sound.
 
-To close the gap, the story half needs a route to the player. Its action does not have one: it
-holds a context and a card and nothing else. The shape that works is a small map from video id to
-source, filled where `VideoPlayerParams` is built, because that object carries both the id and the
-source. It is keyed per item, so it is not the "most recent source" trap.
+Measured on 2026-09-24, on a re-signed 577.0.0.50.72 on Android 17:
 
-**Not built**, and worth one probe first. The 720p measured so far was reels-tray playback. If
-Facebook streams the story tray at 360p, the player holds nothing better either.
+- **The card carries the player's video id.** It is not `getStoryCardIdUnencoded()`. It is a
+  string field further into the card. A walk of the card for strings that look like ids finds it.
+- **Story manifests list AV1 only.** One had seven 720x1280 tracks and one 1080x1920 track, all
+  `av01`, and four audio tracks of `mp4a.40.42` (xHE-AAC).
+- **Each track is one `BaseURL`**, a whole MP4 that one plain fetch gets, with no headers.
+
+How the patch uses this:
+
+1. At every return of both `VideoPlayerParams` constructors, it calls
+   `PlayerSources.remember`. That records the video id, `videoHdUri` and the manifest, keyed by the
+   id and bounded to 48 entries. The key is what makes this safe. The app builds the next players
+   early, so a record of the most recent source saves the wrong video.
+2. On a save, it walks the card for ids and takes the first one that names a recorded player.
+3. `DashManifest` picks the best video track (at the same size H.264, then H.265, then AV1) and the
+   best AAC track. It uses them only when the video track is larger than the best single file.
+4. `DashSave` downloads both tracks into the cache and joins them with `MediaMuxer`. Nothing is
+   decoded again. Then it copies the result into MediaStore. If any step fails, the best single
+   file is saved instead.
+
+AV1 is chosen only when `MediaMuxer` can write it into an MP4 (Android 14 or newer) **and** the
+device has an AV1 decoder. Otherwise a story falls back to 360p, as before. The field names come
+from each class's `EVr` debug dump (`videoId`, `videoHdUri`, `abrManifestContent`), so no Redex
+name is written down.
+
+A device run saved a 34-second story as 1080x1920 AV1 with AAC sound, 4.4 MB, in under a second
+after the download. Google Photos plays it.
 
 ### Anchors that survive a bump
 

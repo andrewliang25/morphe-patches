@@ -1,30 +1,47 @@
 package app.andrewliang.patches.facebook.downloadstory
 
+import app.andrewliang.patches.facebook.shared.reportedFieldNames
 import app.andrewliang.patches.shared.Constants.COMPATIBILITY_FACEBOOK
+import app.morphe.patcher.extensions.InstructionExtensions.addInstruction
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
+import app.morphe.patcher.patch.BytecodePatchContext
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
+import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod.Companion.toMutable
 import app.morphe.patcher.util.smali.ExternalLabel
+import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
+import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
 import com.android.tools.smali.dexlib2.iface.instruction.Instruction
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
+import com.android.tools.smali.dexlib2.iface.reference.StringReference
 import com.android.tools.smali.dexlib2.iface.reference.TypeReference
+import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
+import com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter
 
 /** The extension call that saves the story. It answers whether it took the job. */
 private const val SAVE_STORY = "Lapp/andrewliang/extension/MediaDownload;->" +
     "saveStory(Landroid/content/Context;Ljava/lang/Object;)Z"
+
+/** The extension call that records the source of each player the app builds. */
+private const val REMEMBER_SOURCE = "Lapp/andrewliang/extension/PlayerSources;->" +
+    "remember(Ljava/lang/Object;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V"
+
+/** The helper this patch adds to the player params, so each constructor gains only one call. */
+private const val REMEMBER_HELPER = "andrewRememberSource"
 
 @Suppress("unused")
 val downloadStoryPatch = bytecodePatch(
     name = "[Stories] Download any story",
     description = "Adds a save option to the menu of any story, and not only to the stories that " +
         "you posted. It saves the picture or the video that the story shows, including a story " +
-        "with music, which Facebook's own save refuses. Files go to Pictures/Facebook or " +
-        "Movies/Facebook.",
+        "with music, which Facebook's own save refuses. A video is saved at the best quality the " +
+        "player can stream. Files go to Pictures/Facebook or Movies/Facebook.",
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_FACEBOOK)
@@ -158,6 +175,97 @@ val downloadStoryPatch = bytecodePatch(
             """,
             ExternalLabel("original", handler.getInstruction(0)),
         )
+
+        rememberPlayerSources()
+    }
+}
+
+/**
+ * Record the source of every player that the app builds, keyed by its video id.
+ *
+ * The story card holds one video address, and it is 360p. The player of the same story holds a
+ * DASH manifest with every rendition up to 1080p. The save action cannot reach the player, but the
+ * card carries the video id of the player. So the extension keeps each source by that id, and the
+ * save looks it up. A record keyed by id is correct for prepared players too: the app builds the
+ * next players early, and a record of the last one built would save the wrong video.
+ *
+ * The field names come from the debug dumps of the two classes, so no Redex name is written down.
+ */
+private fun BytecodePatchContext.rememberPlayerSources() {
+    fun reported(owner: String): Map<String, String> {
+        val dumps = mutableClassDefBy(owner).methods.filter { method ->
+            method.instructionsOrEmpty().any {
+                ((it as? ReferenceInstruction)?.reference as? StringReference)?.string ==
+                    REPORTED_NAME_MARKER[owner]
+            }
+        }
+        check(dumps.size == 1) { "Expected 1 debug dump on $owner, found ${dumps.size}" }
+        return reportedFieldNames(dumps.single())
+    }
+
+    val sourceNames = reported(VIDEO_DATA_SOURCE)
+    val paramNames = reported(VIDEO_PLAYER_PARAMS)
+
+    val videoId = paramNames["videoId"]
+    val hd = sourceNames["videoHdUri"]
+    val manifest = sourceNames["abrManifestContent"]
+
+    check(videoId != null && hd != null && manifest != null) {
+        "Unresolved field names: source=${sourceNames.keys} params=${paramNames.keys}"
+    }
+
+    val params = mutableClassDefBy(VIDEO_PLAYER_PARAMS)
+
+    // Its own method, with its own registers. A constructor then needs one range call, and a
+    // range call reads `p0` whatever register number it has.
+    val helper = ImmutableMethod(
+        VIDEO_PLAYER_PARAMS,
+        REMEMBER_HELPER,
+        listOf(ImmutableMethodParameter(VIDEO_PLAYER_PARAMS, null, null)),
+        "V",
+        AccessFlags.PUBLIC.value or AccessFlags.STATIC.value,
+        null,
+        null,
+        MutableMethodImplementation(4),
+    ).toMutable().apply {
+        addInstructions(
+            0,
+            """
+                const-string v0, "$videoId"
+                const-string v1, "$hd"
+                const-string v2, "$manifest"
+                invoke-static { p0, v0, v1, v2 }, $REMEMBER_SOURCE
+                return-void
+            """,
+        )
+    }
+
+    params.methods.add(helper)
+
+    // Every constructor, at every return. The return is replaced by the call and a new return
+    // follows it. A branch that targeted the return thus lands on the call, so no exit skips it.
+    val constructors = params.methods.filter { it.name == "<init>" }
+    var hooked = 0
+
+    constructors.forEach { constructor ->
+        val returns = constructor.instructionsOrEmpty().withIndex()
+            .filter { it.value.opcode == Opcode.RETURN_VOID }
+            .map { it.index }
+            .reversed()
+
+        returns.forEach { index ->
+            constructor.replaceInstruction(
+                index,
+                "invoke-static/range { p0 .. p0 }, " +
+                    "$VIDEO_PLAYER_PARAMS->$REMEMBER_HELPER($VIDEO_PLAYER_PARAMS)V",
+            )
+            constructor.addInstruction(index + 1, "return-void")
+            hooked++
+        }
+    }
+
+    check(hooked >= constructors.size && constructors.isNotEmpty()) {
+        "Hooked $hooked return(s) across ${constructors.size} constructor(s) of $VIDEO_PLAYER_PARAMS"
     }
 }
 
