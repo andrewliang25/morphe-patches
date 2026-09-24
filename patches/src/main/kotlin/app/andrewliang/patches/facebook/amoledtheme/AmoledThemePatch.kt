@@ -8,11 +8,13 @@ import app.morphe.patcher.patch.resourcePatch
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.Method
+import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.Instruction
 import com.android.tools.smali.dexlib2.iface.instruction.NarrowLiteralInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.OffsetInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.RegisterRangeInstruction
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import org.w3c.dom.Element
 
@@ -31,6 +33,15 @@ private const val BLACK = -0x1000000
 /** Gets the resolved colour and its token. Gives the colour to draw. */
 private const val APPLY = "Lapp/andrewliang/extension/AmoledTheme;->apply(ILjava/lang/Object;)I"
 
+/** The framework call that turns a colour string, such as `"#FF252728"`, into a colour. */
+private const val PARSE_COLOR = "Landroid/graphics/Color;->parseColor(Ljava/lang/String;)I"
+
+/** The extension call that replaces it. It has the same signature. */
+private const val PARSE_COLOR_DARK = "Lapp/andrewliang/extension/AmoledTheme;->parseColor(Ljava/lang/String;)I"
+
+/** The classes of the extension. Route four skips them, because the replacement calls the original. */
+private const val EXTENSION_PACKAGE = "Lapp/andrewliang/"
+
 /**
  * True for a dark grey, which is what a background uses. False for a dark colour with a hue, which
  * is a banner and keeps its colour. The extension holds the same rule for the colours it gets.
@@ -41,14 +52,17 @@ private fun isDarkNeutral(red: Int, green: Int, blue: Int): Boolean {
 }
 
 /**
- * A colour reaches the screen by three routes, and this patch covers all three with one rule.
+ * A colour reaches the screen by four routes, and this patch covers all four with one rule.
  *
  * The first route is a resolver: a component asks the design system, and the bytecode half hooks
  * the four methods that answer. The second is a resource: a view reads a colour by id, so no int
  * passes a hook, and the resource half below rewrites it. The third is a literal written in code,
- * which the bytecode half rewrites in place.
+ * which the bytecode half rewrites in place. The fourth is a string that the server sends, which
+ * the app parses with `Color.parseColor`. The bytecode half sends each of those calls through the
+ * extension.
  *
- * Route two and route three match on the **value** alone, with no class, method or resource name.
+ * Routes two, three and four match on the **value** or on a framework call, with no class, method
+ * or resource name.
  * Facebook strips resource names and renames its classes about every two weeks, so a name is not an
  * anchor here. A value of this exact shape is a colour and nothing else.
  */
@@ -142,6 +156,19 @@ val amoledThemePatch = bytecodePatch(
             mutableClassDefByOrNull(type)?.methods?.sumOf { it.blackenDarkColors() } ?: 0
         }
         check(rewritten > 0) { "No dark colour written in code, so the chrome would stay grey" }
+
+        // Route four. The server sends some colours as strings, and the app parses them with
+        // Color.parseColor. Each of those calls goes to the extension instead.
+        val parsers = mutableSetOf<String>()
+        classDefForEach { classDef ->
+            if (classDef.type.startsWith(EXTENSION_PACKAGE)) return@classDefForEach
+            if (classDef.methods.any { it.callsParseColor() }) parsers += classDef.type
+        }
+
+        val rerouted = parsers.sumOf { type ->
+            mutableClassDefByOrNull(type)?.methods?.sumOf { it.rerouteParseColor() } ?: 0
+        }
+        check(rerouted > 0) { "No call to Color.parseColor found, so server colours would stay grey" }
     }
 }
 
@@ -154,6 +181,38 @@ private fun Instruction.isDarkColor(): Boolean {
         (narrowLiteral shr 8) and 0xFF,
         narrowLiteral and 0xFF,
     )
+}
+
+/** True when this instruction calls `Color.parseColor`. */
+private fun Instruction.isParseColorCall(): Boolean =
+    (this as? ReferenceInstruction)?.reference?.toString() == PARSE_COLOR
+
+/** True when this method calls `Color.parseColor`. It only reads, thus it needs no proxy. */
+private fun Method.callsParseColor(): Boolean =
+    implementation?.instructions?.any { it.isParseColorCall() } == true
+
+/**
+ * Sends each call to `Color.parseColor` in this method to the extension. Answers how many it sent.
+ *
+ * The replacement has the same signature and reads the same register, so the `move-result` that
+ * follows stays correct. A call in the range form stays in the range form, because its register
+ * can be above v15.
+ */
+private fun MutableMethod.rerouteParseColor(): Int {
+    val sites = (implementation ?: return 0).instructions.withIndex()
+        .filter { it.value.isParseColorCall() }
+
+    sites.asReversed().forEach { (index, instruction) ->
+        val call = when (instruction) {
+            is RegisterRangeInstruction ->
+                "invoke-static/range { v${instruction.startRegister} .. v${instruction.startRegister} }, " +
+                    PARSE_COLOR_DARK
+            is FiveRegisterInstruction -> "invoke-static { v${instruction.registerC} }, $PARSE_COLOR_DARK"
+            else -> error("$definingClass->$name: unexpected call form ${instruction.opcode}")
+        }
+        replaceInstruction(index, call)
+    }
+    return sites.size
 }
 
 /** True when this method writes a dark grey. It only reads, thus it needs no proxy of the class. */
