@@ -16,6 +16,7 @@ import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.android.tools.smali.dexlib2.iface.reference.StringReference
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
+import com.android.tools.smali.dexlib2.util.MethodUtil
 
 private const val GRAPHQL_STORY = "Lcom/facebook/graphql/model/GraphQLStory;"
 private const val COLLECTION = "Ljava/util/Collection;"
@@ -33,8 +34,8 @@ private const val SECTION_FILTER = "Lapp/andrewliang/extension/ReelsAdFilter;->"
 val hideSponsoredReelsPatch = bytecodePatch(
     name = "[Reels] Hide sponsored reels",
     description = "Removes ads from Reels and Watch, so scrolling only shows videos from " +
-        "creators. Also removes the sponsored product banners shown over a reel, and the ads that " +
-        "play inside a video, such as mid-rolls.",
+        "creators. Also removes the sponsored product banners over a reel and the ads inside a " +
+        "video, such as mid-rolls.",
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_FACEBOOK)
@@ -140,34 +141,27 @@ val hideSponsoredReelsPatch = bytecodePatch(
             PoeAdRenderFingerprint,
         ).forEach { it.method.addInstructions(0, "return-void") }
 
-        // Banners over a reel and mid-rolls are fetched while a reel plays, never inside the page,
-        // so the filters above cannot see them. Their fetches answer an already failed future
-        // instead. Every caller treats that as a network error: it marks the fetch complete and
-        // stores no ad, and no query leaves the device. The future comes from a method added to
-        // each class, so each site is one branchless invoke.
+        // Banners over a reel and mid-rolls are fetched while the reel plays, not in the page, so
+        // the filters cannot see them. Their fetches return a failed future instead. Each caller
+        // handles it as a network error: it stores no ad, and no query goes out.
         val adBreakFetch = AdBreakFetchFingerprint.method.instructions()
 
-        // The banner helper. The idle state, the shared ad-break fetch and the pause-ad path all
-        // reach it, so it is the only banner site.
+        // The banner helper. All banner requests go through it.
         val bannerFetch = adBreakFetch.futureCallBefore(BANNER_FETCH_LOG)
         mutableClassDefBy(bannerFetch.definingClass).methods
-            .single { it.matches(bannerFetch) }
+            .single { MethodUtil.methodSignaturesMatch(it, bannerFetch) }
             .let(::returnFailedFuture)
 
-        // The ad-break server API: the shared ad-break fetch, the classic in-stream ad breaks and
-        // the insertion-point lookup all query through it. Every method of it that answers a
-        // future is an ad query, so all of them fail.
+        // The ad-break server API. Each of its methods that returns a future is an ad query.
         val videoFetcher = adBreakFetch.futureCallBefore(VIDEO_FETCH_LOG).definingClass
         mutableClassDefBy(videoFetcher).methods
             .filter { it.returnType == LISTENABLE_FUTURE }
-            .also { check(it.isNotEmpty()) { "$videoFetcher has no method that answers a future" } }
+            .also { check(it.isNotEmpty()) { "$videoFetcher has no method that returns a future" } }
             .forEach(::returnFailedFuture)
 
-        // The idle state builds its own video ad query and hands it to the generic GraphQL
-        // executor, which is shared with the whole app. So the executor call itself is swapped for
-        // the helper, at this one site. Both are a static invoke with no argument the next
-        // instruction reads, so the move-result that follows now takes the failed future, and no
-        // branch offset moves.
+        // The idle state runs its own video ad query on the GraphQL executor, which the whole app
+        // shares. Thus only this one executor call changes. The helper call has the same size and
+        // no arguments, so the next move-result gets the failed future.
         val idleVideoFetch = ReelsVideoAdQueryFingerprint.method
         val idleInstructions = idleVideoFetch.instructions()
         val queryIndex = idleInstructions.indexOfFirst { it.string == REELS_VIDEO_AD_QUERY }
@@ -175,20 +169,19 @@ val hideSponsoredReelsPatch = bytecodePatch(
             idleInstructions[index].methodReference?.returnType == SETTABLE_FUTURE
         }
         check(idleInstructions[executeIndex].opcode == Opcode.INVOKE_STATIC) {
-            "Expected a static executor call at $executeIndex, found ${idleInstructions[executeIndex].opcode}"
+            "The executor call at $executeIndex is not invoke-static"
         }
         check(idleInstructions[executeIndex + 1].opcode == Opcode.MOVE_RESULT_OBJECT) {
-            "The executor call at $executeIndex is not followed by move-result-object"
+            "The executor call at $executeIndex has no move-result-object"
         }
         idleVideoFetch.replaceInstruction(
             executeIndex,
             "invoke-static { }, ${failedFutureOn(idleVideoFetch.definingClass)}",
         )
 
-        // The state that looks up where a reel's ad breaks go retries a failed lookup every second
-        // for as long as the reel plays. Its tick now gives the answer it gives for a reel with no
-        // media, -1, which stops the progress poller. The state then never looks up, never
-        // resolves, and never moves on to the ad-break states.
+        // The ad-break lookup retries a failed fetch each second while the reel plays. Its tick
+        // returns -1, the value for a reel with no media, which stops the poller. The lookup then
+        // never starts.
         val unresolvedState = mutableClassDefBy(UnresolvedAdStateFingerprint.method.definingClass)
         unresolvedState.methods
             .single { it.returnType == "J" && it.parameterTypes.size == 2 && it.parameterTypes[1] == "I" }
@@ -204,7 +197,7 @@ val hideSponsoredReelsPatch = bytecodePatch(
 
 private const val FAILED_FUTURE = "failedAdFetch"
 
-/** Adds, once per class, a static method that answers an already failed future. */
+/** Adds, once per class, a static method that returns a failed future. */
 private fun BytecodePatchContext.failedFutureOn(classType: String): String {
     val reference = "$classType->$FAILED_FUTURE()$SETTABLE_FUTURE"
     val classDef = mutableClassDefBy(classType)
@@ -238,12 +231,8 @@ private fun BytecodePatchContext.failedFutureOn(classType: String): String {
     return reference
 }
 
-/**
- * Makes [method] answer the failed future at once. It writes v0 and returns straight away, so even
- * when v0 is a parameter, nothing is left to read the value it held.
- */
-private fun BytecodePatchContext.returnFailedFuture(method: MutableMethod) {
-    check(method.implementation != null) { "${method.definingClass}->${method.name} has no body" }
+/** Makes [method] return the failed future. It can write v0, because it returns at once. */
+private fun BytecodePatchContext.returnFailedFuture(method: MutableMethod) =
     method.addInstructions(
         0,
         """
@@ -252,9 +241,8 @@ private fun BytecodePatchContext.returnFailedFuture(method: MutableMethod) {
             return-object v0
         """,
     )
-}
 
-/** The last call before [log] that answers a future: the fetch whose start that log reports. */
+/** The last call before [log] that returns a future. This is the fetch that the log reports. */
 private fun List<Instruction>.futureCallBefore(log: String): MethodReference {
     val logIndex = indexOfFirst { it.string == log }
     check(logIndex >= 0) { "\"$log\" is not in the ad-break fetch" }
@@ -263,11 +251,6 @@ private fun List<Instruction>.futureCallBefore(log: String): MethodReference {
         .mapNotNull { it.methodReference }
         .last { it.returnType == LISTENABLE_FUTURE }
 }
-
-private fun MutableMethod.matches(reference: MethodReference) =
-    name == reference.name &&
-        returnType == reference.returnType &&
-        parameterTypes.map(CharSequence::toString) == reference.parameterTypes.map(CharSequence::toString)
 
 private val Instruction.methodReference
     get() = (this as? ReferenceInstruction)?.reference as? MethodReference

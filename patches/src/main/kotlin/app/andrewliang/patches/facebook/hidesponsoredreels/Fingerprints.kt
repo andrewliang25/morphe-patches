@@ -60,11 +60,8 @@ internal object PoeAdRenderFingerprint : Fingerprint(
 )
 
 /**
- * The ad-break fetch that the Reels ad states share. It sends either a banner query or a video ad
- * query, and it logs one of these literals right after each query returns its future. The call
- * before each literal is the helper that every request of that kind goes through -- see
- * `HideSponsoredReelsPatch`. Both literals are also in the classic in-stream fetch, which calls the
- * same video helper, so a match on either method finds the same thing.
+ * The shared ad-break fetch. It logs these literals just after it starts the banner query and the
+ * video ad query. The call before each literal is the helper for that kind of query.
  */
 internal object AdBreakFetchFingerprint : Fingerprint(
     returnType = "V",
@@ -75,9 +72,8 @@ internal const val BANNER_FETCH_LOG = "Kicking off banner ads fetch"
 internal const val VIDEO_FETCH_LOG = "Kicking off video ad fetch"
 
 /**
- * The idle state of the Reels ad state machine builds its own video ad query by name and runs it on
- * the generic GraphQL executor. The query name is otherwise only in a string table, which returns a
- * `String`, so `void` picks the fetch.
+ * The idle state of the Reels ads, which builds its own video ad query. The only other method with
+ * this literal is a string table, and `void` excludes it.
  */
 internal object ReelsVideoAdQueryFingerprint : Fingerprint(
     returnType = "V",
@@ -86,10 +82,7 @@ internal object ReelsVideoAdQueryFingerprint : Fingerprint(
 
 internal const val REELS_VIDEO_AD_QUERY = "FBFetchReelsVideoAdsQuery"
 
-/**
- * The name that the Reels ad state which resolves ad-break insertion points gives itself. Its class
- * holds the tick that starts that lookup.
- */
+/** The name of the state that looks up where the ad breaks of a reel go. */
 internal object UnresolvedAdStateFingerprint : Fingerprint(
     returnType = "Ljava/lang/String;",
     parameters = listOf(),

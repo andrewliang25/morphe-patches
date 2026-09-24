@@ -280,100 +280,57 @@ whole section is safe.
 
 ### Ads fetched while a reel plays
 
-Issue #121 reported a product card with a "Sponsored" tag over an organic reel. The ad reel
-filters did not remove it, and they cannot. The card is not an item in the page. Facebook fetches
-it separately, while you watch one reel, and draws it over that reel. The card is
-`FbShortsShoppableBannerCardComponent`. Its fetch is `ReelsBannerAdsFetchHelper`.
+A banner over an organic reel and a mid-roll are not items in the page. Facebook fetches them while
+the reel plays. Thus the page filters cannot remove them. The patch blocks their fetches instead.
 
-The ads map said "Reels ad chrome: not necessary once insertion stops". That is true for the chrome
-of an ad reel. It is not true for a banner, because a banner has no insertion to stop.
+**Failed futures.** Each fetch helper returns a `SettableFuture` that failed with an `IOException`.
+The callers handle it as a network error. They store no ad, and no query goes out. The patch adds a
+static `failedAdFetch()` to each patched class, so each site is one branchless `invoke-static`.
 
-**Three routes, one helper.** Reels ads are driven by a state machine, and the states reach the
-banner fetch in three ways:
-
-| Route | Where |
-|---|---|
-| The idle state (`IdleState`, `LX/7ez;`) | `A09` posts the task `LX/UtL;` (`ReelsBannerAdsFetchHelper$fetchBannerAds$fetchBannerAdsRunnable$1`) |
-| The shared ad-break fetch | `LX/SQq;->A02`, which logs `"Kicking off banner ads fetch"` |
-| Pause ads | `LX/7f8;->A03`, which logs `"[PauseAd] debounced_pause_detected"` and posts the same `UtL` |
-
-All three call `LX/9ft;->A07(...)Lcom/google/common/util/concurrent/ListenableFuture;`. This method
-builds the banner GraphQL query and returns its future. No other code calls it.
-
-**The patch.** `A07` now returns a `SettableFuture` that has already failed with an
-`IOException`. This is the same result as a network error, and each caller handles it:
-
-- `LX/9fv;->DO1`, the callback of the shared fetch, sets the banner state to `FETCHING_COMPLETED`
-  and logs `"Failed to fetch banner ad"`.
-- `LX/UAl;->A04`, the callback of the idle state, sets the same state and logs
-  `"reels_ad_query_return"` with the message. The message is not null, because a map of the log
-  can refuse a null value.
-
-No query leaves the device, and no banner is stored. The pause-ad route fails in the same way,
-through its own error callback. That is a side effect, and it is also an ad.
-
-The anchor is the log literal in `SQq.A02`. The patch takes the last call before the literal that
-returns a `ListenableFuture`. The literal is unique in the APK.
-
-**Mid-rolls use a second helper.** The second comment on issue #121 shows "Werbung startet in 2"
-("Ad starts in 2"). This is the countdown of an in-content video ad. The branch in `SQq.A02` is
-chosen by the ad placement enum `LX/6hz;` (`BANNER`, `MID_ROLL`, `POST_ROLL`, `PRE_ROLL`, `OVERLAY`,
-`NON_INTERRUPTIVE`, `DOWNSTREAM`). The video ad fetches go through three sites:
-
-| Site | Callers | What the patch does |
+| Site | Callers | Change |
 |---|---|---|
-| `LX/6lf;->A02` | `SQq.A02` (logs `"Kicking off video ad fetch"`) and `AdBreakFetchHelper` (`LX/SMj;->A05`, the classic in-stream ad breaks) | returns the failed future |
-| `LX/6lf;->A03` | the insertion-point lookup of `UnresolvedWithDeferredCardState` (`LX/7f5;->A0g`), the scrubber page `LX/7fE;`, and `LX/SOw;` | returns the failed future |
-| `LX/7ez;->A0B` | the idle state. It builds `FBFetchReelsVideoAdsQuery` itself and runs it on the generic GraphQL executor `LX/6dp;->A11` | that one call is replaced by the helper |
+| `LX/9ft;->A07`, the banner helper | the idle state `LX/7ez;->A09`, the shared ad-break fetch `LX/SQq;->A02`, and pause ads `LX/7f8;->A03` | returns the failed future |
+| `LX/6lf;->A02`, the ad-break server API | `SQq.A02` and the classic in-stream `AdBreakFetchHelper` (`LX/SMj;->A05`) | returns the failed future |
+| `LX/6lf;->A03`, the ad-break server API | the insertion-point lookup `LX/7f5;->A0g`, the scrubber page `LX/7fE;`, and `LX/SOw;` | returns the failed future |
+| `LX/7ez;->A0B` | the idle state. It runs `FBFetchReelsVideoAdsQuery` on the GraphQL executor `LX/6dp;->A11` | the executor call becomes the helper call |
 
-**The insertion-point state must not be failed. Stop its tick instead.** The Reels ad states run on
-a progress poller (`StateMachineController$SendProgressUpdateRunnable`, `LX/7Dr;`). The poller asks
-the current state for a delay through `A0g(…, position)J`. For `-1` it stops, for `-2` ("in flight")
-it asks again after 1000 ms, and for any other value it waits until that position.
-`UnresolvedWithDeferredCardState` (`LX/7f5;`) looks up where the ad breaks of a reel go. Its flag
-`7f7.A03` means "lookup in flight", and its failure callback `LX/6lk;` clears that flag. A failed
-lookup therefore runs again at the next poll. On the device this was one retry each second while a
-reel played, each with a stack trace at error level.
+The executor has 243 callers, so the patch changes only the call in `A0B`. The helper call is also
+an `invoke-static` of three code units. Thus no branch offset changes.
 
-The patch thus makes `7f5.A0g` return `-1`, which is the answer the state already gives for a reel
-with no media. The poller stops, the state never looks up, and the machine never reaches the
-ad-break states. `LX/7fD;` inherits this tick. The scrubber page `LX/7fE;` has its own tick, and the
-failed future on `6lf.A03` stays as its backstop. The anchor is the state name
-`"UnresolvedWithDeferredCardState"`, returned by `A0k()`. It is unique in the APK.
+The failure callbacks are `LX/9fv;`, `LX/UAl;`, `LX/Uc0;`, `LX/Uc1;`, `LX/SOz;` and `LX/6lk;`. Each
+one clears its in-flight flag or sets the state to `FETCHING_COMPLETED`. None of them stops playback.
 
-There is no "ads disabled" state to move the machine into. `VoidState` (`LX/SH5;`) is the base
-class of this machine and of several other machines. `LX/SZx;`, the one state for which the tick
-gate `SH5.A0o()` answers false, is the base class of `AdTransitionState`.
+**The insertion-point lookup gets a stopped tick, not a failed future.** A progress poller
+(`LX/7Dr;`) asks the current state for a delay through `A0g(…, position)J`. For `-1` the poller stops.
+For `-2` ("in flight") it asks again after 1000 ms.
 
-`LX/6lf;` is the ad-break server API (its failure log is tagged `"AdBreakServerAPI"`). Every method
-on it that returns a future is an ad query, so the patch fails all of them and does not pick by name.
+`UnresolvedWithDeferredCardState` (`LX/7f5;`) looks up where the ad breaks of a reel go. Its failure
+callback clears the in-flight flag, so a failed lookup runs again at each poll. That is one retry
+each second while a reel plays.
 
-The executor `6dp.A11` has 243 callers across the app. The patch therefore changes only the one call
-in `A0B`. The replacement is also an `invoke-static` of three code units. Thus the
-`move-result-object` after it takes the failed future, and no branch offset changes.
+Thus `7f5.A0g` returns `-1`, the value that the state gives for a reel with no media. The poller
+stops, and the state never moves to the ad-break states. `LX/7fD;` inherits this tick. `LX/7fE;` has
+its own tick, and the failed future on `6lf.A03` covers it.
 
-Each failure callback is Facebook's own error path. `LX/Uc0;` and `LX/SOz;` log
-`"Failed to fetch video ad"`, `LX/Uc1;` logs an `AdBreakServerAPI` failure, `LX/6lk;` logs
-`"scrubber fetch failed"`, and `A0B`'s callback goes to `UAl.A04`. Each one clears its in-flight flag
-or sets the state to `FETCHING_COMPLETED`. None of them holds playback.
+The machine has no "ads disabled" state. `VoidState` (`LX/SH5;`) is the base class of several
+machines. `LX/SZx;`, the only state that the tick gate `SH5.A0o()` skips, is the base class of
+`AdTransitionState`.
 
-**One helper per class.** The patch adds a static `failedAdFetch()` to each patched class. It
-returns a `SettableFuture` that failed with an `IOException`. Each site is then one branchless
-`invoke-static`, and no register must be borrowed. The whole bundle strips 35 classes, and the
-patch adds 3 methods.
+**Anchors.** Each literal is unique in the APK:
 
-**Device result, 2026-09-24,** on a re-signed 577.0.0.50.72 with the full default bundle. Reels
-played and scrolled normally for 3 minutes, across about 16 reels. There was no ad, no crash and no
-`VerifyError`. With the tick stop, the log held **no** ad fetch and no retry. The earlier build without
-the tick stop logged 56 failed lookups from `7f5.A0g` in the same time. The banner helper, `6lf.A02`
-and `7ez.A0B` did not run in either session. Thus they are verified in the dex only.
+| Literal | What it finds |
+|---|---|
+| `"Kicking off banner ads fetch"` | the banner helper: the last call before it in `SQq.A02` that returns a `ListenableFuture` |
+| `"Kicking off video ad fetch"` | the class of the ad-break server API, in the same way |
+| `"FBFetchReelsVideoAdsQuery"` | `7ez.A0B`, the only `void` method with the literal |
+| `"UnresolvedWithDeferredCardState"` | the state name that `7f5.A0k()` returns |
 
-**Still open.** `A0B` still logs `"reels_ad_query_send"` after the fetch, so the telemetry event goes
-out without a query. Pause ads are blocked as a side effect of the banner site.
+**Device status (577.0.0.50.72).** In 3 minutes of Reels there was no ad, no retry and no crash. The
+banner helper, `6lf.A02` and `7ez.A0B` did not run in that session. Thus they are verified in the dex
+only. `A0B` still sends the `"reels_ad_query_send"` log event, without the query.
 
-**Why it is hard to reproduce.** The banner is fetched only while you stay on one reel. The server
-decides per account and per country whether to send one. Fast scrolling skips most fetches, and a
-restart does not bring one back. To see one on purpose, stay on each reel for several seconds.
+**To see an ad on purpose,** stay on each reel for several seconds. The server decides for each
+account and country, and fast scrolling skips most fetches.
 
 ### The feed chokepoint
 
@@ -418,10 +375,10 @@ manifest. It includes the parts that are not worth a patch, so that nobody finds
 | Story-viewer ads | The 4 ad sources in the `processBucketData` chain: `LX/Apf;`, `LX/awi;`, `LX/A2v;`, `LX/gq4;` | ✅ |
 | Stories **tray** ads (the row on the feed) | Not traced. Every `B5t` source found so far is viewer-side | ❌ inserter not located |
 | Reels and Watch feed ads | `LX/50Q;->Cwp` plus the 3 on-demand inserts: `LX/54e;->A02` (realtime intent), `LX/6S7;` (SFD), `LX/6SZ;` (POE) | ✅ |
-| Reels banner ads (the product card over an organic reel) | The banner fetch helper `LX/9ft;->A07`. See [Ads fetched while a reel plays](#ads-fetched-while-a-reel-plays) | ✅ |
+| Reels banner ads (the product card over a reel) | The banner helper `LX/9ft;->A07`. See [Ads fetched while a reel plays](#ads-fetched-while-a-reel-plays) | ✅ |
 | Other Reels ad chrome | `FbShortsAdsRootKComponent`, `ReelsAdsFloatingCtaPlugin`, `FbShortsAdsPostScrollNudge*` | Not necessary once insertion stops |
-| In-stream ads (pre-roll, mid-roll, post-roll) | The ad-break server API `LX/6lf;` and the idle-state query `LX/7ez;->A0B`. See [Ads fetched while a reel plays](#ads-fetched-while-a-reel-plays) | ✅ not device-tested |
-| Pause ads | `PauseAdComponent`, `PauseAdUtil`. The fetch `LX/7f8;->A03` goes through the banner helper | ✅ as a side effect of the banner site, not device-tested |
+| In-stream ads (pre-roll, mid-roll, post-roll) | The ad-break server API `LX/6lf;`, the idle-state query `LX/7ez;->A0B` and the lookup tick `LX/7f5;->A0g`. See [Ads fetched while a reel plays](#ads-fetched-while-a-reel-plays) | ✅ |
+| Pause ads | `PauseAdComponent`, `PauseAdUtil`. The fetch `LX/7f8;->A03` uses the banner helper | ✅ through the banner site |
 | Squeezeback ads (the live video becomes smaller) | `SqueezebackAdPlugin` (`LX/TZ5;`) | ❌ not built |
 | Story-viewer ad chrome | `StoryViewerAdsRootContainerComponentSpec`, `StoryViewerAdsVideoComponent`, `FBStoryAdsDelayedSkipManager` | Not necessary once insertion stops |
 | Search results sponsored | `LX/KoE;->A1N`, `LX/LhI;->A00`, `SearchAdActions` | ❌ not built |
