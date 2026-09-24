@@ -33,9 +33,8 @@ private const val SECTION_FILTER = "Lapp/andrewliang/extension/ReelsAdFilter;->"
 @Suppress("unused")
 val hideSponsoredReelsPatch = bytecodePatch(
     name = "[Reels] Hide sponsored reels",
-    description = "Removes ads from Reels and Watch, so scrolling only shows videos from " +
-        "creators. Also removes the sponsored product banners over a reel and the ads inside a " +
-        "video, such as mid-rolls.",
+    description = "Removes ads from Reels and Watch, including product banners over a reel and " +
+        "ads inside a video.",
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_FACEBOOK)

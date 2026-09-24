@@ -37,10 +37,8 @@ private const val REMEMBER_HELPER = "andrewRememberSource"
 @Suppress("unused")
 val downloadStoryPatch = bytecodePatch(
     name = "[Stories] Download any story",
-    description = "Adds a save option to the menu of any story, and not only to the stories that " +
-        "you posted. It saves the picture or the video that the story shows, including a story " +
-        "with music, which Facebook's own save refuses. A video is saved at the best quality the " +
-        "player can stream. Files go to Pictures/Facebook or Movies/Facebook.",
+    description = "Adds Save to the menu of any story, including stories with music. Videos " +
+        "save at the best quality the player streams.",
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_FACEBOOK)

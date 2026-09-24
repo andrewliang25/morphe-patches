@@ -85,9 +85,8 @@ private const val HELPER = "andrewDownloadButton"
 @Suppress("unused")
 val downloadReelPatch = bytecodePatch(
     name = "[Reels] Download any reel",
-    description = "Adds a Download button beside every reel, and not only the reels that you " +
-        "posted. It saves the video the player is streaming, at the best quality the player " +
-        "holds, to Movies/Facebook.",
+    description = "Adds a Download button beside every reel. Videos save at the best quality " +
+        "the player streams.",
     default = false,
 ) {
     compatibleWith(COMPATIBILITY_FACEBOOK)

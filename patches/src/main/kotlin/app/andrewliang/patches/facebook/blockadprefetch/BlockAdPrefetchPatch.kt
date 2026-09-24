@@ -23,9 +23,8 @@ private val AD_PREFETCH_SCHEDULERS = listOf(
 @Suppress("unused")
 val blockAdPrefetchPatch = bytecodePatch(
     name = "[Ad] Block background ad prefetch",
-    description = "Stops Facebook downloading ads, ad images and the on-device ad-ranking model " +
-        "in the background. Saves mobile data, battery and storage whether or not you also hide " +
-        "the ads themselves.",
+    description = "Stops Facebook downloading ads and its ad model in the background, which " +
+        "saves data, battery and storage.",
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_FACEBOOK)
