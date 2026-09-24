@@ -1,3 +1,14 @@
+## [3.2.0-dev.4](https://github.com/andrewliang25/morphe-patches/compare/v3.2.0-dev.3...v3.2.0-dev.4) (2026-09-24)
+
+### 🐛 Bug Fixes
+
+* save a photo story as a picture, not as a video ([56d7957](https://github.com/andrewliang25/morphe-patches/commit/56d7957ce7933c153301dbf6c4b77afa75b7315b))
+
+### ✨ New Features
+
+* save reels from the player's DASH manifest ([16a9184](https://github.com/andrewliang25/morphe-patches/commit/16a9184c26e043da5175a6e1943d03bb5e9284d1))
+* save video stories at the quality the player streams ([d250464](https://github.com/andrewliang25/morphe-patches/commit/d250464794c1882aac02d7617a06742efdbe75f4))
+
 ## [3.2.0-dev.3](https://github.com/andrewliang25/morphe-patches/compare/v3.2.0-dev.2...v3.2.0-dev.3) (2026-09-24)
 
 ### 🐛 Bug Fixes

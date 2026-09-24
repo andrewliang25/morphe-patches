@@ -1,7 +1,7 @@
 {
-  "created_at": "2026-09-24T12:08:27",
-  "description": "## [3.2.0-dev.3](https://github.com/andrewliang25/morphe-patches/compare/v3.2.0-dev.2...v3.2.0-dev.3) (2026-09-24)\n\n### 🐛 Bug Fixes\n\n* block the ads that play inside a reel ([23334d1](https://github.com/andrewliang25/morphe-patches/commit/23334d14ec7462ac696dbf5b624475f6887409e2)), closes [#121](https://github.com/andrewliang25/morphe-patches/issues/121)\n* hide the sponsored product banner over a reel ([0d930d1](https://github.com/andrewliang25/morphe-patches/commit/0d930d1e348912d172eeab04de8881d77b62af11)), closes [#121](https://github.com/andrewliang25/morphe-patches/issues/121)\n* stop the Reels ad-break lookup instead of retrying it ([eaca2ee](https://github.com/andrewliang25/morphe-patches/commit/eaca2ee9fcd2b427bb561ae53ee3fba775092c8b)), closes [#121](https://github.com/andrewliang25/morphe-patches/issues/121)",
-  "download_url": "https://github.com/andrewliang25/morphe-patches/releases/download/v3.2.0-dev.3/patches-3.2.0-dev.3.mpp",
+  "created_at": "2026-09-24T13:53:58",
+  "description": "## [3.2.0-dev.4](https://github.com/andrewliang25/morphe-patches/compare/v3.2.0-dev.3...v3.2.0-dev.4) (2026-09-24)\n\n### 🐛 Bug Fixes\n\n* save a photo story as a picture, not as a video ([56d7957](https://github.com/andrewliang25/morphe-patches/commit/56d7957ce7933c153301dbf6c4b77afa75b7315b))\n\n### ✨ New Features\n\n* save reels from the player's DASH manifest ([16a9184](https://github.com/andrewliang25/morphe-patches/commit/16a9184c26e043da5175a6e1943d03bb5e9284d1))\n* save video stories at the quality the player streams ([d250464](https://github.com/andrewliang25/morphe-patches/commit/d250464794c1882aac02d7617a06742efdbe75f4))",
+  "download_url": "https://github.com/andrewliang25/morphe-patches/releases/download/v3.2.0-dev.4/patches-3.2.0-dev.4.mpp",
   "signature_download_url": "",
-  "version": "3.2.0-dev.3"
+  "version": "3.2.0-dev.4"
 }
