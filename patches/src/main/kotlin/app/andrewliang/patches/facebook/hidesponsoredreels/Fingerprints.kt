@@ -58,3 +58,33 @@ internal object PoeAdRenderFingerprint : Fingerprint(
         redexOriginalName(classDef) == "VideoHomeDataControllerPoeAdsUtil\$renderPoeItemToUiBuffer\$1"
     },
 )
+
+/**
+ * The shared ad-break fetch. It logs these literals just after it starts the banner query and the
+ * video ad query. The call before each literal is the helper for that kind of query.
+ */
+internal object AdBreakFetchFingerprint : Fingerprint(
+    returnType = "V",
+    strings = listOf(BANNER_FETCH_LOG, VIDEO_FETCH_LOG),
+)
+
+internal const val BANNER_FETCH_LOG = "Kicking off banner ads fetch"
+internal const val VIDEO_FETCH_LOG = "Kicking off video ad fetch"
+
+/**
+ * The idle state of the Reels ads, which builds its own video ad query. The only other method with
+ * this literal is a string table, and `void` excludes it.
+ */
+internal object ReelsVideoAdQueryFingerprint : Fingerprint(
+    returnType = "V",
+    strings = listOf(REELS_VIDEO_AD_QUERY),
+)
+
+internal const val REELS_VIDEO_AD_QUERY = "FBFetchReelsVideoAdsQuery"
+
+/** The name of the state that looks up where the ad breaks of a reel go. */
+internal object UnresolvedAdStateFingerprint : Fingerprint(
+    returnType = "Ljava/lang/String;",
+    parameters = listOf(),
+    strings = listOf("UnresolvedWithDeferredCardState"),
+)
