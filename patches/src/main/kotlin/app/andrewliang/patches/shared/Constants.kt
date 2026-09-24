@@ -3,6 +3,7 @@ package app.andrewliang.patches.shared
 import app.morphe.patcher.patch.ApkFileType
 import app.morphe.patcher.patch.AppTarget
 import app.morphe.patcher.patch.Compatibility
+import app.morphe.patcher.patch.SupportedAbi
 
 object Constants {
     /**
@@ -33,6 +34,9 @@ object Constants {
      * Facebook releases roughly every two weeks and Redex reassigns every `LX/…` class name on
      * each build, so these patches anchor only on names Redex cannot touch. Re-confirm on a bump —
      * see `docs/facebook-ads-map.md`.
+     *
+     * Each APKMirror variant is a separate build with different DEX. Thus pin the versionCode of
+     * the tested variant for each ABI. The single-`Int` form gives that code to every ABI.
      */
     val COMPATIBILITY_FACEBOOK = Compatibility(
         name = "Facebook",
@@ -42,6 +46,8 @@ object Constants {
         targets = listOf(
             AppTarget(
                 version = "577.0.0.50.72",
+                versionCodes = mapOf(SupportedAbi.ARM64_V8A to 474426275),
+                minSdk = 30,
             ),
         ),
     )
