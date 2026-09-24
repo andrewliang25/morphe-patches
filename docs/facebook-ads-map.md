@@ -278,6 +278,54 @@ pages. It delivered 28 organic reels. There was no reflection fallback, no stall
 screen. If a page becomes empty, the app fetches the next page in about 6 ms. Thus the removal of a
 whole section is safe.
 
+### Reels banner ads are a separate fetch
+
+Issue #121 reported a product card with a "Sponsored" tag over an organic reel. The ad reel
+filters did not remove it, and they cannot. The card is not an item in the page. Facebook fetches
+it separately, while you watch one reel, and draws it over that reel. The card is
+`FbShortsShoppableBannerCardComponent`. Its fetch is `ReelsBannerAdsFetchHelper`.
+
+The ads map said "Reels ad chrome: not necessary once insertion stops". That is true for the chrome
+of an ad reel. It is not true for a banner, because a banner has no insertion to stop.
+
+**Three routes, one helper.** Reels ads are driven by a state machine, and the states reach the
+banner fetch in three ways:
+
+| Route | Where |
+|---|---|
+| The idle state (`IdleState`, `LX/7ez;`) | `A09` posts the task `LX/UtL;` (`ReelsBannerAdsFetchHelper$fetchBannerAds$fetchBannerAdsRunnable$1`) |
+| The shared ad-break fetch | `LX/SQq;->A02`, which logs `"Kicking off banner ads fetch"` |
+| Pause ads | `LX/7f8;->A03`, which logs `"[PauseAd] debounced_pause_detected"` and posts the same `UtL` |
+
+All three call `LX/9ft;->A07(...)Lcom/google/common/util/concurrent/ListenableFuture;`. This method
+builds the banner GraphQL query and returns its future. No other code calls it.
+
+**The patch.** `A07` now returns a `SettableFuture` that has already failed with an
+`IOException`. This is the same result as a network error, and each caller handles it:
+
+- `LX/9fv;->DO1`, the callback of the shared fetch, sets the banner state to `FETCHING_COMPLETED`
+  and logs `"Failed to fetch banner ad"`.
+- `LX/UAl;->A04`, the callback of the idle state, sets the same state and logs
+  `"reels_ad_query_return"` with the message. The message is not null, because a map of the log
+  can refuse a null value.
+
+No query leaves the device, and no banner is stored. The pause-ad route fails in the same way,
+through its own error callback. That is a side effect, and it is also an ad.
+
+The anchor is the log literal in `SQq.A02`. The patch takes the last call before the literal that
+returns a `ListenableFuture`. The literal is unique in the APK.
+
+**The mid-roll half is found but not built.** The second comment on issue #121 shows
+"Werbung startet in 2" ("Ad starts in 2"). This is the countdown of an in-content video ad. The
+same two states fetch it: `LX/7ez;->A0B` sends `FBFetchReelsVideoAdsQuery`, and `SQq.A02` logs
+`"Kicking off video ad fetch"` on its other branch. The branch is chosen by the ad placement enum
+`LX/6hz;` (`BANNER`, `MID_ROLL`, `POST_ROLL`, `PRE_ROLL`, `OVERLAY`, `NON_INTERRUPTIVE`,
+`DOWNSTREAM`). The patch description still says that mid-rolls are not covered.
+
+**Why it is hard to reproduce.** The banner is fetched only while you stay on one reel. The server
+decides per account and per country whether to send one. Fast scrolling skips most fetches, and a
+restart does not bring one back. To see one on purpose, stay on each reel for several seconds.
+
 ### The feed chokepoint
 
 ```
@@ -321,8 +369,9 @@ manifest. It includes the parts that are not worth a patch, so that nobody finds
 | Story-viewer ads | The 4 ad sources in the `processBucketData` chain: `LX/Apf;`, `LX/awi;`, `LX/A2v;`, `LX/gq4;` | ✅ |
 | Stories **tray** ads (the row on the feed) | Not traced. Every `B5t` source found so far is viewer-side | ❌ inserter not located |
 | Reels and Watch feed ads | `LX/50Q;->Cwp` plus the 3 on-demand inserts: `LX/54e;->A02` (realtime intent), `LX/6S7;` (SFD), `LX/6SZ;` (POE) | ✅ |
-| Reels ad chrome | `FbShortsAdsRootKComponent`, `ReelsBannerAdsNativeComponent`, `ReelsAdsFloatingCtaPlugin`, `FbShortsAdsPostScrollNudge*` | Not necessary once insertion stops |
-| In-stream ads (pre-roll, mid-roll, post-roll) | `AdBreakStateMachineImpl`, `AdBreakFetchHelper`, `UnifiedAdBreakController`, `InstreamAdFetchUtil` | ❌ no anchor |
+| Reels banner ads (the product card over an organic reel) | The banner fetch helper `LX/9ft;->A07`. See [Reels banner ads are a separate fetch](#reels-banner-ads-are-a-separate-fetch) | ✅ |
+| Other Reels ad chrome | `FbShortsAdsRootKComponent`, `ReelsAdsFloatingCtaPlugin`, `FbShortsAdsPostScrollNudge*` | Not necessary once insertion stops |
+| In-stream ads (pre-roll, mid-roll, post-roll) | `AdBreakStateMachineImpl`, `AdBreakFetchHelper`, `UnifiedAdBreakController`, `InstreamAdFetchUtil`. For Reels, the video ad fetch is found — see [Reels banner ads are a separate fetch](#reels-banner-ads-are-a-separate-fetch) | ❌ not built |
 | Pause ads | `PauseAdComponent`, `PauseAdUtil` | ❌ no anchor |
 | Squeezeback ads (the live video becomes smaller) | `SqueezebackAdPlugin` (`LX/TZ5;`) | ❌ not built |
 | Story-viewer ad chrome | `StoryViewerAdsRootContainerComponentSpec`, `StoryViewerAdsVideoComponent`, `FBStoryAdsDelayedSkipManager` | Not necessary once insertion stops |

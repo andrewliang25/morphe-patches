@@ -6,10 +6,15 @@ import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
 import com.android.tools.smali.dexlib2.iface.instruction.Instruction
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
+import com.android.tools.smali.dexlib2.iface.reference.MethodReference
+import com.android.tools.smali.dexlib2.iface.reference.StringReference
 
 private const val GRAPHQL_STORY = "Lcom/facebook/graphql/model/GraphQLStory;"
 private const val COLLECTION = "Ljava/util/Collection;"
 private const val LIST = "Ljava/util/List;"
+private const val LISTENABLE_FUTURE = "Lcom/google/common/util/concurrent/ListenableFuture;"
+private const val SETTABLE_FUTURE = "Lcom/google/common/util/concurrent/SettableFuture;"
 
 private const val FILTER = "Lapp/andrewliang/extension/ReelsAdFilter;->" +
     "withoutAds(Ljava/util/Collection;Ljava/lang/String;)Ljava/util/Collection;"
@@ -21,7 +26,8 @@ private const val SECTION_FILTER = "Lapp/andrewliang/extension/ReelsAdFilter;->"
 val hideSponsoredReelsPatch = bytecodePatch(
     name = "[Reels] Hide sponsored reels",
     description = "Removes ads from Reels and Watch, so scrolling only shows videos from " +
-        "creators. Ads that play inside a video, such as mid-rolls, are not covered.",
+        "creators. Also removes the sponsored product banners shown over a reel. Ads that play " +
+        "inside a video, such as mid-rolls, are not covered.",
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_FACEBOOK)
@@ -126,6 +132,55 @@ val hideSponsoredReelsPatch = bytecodePatch(
             SfdAdInsertFingerprint,
             PoeAdRenderFingerprint,
         ).forEach { it.method.addInstructions(0, "return-void") }
+
+        // Banner ads (issue #121) are a separate fetch. The product card with "Sponsored" over an
+        // organic reel is not an item in the page, so neither filter above ever sees it. Each Reels
+        // ad state asks for it on its own, while you watch one reel: the idle state through a
+        // posted task, the shared ad-break fetch directly, and the pause-ad path through the same
+        // task. All three call one helper that builds the banner query and returns its future.
+        //
+        // The helper now returns a future that has already failed. Every caller handles that: it
+        // is what a network error produces. The callers mark the fetch complete and log "Failed to
+        // fetch banner ad", so no banner is stored and no query leaves the device.
+        val caller = BannerAdFetchCallerFingerprint.method.instructions()
+        val logIndex = caller.indexOfFirst {
+            ((it as? ReferenceInstruction)?.reference as? StringReference)?.string == BANNER_FETCH_LOG
+        }
+
+        // The last call before the log that answers a future is the banner fetch.
+        val fetchCall = caller
+            .take(logIndex)
+            .mapNotNull { (it as? ReferenceInstruction)?.reference as? MethodReference }
+            .last { it.returnType == LISTENABLE_FUTURE }
+
+        val fetch = mutableClassDefBy(fetchCall.definingClass).methods.single {
+            it.name == fetchCall.name &&
+                it.returnType == LISTENABLE_FUTURE &&
+                it.parameterTypes.map(CharSequence::toString) ==
+                fetchCall.parameterTypes.map(CharSequence::toString)
+        }
+
+        // The block writes v0 and v1 before the original code runs. They must be locals, not
+        // parameters, or the method would lose an argument it never gets to read.
+        val implementation = fetch.implementation
+            ?: throw IllegalStateException("${fetch.definingClass}->${fetch.name} has no body")
+        val parameterRegisters = 1 + fetch.parameterTypes.sumOf { if (it == "J" || it == "D") 2 else 1 }
+        check(implementation.registerCount - parameterRegisters >= 2) {
+            "${fetch.definingClass}->${fetch.name} has fewer than 2 locals to borrow"
+        }
+
+        fetch.addInstructions(
+            0,
+            """
+                new-instance v0, Ljava/io/IOException;
+                const-string v1, "Reels banner ad blocked"
+                invoke-direct { v0, v1 }, Ljava/io/IOException;-><init>(Ljava/lang/String;)V
+                invoke-static { }, $SETTABLE_FUTURE->create()$SETTABLE_FUTURE
+                move-result-object v1
+                invoke-virtual { v1, v0 }, $SETTABLE_FUTURE->setException(Ljava/lang/Throwable;)Z
+                return-object v1
+            """,
+        )
     }
 }
 

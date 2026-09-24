@@ -58,3 +58,15 @@ internal object PoeAdRenderFingerprint : Fingerprint(
         redexOriginalName(classDef) == "VideoHomeDataControllerPoeAdsUtil\$renderPoeItemToUiBuffer\$1"
     },
 )
+
+/**
+ * The ad-break fetch that the Reels ad states share. It sends either a banner query or a video ad
+ * query, and it logs this literal right after the banner query returns its future. That call is the
+ * banner fetch helper, which every banner request goes through -- see `HideSponsoredReelsPatch`.
+ */
+internal object BannerAdFetchCallerFingerprint : Fingerprint(
+    returnType = "V",
+    strings = listOf(BANNER_FETCH_LOG),
+)
+
+internal const val BANNER_FETCH_LOG = "Kicking off banner ads fetch"
