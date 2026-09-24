@@ -53,10 +53,8 @@ private val fixLocationMapsManifestPatch = resourcePatch {
 @Suppress("unused")
 val fixLocationMapsPatch = bytecodePatch(
     name = "[Fix] Restore location maps via MicroG-RE",
-    description = "Shows a map again on the location screens of a re-signed build. This covers " +
-        "the location picker, the location messages in a chat, and the location posts. The tiles " +
-        "come from OpenFreeMap and do not look like Google Maps. This patch needs MicroG-RE " +
-        "7.0.0 or later. A Root Mount install does not need this patch.",
+    description = "Shows maps again on a re-signed build, with OpenFreeMap tiles. It needs " +
+        "MicroG-RE 7.0.0 or later. Root Mount does not need it.",
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_LINE)

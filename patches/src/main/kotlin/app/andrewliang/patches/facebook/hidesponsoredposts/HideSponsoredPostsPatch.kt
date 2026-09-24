@@ -14,9 +14,7 @@ import app.morphe.patcher.util.smali.ExternalLabel
 @Suppress("unused")
 val hideSponsoredPostsPatch = bytecodePatch(
     name = "[Feed] Hide sponsored posts",
-    description = "Removes sponsored posts from the news feed. The ad is dropped before it " +
-        "reaches the feed list, so it leaves no gap and its impression is never logged. Covers " +
-        "both server-delivered ads and the ones the app ranks and inserts locally.",
+    description = "Removes sponsored posts from the news feed, with no gap left behind.",
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_FACEBOOK)

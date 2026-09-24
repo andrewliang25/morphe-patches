@@ -38,8 +38,8 @@ private const val HIDE_SELF_CTOR_P3 = """
 @Suppress("unused")
 val hideAdViewsPatch = bytecodePatch(
     name = "[Ad] Hide ad views",
-    description = "Hides the LINE display ad views. These are the LINE Ads SDK containers in the " +
-        "whole app, the chat-list Smart Channel banner, and the Google AdManager ads.",
+    description = "Hides LINE display ads: the LINE Ads banners, the Smart Channel banner in " +
+        "the chat list and Google AdManager ads.",
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_LINE)
