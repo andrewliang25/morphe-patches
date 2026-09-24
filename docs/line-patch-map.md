@@ -496,6 +496,7 @@ starting point, so no one needs to sweep the APK again.
 | [Chat] Keep unsent messages | `line.keepunsent` | `la8.x.invoke` — the unsend DB write (see below) |
 | [Tab] Hide Shopping tab | `line.hideshoppingtab` | `COMMERCE` + `COMMERCE_TW` in `wy7.b.a()` (see above) |
 | [Fix] Restore location maps via MicroG-RE | `line.fixlocationmaps` | `fo/p.b` — the maps module context (see below) |
+| [Chat] Hide tips under messages | `line.hidechattips` | `rm1.u.invokeSuspend` — the "CHECK" tip under a bubble (see below) |
 
 Each is an independent, `default = true`, user-facing `bytecodePatch` — one feature (or one
 feature's full set of entry points) per patch. Most are instruction-level edits. *Redirect LINE
@@ -670,6 +671,34 @@ draw the notice twice.
 | `na8.c` db values | `MESSAGE` = 1, `UNSENT` = 27, `UNSENT_NO_MARK` = 28, `SQUARE_UNSENT_MESSAGE` = 35, `UNSENT_SILENT` = 38 — the extension hardcodes 27 (the type it writes) and 27/28/38 (`na8.c.h()`'s set, the rows it refuses to annotate) |
 | `cb8.q7.NONE` | 0 (`attachement_type`) |
 | chat-list unread badge | `chat.message_count - chat.read_message_count` (`c23.d` columns, read in `z13.o`) — a stored counter pair, **not** a `count(*)` over `chat_history`, so the inserted placeholder cannot move it |
+
+---
+
+## Message tips & the "[Chat] Hide tips under messages" patch
+
+The "CHECK 探索如何收藏好友傳來的影片 >" pill under a received video is a message tip. The tip is
+a ComposeView that inflates from the `chat_ui_entry_banner_stub` ViewStub (id `0x7f0b06e3`). Four
+row layouts carry the stub: `chat_ui_row_layout_receive_horizontal`, `…_receive_vertical`,
+`…_send_vertical` and `chat_ui_row_send_msg_carousel_image_viewer`.
+
+| Role (26.14.0) | Class |
+|---|---|
+| `ChatBubbleEntryBannerViewBinder` (holds the stub) | `rm1.t`, built in the `fm1.e` constructor |
+| Bind coroutine (`…ViewBinder$bind$1`) | `rm1.u.invokeSuspend` |
+| Banner state | `sm1.g`: `g$a` = none, `g$b` = show |
+| Message types that can carry a tip | `rm1.w.b`, a `Set` of `m91.w` |
+| State flows, one for each tip kind | `rm1.w.f`, keyed `s31.d.VIDEO` and `s31.d.ALBUM` |
+| Bind call site | `nl1.g`, which reads `fm1.e.I` |
+
+`invokeSuspend` tests `instance-of sm1.g$b` first. If the test is false, the method calls
+`se7.b.b(false)` to keep the stub hidden and clears its click listener. The patch replaces that
+test with `const 0`. Only the "show" branch adds the message to `rm1.w.h` (the set of tips shown)
+and starts the `rm1.v` coroutine. Thus the patch also stops LINE from recording the tip as shown.
+
+The fingerprint does not use the obfuscated names. It matches `invokeSuspend` with the first
+`instance-of`, then `String.valueOf(J)`, the `view_tree_lifecycle_owner` tag id (`0x7f0b29ab`) and
+`ComposeView.setContent`, in that order. This shape is unique in the 26.14.0 APK. The patch is
+device-confirmed on 26.14.0 (2026-09-25).
 
 ---
 
