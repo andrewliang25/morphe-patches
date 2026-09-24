@@ -1,3 +1,11 @@
+## [3.2.0-dev.3](https://github.com/andrewliang25/morphe-patches/compare/v3.2.0-dev.2...v3.2.0-dev.3) (2026-09-24)
+
+### 🐛 Bug Fixes
+
+* block the ads that play inside a reel ([23334d1](https://github.com/andrewliang25/morphe-patches/commit/23334d14ec7462ac696dbf5b624475f6887409e2)), closes [#121](https://github.com/andrewliang25/morphe-patches/issues/121)
+* hide the sponsored product banner over a reel ([0d930d1](https://github.com/andrewliang25/morphe-patches/commit/0d930d1e348912d172eeab04de8881d77b62af11)), closes [#121](https://github.com/andrewliang25/morphe-patches/issues/121)
+* stop the Reels ad-break lookup instead of retrying it ([eaca2ee](https://github.com/andrewliang25/morphe-patches/commit/eaca2ee9fcd2b427bb561ae53ee3fba775092c8b)), closes [#121](https://github.com/andrewliang25/morphe-patches/issues/121)
+
 ## [3.2.0-dev.2](https://github.com/andrewliang25/morphe-patches/compare/v3.2.0-dev.1...v3.2.0-dev.2) (2026-09-22)
 
 ### 🐛 Bug Fixes
