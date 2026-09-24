@@ -109,9 +109,10 @@ val downloadReelPatch = bytecodePatch(
         val names = reportedFieldNames(dump)
         val hdField = names["videoHdUri"]
         val sdField = names["videoUri"]
+        val manifestField = names["abrManifestContent"]
 
-        check(hdField != null && sdField != null) {
-            "Expected videoHdUri and videoUri on the source, found ${names.keys}"
+        check(hdField != null && sdField != null && manifestField != null) {
+            "Expected videoHdUri, videoUri and abrManifestContent on the source, found ${names.keys}"
         }
 
         // ---- the sidebar ------------------------------------------------------------------------
@@ -262,6 +263,7 @@ val downloadReelPatch = bytecodePatch(
                     contextField = contextField.name,
                     hdField = hdField,
                     sdField = sdField,
+                    manifestField = manifestField,
                 ),
             )
         }
@@ -399,7 +401,7 @@ val downloadReelPatch = bytecodePatch(
         println("REEL sidebar=$sidebarClass->$sidebarName assembly@$assemblyIndex list=v$sourceRegister player=v$playerRegister")
         println("REEL factory=${factory.definingClass}->${factory.name}${factory.returnType}")
         println("REEL icon=${icon!!.definingClass}->${icon!!.name}")
-        println("REEL fields hd=$hdField sd=$sdField player=${playerField.name} session=${sessionField.name}")
+        println("REEL fields hd=$hdField sd=$sdField manifest=$manifestField player=${playerField.name} session=${sessionField.name}")
     }
 }
 
@@ -425,6 +427,7 @@ private fun buildButton(
     contextField: String,
     hdField: String,
     sdField: String,
+    manifestField: String,
 ): String {
     val signature = "${factory.definingClass}->${factory.name}" +
         parameters.joinToString("", "(", ")") + factory.returnType
@@ -436,7 +439,7 @@ private fun buildButton(
         move-object/from16 v4, p2
         move-object/from16 v6, p0
 
-${handlers(hdField, sdField)}
+${handlers(hdField, sdField, manifestField)}
         const-string v1, "$LABEL"
 
         new-instance v2, $primaryType
@@ -485,7 +488,8 @@ ${handlers(hdField, sdField)}
  * factory is not documented to accept null, and a handler that returns without a word costs
  * nothing.
  */
-private fun handlers(hdField: String, sdField: String) = (0..6).joinToString("\n") { slot ->
+private fun handlers(hdField: String, sdField: String, manifestField: String) =
+    (0..6).joinToString("\n") { slot ->
     val saves = if (slot == TAP_SLOT) 1 else 0
 
     """
@@ -494,9 +498,10 @@ private fun handlers(hdField: String, sdField: String) = (0..6).joinToString("\n
         move-object/from16 v22, v5
         const-string v23, "$hdField"
         const-string v24, "$sdField"
-        const/16 v25, 0x$slot
-        const/16 v26, 0x$saves
-        invoke-direct/range { v20 .. v26 }, $HANDLER-><init>(Ljava/lang/Object;${CONTEXT}Ljava/lang/String;Ljava/lang/String;IZ)V
+        const-string v25, "$manifestField"
+        const/16 v26, 0x$slot
+        const/16 v27, 0x$saves
+        invoke-direct/range { v20 .. v27 }, $HANDLER-><init>(Ljava/lang/Object;${CONTEXT}Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;IZ)V
         move-object/from16 v${8 + slot}, v20
     """
 }

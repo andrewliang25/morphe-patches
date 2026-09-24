@@ -868,6 +868,19 @@ name is written down.
 A device run saved a 34-second story as 1080x1920 AV1 with AAC sound, 4.4 MB, in under a second
 after the download. Google Photos plays it.
 
+**Reels use the same manifest.** The reel button already holds the player's `VideoDataSource`, so
+it needs no id lookup. The patch passes the real name of `abrManifestContent` next to the names of
+`videoHdUri` and `videoUri`. A reel whose `videoHdUri` was 720p H.264 listed a 1080x1920 AV1 track
+in its manifest. The button saved that track, 17 s and 6.2 MB, instead of the 720p file.
+
+### A photo story used to save as a video
+
+`RenditionPicker.videoTier` rated every address on a Facebook host as a plausible video, a `.jpg`
+too. A photo story has no video, so the ranking chose its picture as the video. The file went into
+`Movies/Facebook` as `FB_VID_*.mp4`, and it held JPEG bytes (`ff d8 ff`). Now an address with a
+picture suffix is never a video. A photo story saves to `Pictures/Facebook` as `FB_IMG_*.jpg`
+(device-confirmed on 2026-09-24).
+
 ### Anchors that survive a bump
 
 None of these is a Redex name.

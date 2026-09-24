@@ -62,7 +62,7 @@ public final class MediaDownload {
             PlayerSources.Source source = PlayerSources.find(host);
             if (source != null) {
                 addIfUsable(urls, source.hdUrl);
-                if (beginDash(context, source, urls)) return true;
+                if (beginDash(context, "video " + source.videoId, source.manifest, urls)) return true;
             }
 
             return begin(context, urls);
@@ -79,8 +79,10 @@ public final class MediaDownload {
      * Save the video that the player is streaming.
      *
      * <p>[hdField] and [sdField] are the real names of the two fields of the source that hold a
-     * single file address. The patch reads those names out of the app while patching, so this
-     * file names no field of its own and neither does the patch.
+     * single file address, and [manifestField] of the one that holds the DASH manifest. The patch
+     * reads those names out of the app while patching, so this file names no field of its own and
+     * neither does the patch. The manifest is tried first, because it can list a higher rendition
+     * than either single file.
      *
      * <p>Asking by name matters here in a way that it does not for a story. The source carries a
      * third address of the same type, and it holds the subtitles. So "the first address on the
@@ -88,9 +90,20 @@ public final class MediaDownload {
      *
      * @return whether a download started. {@code false} lets the caller fall back to the app.
      */
-    public static boolean saveVideo(Context context, Object host, String hdField, String sdField) {
+    public static boolean saveVideo(
+        Context context,
+        Object host,
+        String hdField,
+        String sdField,
+        String manifestField
+    ) {
         try {
-            return begin(context, collectVideoUrls(host, hdField, sdField));
+            List<String> urls = collectVideoUrls(host, hdField, sdField);
+
+            String manifest = RenditionPicker.fieldValue(host, manifestField);
+            if (beginDash(context, "the reel", manifest, urls)) return true;
+
+            return begin(context, urls);
         } catch (Throwable t) {
             Log.w(TAG, "the video save could not start", t);
             return false;
@@ -196,14 +209,13 @@ public final class MediaDownload {
      *
      * @return whether a download started. {@code false} lets the caller save a single file.
      */
-    private static boolean beginDash(Context context, PlayerSources.Source source, List<String> urls) {
-        List<DashManifest.Track> tracks = DashManifest.parse(source.manifest);
+    private static boolean beginDash(Context context, String label, String manifest, List<String> urls) {
+        List<DashManifest.Track> tracks = DashManifest.parse(manifest);
         DashManifest.Track video = DashManifest.bestVideo(tracks, DashSave.canWriteAv1());
 
         if (video == null) {
-            if (source.manifest != null) {
-                Log.i(TAG, "the manifest of video " + source.videoId + " has no track to save: "
-                    + tracks);
+            if (manifest != null) {
+                Log.i(TAG, "the manifest of " + label + " has no track to save: " + tracks);
             }
             return false;
         }
@@ -218,7 +230,7 @@ public final class MediaDownload {
 
         DashManifest.Track audio = DashManifest.bestAudio(tracks);
 
-        Log.i(TAG, "saving video " + source.videoId + " from its DASH manifest: " + video
+        Log.i(TAG, "saving " + label + " from its DASH manifest: " + video
             + (audio == null ? ", no sound track" : " + " + audio)
             + ", instead of " + (fallback == null ? "nothing" : describe(fallback)));
 
