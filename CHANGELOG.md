@@ -1,25 +1,19 @@
-## [3.2.0](https://github.com/andrewliang25/morphe-patches/compare/v3.1.0...v3.2.0) (2026-09-24)
+## [3.2.0](https://github.com/andrewliang25/morphe-patches/compare/v3.1.0...v3.2.0) (2026-09-25)
 
 ### 🐛 Bug Fixes
 
-* block the ads that play inside a reel ([23334d1](https://github.com/andrewliang25/morphe-patches/commit/23334d14ec7462ac696dbf5b624475f6887409e2)), closes [#121](https://github.com/andrewliang25/morphe-patches/issues/121)
-* hide the sponsored product banner over a reel ([0d930d1](https://github.com/andrewliang25/morphe-patches/commit/0d930d1e348912d172eeab04de8881d77b62af11)), closes [#121](https://github.com/andrewliang25/morphe-patches/issues/121)
-* make the borrowed registers a check, not a comment ([033d4ed](https://github.com/andrewliang25/morphe-patches/commit/033d4ed87f5b1c81f85e378dede35ce9c0777c52))
-* make the profile and Settings black in the AMOLED theme ([9a64a3d](https://github.com/andrewliang25/morphe-patches/commit/9a64a3db74e2fea9d1d1015b8191089457fd53d8)), closes [#252728](https://github.com/andrewliang25/morphe-patches/issues/252728) [#108](https://github.com/andrewliang25/morphe-patches/issues/108)
-* open profiles and settings on re-signed Facebook builds ([69a2f20](https://github.com/andrewliang25/morphe-patches/commit/69a2f20cbea21ffe49b3421c3ab56b0ec62cdf57)), closes [#117](https://github.com/andrewliang25/morphe-patches/issues/117) [#99](https://github.com/andrewliang25/morphe-patches/issues/99)
-* read the rendition Facebook states, not the word it happens to carry ([50f3252](https://github.com/andrewliang25/morphe-patches/commit/50f3252e4aa1d80790d68b88ccd3dfa986d3d4dc))
-* save a photo story as a picture, not as a video ([56d7957](https://github.com/andrewliang25/morphe-patches/commit/56d7957ce7933c153301dbf6c4b77afa75b7315b))
-* save stories with our own downloader, not Facebook's ([4f229a1](https://github.com/andrewliang25/morphe-patches/commit/4f229a1e6ac4fe5246a7582585cd1bde78bd1e2b)), closes [#110](https://github.com/andrewliang25/morphe-patches/issues/110)
-* stop the Reels ad-break lookup instead of retrying it ([eaca2ee](https://github.com/andrewliang25/morphe-patches/commit/eaca2ee9fcd2b427bb561ae53ee3fba775092c8b)), closes [#121](https://github.com/andrewliang25/morphe-patches/issues/121)
+* Facebook: open profiles and settings on re-signed Facebook builds ([69a2f20](https://github.com/andrewliang25/morphe-patches/commit/69a2f20cbea21ffe49b3421c3ab56b0ec62cdf57))
+* Facebook: block the ads and the sponsored product banner inside a reel ([23334d1](https://github.com/andrewliang25/morphe-patches/commit/23334d14ec7462ac696dbf5b624475f6887409e2), [0d930d1](https://github.com/andrewliang25/morphe-patches/commit/0d930d1e348912d172eeab04de8881d77b62af11))
+* Facebook: stop the Reels ad-break lookup instead of retrying it ([eaca2ee](https://github.com/andrewliang25/morphe-patches/commit/eaca2ee9fcd2b427bb561ae53ee3fba775092c8b))
+* Facebook: save a photo story as a picture, and save stories with our own downloader ([56d7957](https://github.com/andrewliang25/morphe-patches/commit/56d7957ce7933c153301dbf6c4b77afa75b7315b), [4f229a1](https://github.com/andrewliang25/morphe-patches/commit/4f229a1e6ac4fe5246a7582585cd1bde78bd1e2b))
 
 ### ✨ New Features
 
-* add a download button beside every reel ([e0007d8](https://github.com/andrewliang25/morphe-patches/commit/e0007d8dca083ce50c4c81f38dfd6d21f45bbda8))
-* add an AMOLED black theme for Facebook ([799d0ae](https://github.com/andrewliang25/morphe-patches/commit/799d0aec55b4e409c6cec6b5f9d6b947240ab9ec)), closes [#108](https://github.com/andrewliang25/morphe-patches/issues/108) [#000000](https://github.com/andrewliang25/morphe-patches/issues/000000) [#108](https://github.com/andrewliang25/morphe-patches/issues/108)
-* hide the "CHECK" tips under chat messages ([c2f234d](https://github.com/andrewliang25/morphe-patches/commit/c2f234da10ff8e7d856fa188d88047eb06a5244f))
-* hide the Agent i and AI Friends buttons ([0ddc176](https://github.com/andrewliang25/morphe-patches/commit/0ddc1760a4f15edca734890968f0818b7cbb6215)), closes [#133](https://github.com/andrewliang25/morphe-patches/issues/133)
-* save reels from the player's DASH manifest ([16a9184](https://github.com/andrewliang25/morphe-patches/commit/16a9184c26e043da5175a6e1943d03bb5e9284d1))
-* save video stories at the quality the player streams ([d250464](https://github.com/andrewliang25/morphe-patches/commit/d250464794c1882aac02d7617a06742efdbe75f4))
+* LINE: hide the Agent i and AI Friends buttons in LINE ([0ddc176](https://githubpatches/commit/0ddc1760a4f15edca734890968f0818b7cbb6215)), closes [#133](https://github.comhes/issues/133)
+* LINE: hide the "CHECK" tips under LINE chat messages ([c2f234d](https://githubpatches/commit/c2f234da10ff8e7d856fa188d88047eb06a5244f))
+* Facebook: add an AMOLED black theme for Facebook ([799d0ae](https://github.com/andrewliang25/morphe-patches/commit/799d0aec55b4e409c6cec6b5f9d6b947240ab9ec)), closes [#108](https://github.com/andrewliang25/morphe-patches/issues/108)
+* Facebook: add a download button beside every reel ([e0007d8](https://github.com/andrewliang25/morphe-patches/co1f38dfd6d21f45bbda8))
+* Facebook: save stories and reels at the quality the player streams ([d250464](https://githubpatches/commit/d250464794c1882aac02d7617a06742efdbe75f4), [16a9184](https://github.com/andrewliang25/morphe-patches/commit/16a9184e9284d1))
 
 ## [3.2.0-dev.7](https://github.com/andrewliang25/morphe-patches/compare/v3.2.0-dev.6...v3.2.0-dev.7) (2026-09-24)
 
