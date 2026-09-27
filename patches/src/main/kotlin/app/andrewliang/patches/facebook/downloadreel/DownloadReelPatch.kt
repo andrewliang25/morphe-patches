@@ -87,7 +87,7 @@ val downloadReelPatch = bytecodePatch(
     name = "[Reels] Download any reel",
     description = "Adds a Download button beside every reel. Videos save at the best quality " +
         "the player streams.",
-    default = false,
+    default = true,
 ) {
     compatibleWith(COMPATIBILITY_FACEBOOK)
     extendWith("extensions/extension.mpe")
