@@ -157,6 +157,8 @@ story-viewer half of that work is still **not device-tested**.
 | `[Ad] Disable Audience Network` | 5 manifest components | All have `android:enabled="false"` |
 | `[General] Open links in external browser` | `BrowserLiteActivity->onCreate` and `->onNewIntent`, hooked after their super call | Both branches resolve to a target index: `onCreate` to the trace-close marker load, `onNewIntent` to the original next instruction |
 | `[Stories] Download any story` | The one capability check in `StoryViewerMoreButtonCallback`, plus the body of the action's tap handler | `const/4` into the register its `move-result` wrote, so the cached capability reads true; then the handler runs our own download, which skips Facebook's licensed-music check (issue #110) |
+| `[Feed] Hide post prompts` | The static `(LX/2Pv;)Z` predicate on `NTFeedStoryBumperComponent` (`LX/2Xd;->A03`) returns false | Two instructions at index 0. See [Prompts inside posts and reels](#prompts-inside-posts-and-reels) |
+| `[Reels] Hide interest prompts` | The interest-prompt predicate `LX/8qp;->A0O(LX/5LS;)Z` returns false | Two instructions at index 0. See [Prompts inside posts and reels](#prompts-inside-posts-and-reels) |
 
 Together the eight patches rewrite 28 classes, and they add the extension on top of that. The CLI
 prints this count as `Stripping N modified classes`. Two controlled runs on 2026-09-19 against
@@ -471,6 +473,64 @@ The nag interstitials of Facebook are the **Quick Promotion and megaphone** syst
 (`MegaphoneController`, `MegaphoneStore`, `MegaphoneQueue`, `MegaphoneFetcher` at `LX/2iY;`,
 `QpMegaphoneWrapperComponent`). The patch above covers the ones in the feed. Only the interstitial
 path has no anchor.
+
+### Prompts inside posts and reels
+
+"Are you interested in this post?" (feed) and "Are you interested in this reel?" (Reels) are not
+feed units, so `[Feed] Hide suggested and promoted posts` cannot remove them. Each is a strip
+that the server attaches to one post or reel. Two patches remove them: `[Feed] Hide post prompts`
+and `[Reels] Hide interest prompts`. A logging build on 2026-09-28 found both gates. It logged entry
+to all 264 name-kept `*Plugin` classes under `feed/`, `feedplugins/` and `fbshorts/`.
+
+**Feed: story bumpers.** Facebook calls the strip a *bumper*. The server sends it as a native
+template on the story (`GraphQLStory.A0Z()`, model `LX/nkT;`). `NTFeedStoryBumperPlugin` (a kept
+name) draws it with `NTFeedStoryBumperComponent` (`LX/2Xd;`), which names itself in a string
+literal in its constructor. When the prompt was on the screen, this was the only prompt-like
+plugin that rendered. `InlineSurveyPlugin`, `BelowUFIFooterFeedPositionalSurveyPlugin` and
+`PersistentBumperBelowUFIFooterPlugin` did not run.
+
+The static `LX/2Xd;->A03(LX/2Pv;)Z` answers "does this story have a bumper?". It is true when the
+story has a bumper model or a non-empty bumper list. Every path that draws a bumper asks it:
+
+* `LX/1xW;->A1q` (the plugin enable switch). The case of the bumper plugin returns `A03` directly.
+* `LX/3SH;->A1N`, the older renderer, which skips the bumper when `A03` is false.
+* `LX/2XY;->A00` ("does the story have a call-to-action row"), `LX/71E;->A1N` and `LX/7sY;->render`.
+
+The patch removes every bumper kind, not only the interest prompt. All the kinds in the dex are
+engagement prompts:
+
+* `INTERESTED_BUMPER` and `NOT_INTERESTED_BUMPER` (`LX/TgK;`).
+* `SHOW_LESS_NEWSFEED_BUMPER_*` and `FEED_INTEREST_BUMPER`.
+* `ENCOURAGE_POSTING_BUMPER`, `CHAT_SUGGESTION_POST_BUMPER` and `GEN_AI_SUGGESTED_POST_BUMPER`.
+* `FB_FEED_NEWSFEED_ACTIVE_NOW_BUMPER` and the `MESSENGER_GROWTH_FB_FEED_BUMPER_*` kinds.
+
+The server sends the kind in a field (`bumper_class`). The device test got no bumpers after the first
+sessions, so it gives no list of the kinds in use. See the note on the server cap that follows.
+
+**Reels: an overlay item.** The prompt over a reel is one value of the reel overlay enum `LX/7ZW;`,
+`INTERESTED_OR_NOT_INTERESTED_BUMPER`. The enum also holds banners, location, polls and
+`GRANULAR_SIGNALS_SURVEY` and `TUNE_YOUR_ALGORITHM`. `LX/8qp;->A0O(reel)` decides if the reel gets
+the prompt. It is true when the reel has the overlay item (`LX/7ZX;->A00`) or a client flag
+(`LX/8qp;->A0N`), and two server settings allow it. The reel overlay `LX/Az4;` asks it twice:
+
+* In `render`, before it adds the prompt to the list of overlay slots.
+* In `A05`, before it calls the prompt builder `LX/BEN;->A00`, which makes `LX/Azn;` and `LX/Azo;`.
+
+The patch finds `A0O` without an obfuscated name. It reads the constant names from the `<clinit>`
+of the enum, and binds the field of the constant. Then it sweeps for the one method that reads that
+field, takes one argument and returns a boolean. The other readers return a component or take more
+arguments.
+
+The patch does not force `LX/8qp;->A0N`. It is a server flag on the reel, and `LX/8qp;->A0G` also
+reads it. `LX/8rZ;->A06` builds the same prompt from `A0N` and `7ZX.A00`, without `A0O`. It never
+ran in the Reels tab, thus the patch does not change it. The device test never showed
+`TUNE_YOUR_ALGORITHM` or `GRANULAR_SIGNALS_SURVEY`, thus no patch removes them.
+
+**The server caps the prompts.** The first three sessions showed the feed prompt within 20 posts
+and the reel prompt at about 1 reel in 36. The later sessions got no bumper and no reel prompt, in
+builds with the patches and in builds without them. Thus "no prompt" from one session is not proof.
+In the test build, a helper ran before each forced gate and computed the original inputs again. The
+helper logs each prompt that the patch stops. While the cap was active, it logged none.
 
 ### Out of scope
 
