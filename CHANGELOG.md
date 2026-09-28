@@ -1,3 +1,9 @@
+## [3.3.0-dev.2](https://github.com/andrewliang25/morphe-patches/compare/v3.3.0-dev.1...v3.3.0-dev.2) (2026-09-28)
+
+### ✨ New Features
+
+* block Facebook feed auto refresh ([84a62de](https://github.com/andrewliang25/morphe-patches/commit/84a62de440a50bbb16bbd97d4cc2d7192bc2ad32)), closes [#128](https://github.com/andrewliang25/morphe-patches/issues/128) [#128](https://github.com/andrewliang25/morphe-patches/issues/128)
+
 ## [3.3.0-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v3.2.0...v3.3.0-dev.1) (2026-09-28)
 
 ### ✨ New Features
