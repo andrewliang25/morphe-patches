@@ -162,6 +162,7 @@ story-viewer half of that work is still **not device-tested**.
 | `[Feed] Block feed auto refresh` | 3 sites of the feed loader and the feed fragment: the reset schedule in `onUserLeftApp` (`LX/ecb;->A0Q`), `maybeRefreshForWarmStart` (`LX/ecb;->A05`) and `refreshForRevisit` (`LX/2Vz;`) | One call removed, and two early returns. See [Feed auto refresh](#feed-auto-refresh) |
 | `[Stories] View stories anonymously` | The seen sender (`LX/A5o;->A00`, next to the kept `getRequest`) returns at once. The seen helper (`LX/A3k;->A00`) tells the extension about each card. 33 reads of the two seen fields go through the extension | `return-void` at index 0, one range call at index 0, and 33 one-for-one `invoke` swaps. See [Anonymous story views](#anonymous-story-views) |
 | `[General] Hide affiliate product links` | The overlay predicate `LX/8qp;->A0C` returns false. The feed footer id `LX/33g;->A00` and the floating card model `OrganicAffiliateFloatingCtaPlugin->A00` return null | Two instructions at index 0 of each. See [Affiliate links](#affiliate-links) |
+| `[Stories] Disable auto advance` | The auto-play predicate `LX/9xI;->A01`, the check for `disable_storyviewer_autoplay`, returns true | Two instructions at index 0. See [Story auto advance](#story-auto-advance) |
 
 Together the eight patches rewrite 28 classes, and they add the extension on top of that. The CLI
 prints this count as `Stripping N modified classes`. Two controlled runs on 2026-09-19 against
@@ -1205,6 +1206,35 @@ others.
 * The two field names give the hashes. They are GraphQL field names, so they do not change.
 * The tray time field (767170141) is a hash with no name found in the dex. Confirm it again on a
   version bump.
+
+## Story auto advance
+
+Issue #109 asks for a story to stay on the screen until you tap or swipe.
+`[Stories] Disable auto advance` does this. It is off by default.
+
+**How a story ends.** A frame callback of `StoryViewerProgressBarControllerImpl` (`LX/9ui;->A02`,
+named in a trace string) moves the progress bar. `LX/9ui;->A03` limits the progress to 0–1000 and
+gives it to the progress listeners through `LX/9uH;->A02`. At 1000, the auto-play navigation
+controller `LX/9xI;` (`StoryviewerAutoPlayNavigationController`, named in a trace string) runs
+`A00(StoryCard)`. It moves to the next card, or to the stories of the next person
+(`moveToNextBucketOrThread`).
+
+**Facebook's own switch.** Before it moves, `A00` asks the static predicate `LX/9xI;->A01`. The
+predicate is true when the preference `disable_storyviewer_autoplay` (`LX/2Ah;->A06`) is on, in
+perf tests and in end-to-end tests. When it is true, `A00` returns and the card stays. The only
+other caller of `A01` is `LX/UgZ;->run`, a delayed move to the next card, which also stops. The
+patch makes `A01` return true. `A00` also stops when TalkBack touch exploration is on
+(`LX/1J9;->A00`).
+
+**Anchors.** The trace string finds `A00`. A table of trace names (`LX/9av;->A00`) holds the same
+string, thus the fingerprint pins the `(StoryCard)V` shape. The predicate is the one static method
+of the class that takes the class, returns a boolean and calls `EndToEnd.isRunningEndToEndTest`.
+
+**What the device test showed.** A photo card filled its bar and stayed for more than 15 seconds.
+A video card played to the end and stayed on its last frame. A tap on the right side went to the
+next card, or to the next person after the last card. One video story froze its bar in the middle
+and showed a black screen. The probe logged no end of a card there, and `A01` has no caller in the
+player. Thus the patch is probably not the cause, but no build without the patch played that story.
 
 ## Re-signed builds: Facebook trusts its own certificate
 
