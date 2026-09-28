@@ -1,3 +1,9 @@
+## [3.3.1-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v3.3.0...v3.3.1-dev.1) (2026-09-28)
+
+### 🐛 Bug Fixes
+
+* keep the sound of DASH saves whose audio starts before zero ([25d3aed](https://github.com/andrewliang25/morphe-patches/commit/25d3aed524f9249f29927249b449eba02d7e9afe))
+
 ## [3.3.0](https://github.com/andrewliang25/morphe-patches/compare/v3.2.0...v3.3.0) (2026-09-28)
 
 ### ✨ New Features

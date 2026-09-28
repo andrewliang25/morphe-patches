@@ -17,7 +17,7 @@ Morphe Manager to build a modified APK.
 ## 🩹 Patches list
 
 <!-- PATCHES_START EXPANDED -->
-> **[v3.3.0](https://github.com/andrewliang25/morphe-patches/releases/tag/v3.3.0)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;46 patches total
+> **[v3.3.1-dev.1](https://github.com/andrewliang25/morphe-patches/releases/tag/v3.3.1-dev.1)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;46 patches total
 <details open>
 <summary>📦 Facebook&nbsp;&nbsp;•&nbsp;&nbsp;18 patches</summary>
 <br>
@@ -159,6 +159,7 @@ signature. Or keep only one app of the two.
 
 - [@f870103](https://github.com/f870103) — lent a LINE account for tests, and found the redirect URL of the LINE Pay app.
 - [@SapitoSucio](https://github.com/SapitoSucio) — some features and implementations here take their idea from [FroggoMorphePatches](https://github.com/SapitoSucio/FroggoMorphePatches).
+- [@SysAdminDoc](https://github.com/SysAdminDoc) — found in [Hushfacebook](https://github.com/SysAdminDoc/Hushfacebook) that some story and reel downloads saved with no sound.
 
 ## ⭐ Star history
 
