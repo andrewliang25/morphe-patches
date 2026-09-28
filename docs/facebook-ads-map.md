@@ -159,6 +159,7 @@ story-viewer half of that work is still **not device-tested**.
 | `[Stories] Download any story` | The one capability check in `StoryViewerMoreButtonCallback`, plus the body of the action's tap handler | `const/4` into the register its `move-result` wrote, so the cached capability reads true; then the handler runs our own download, which skips Facebook's licensed-music check (issue #110) |
 | `[Feed] Hide post prompts` | The static `(LX/2Pv;)Z` predicate on `NTFeedStoryBumperComponent` (`LX/2Xd;->A03`) returns false | Two instructions at index 0. See [Prompts inside posts and reels](#prompts-inside-posts-and-reels) |
 | `[Reels] Hide interest prompts` | The interest-prompt predicate `LX/8qp;->A0O(LX/5LS;)Z` returns false | Two instructions at index 0. See [Prompts inside posts and reels](#prompts-inside-posts-and-reels) |
+| `[Feed] Block feed auto refresh` | 3 sites of the feed loader and the feed fragment: the reset schedule in `onUserLeftApp` (`LX/ecb;->A0Q`), `maybeRefreshForWarmStart` (`LX/ecb;->A05`) and `refreshForRevisit` (`LX/2Vz;`) | One call removed, and two early returns. See [Feed auto refresh](#feed-auto-refresh) |
 
 Together the eight patches rewrite 28 classes, and they add the extension on top of that. The CLI
 prints this count as `Stripping N modified classes`. Two controlled runs on 2026-09-19 against
@@ -981,6 +982,86 @@ None of these is a Redex name.
 - **It is a different claim.** Every other patch here unlocks something Facebook ships and gates in
   its own process. Saving media that the server chose not to offer belongs in the patch description,
   not in a footnote.
+
+## Feed auto refresh
+
+`[Feed] Block feed auto refresh` (issue #128) keeps your place in the news feed when you come back
+to the app. Without it, Facebook shows a new feed after a few minutes away. The post that you read
+is gone, and it is not in your history.
+
+### What a device test shows
+
+A logging build on 2026-09-28 recorded every refresh entry point and the cause of each edge that
+entered the feed. The test scrolled 5 posts, left the app and came back:
+
+| Time away | Stock result | Load on return |
+|---|---|---|
+| 30 s | Same post | None |
+| 3 min, screen off | Different post | No new edges. `refreshForRevisit` decision 8 |
+| 10 min, home screen | Different post | New edges with cause `warm` |
+
+With the patch, the same test kept the post after 4, 10 and 30 minutes on the home screen, and no
+load ran on the return.
+
+A stack trace at the `warm` load named its path: `NewsFeedFragment.onStart` →
+`onUserEnteredFeed` (`LX/ecb;->A0F`) → `maybeRefreshForWarmStart` (`LX/ecb;->A05`) →
+`MainFeedCSRDataLoaderImpl.doHeadLoad` (`LX/1mq;->A0M`).
+
+### The three sites
+
+Facebook replaces the feed in three ways, and the patch stops each one:
+
+1. **The loader reset.** `onUserLeftApp` (`LX/ecb;->A0Q(Z)V`) records the time that you left and
+   schedules the runnable `LX/22A;` after a delay that the server sets. The runnable resets the
+   loader (`3Vo.A0q("onUserLeftApp runnable")`) if the app is still in the background.
+   `onUserEnterApp` and `onUserEnteredFeed` cancel it. After a long absence the feed is empty, so
+   the return loads it again. The patch removes the one schedule call. The time stamp and the cancel
+   calls stay.
+2. **The warm start.** `maybeRefreshForWarmStart(source)` loads a new head when the feed is empty
+   (`doHeadLoadOnEmptyFeed`) or stale. It already returns 2 when its own check skips the refresh.
+   The patch returns 2 at entry when the feed is not empty. An empty feed still loads.
+3. **The revisit refresh.** `onResume` and `onAppForeground` call `refreshForRevisit` (a kept
+   name). Its fourth argument is a decision: 7 after a short absence, 8 when the feed is stale. The
+   patch returns false for these two reasons. False is the result for "no refresh", and neither
+   caller reads it.
+
+Sites 2 and 3 are not enough alone. In a build with only these two sites, the `warm` load after 10
+minutes still came through the empty-feed branch. The reset emptied the feed before the return.
+
+These paths stay stock, and the device test confirms the first three:
+
+* A cold start (cause `cold_start`).
+* A tap on the Home tab (cause `tab_click`).
+* Pull to refresh (cause `manual`).
+* The revisit refresh after an activity result or a full-screen video.
+
+If Android stops the app process in the background, the patch cannot keep the feed. The next start
+is then a cold start.
+
+### Anchors
+
+Each site anchors on a name that Redex keeps or on a string literal. The method name
+`refreshForRevisit` stays. `maybeRefreshForWarmStart` and `doHeadLoadOnEmptyFeed` are string
+literals in site 2. `onUserLeftApp` and `BaseFeedCSRDataLoaderAdapter` are string literals in site 1.
+The patch finds the empty-feed check as the first private `()Z` call in site 2. It finds the
+schedule call by its parameters `(Runnable, String, String, long)`. It also checks that site 2
+still returns 2 to skip.
+
+### Other refresh paths
+
+The logging build saw these, and they did not change the feed in the test:
+
+* `refresh_stale_post_on_pause` (`LX/8CI;->run`). It runs on each pause, and it logged decision 1
+  (`do_nothing`) in every run.
+* `maybeRefreshStalePost` (`LX/2Vz;->A09`), from `onSetUserVisibleHint` (a tab switch) and from the
+  pause runnable.
+* `NewsFeedTabDataFetchSpec` (`LX/4Kz;->A00`). It never ran.
+* `decideForegroundAutoScroll` (`LX/2QT;`, a kept name). It can scroll the feed to the top after
+  `onAppForeground`, but no scroll to the top ran in the test.
+
+FroggoMorphePatches has a patch for this on 573 (`Facebook573RefreshPatch.kt`). It edits seven sites
+by obfuscated name. It skips the same loader reset, at the call in the app exit callback. It also
+drops the automatic causes at the head load and at the network response.
 
 ## Re-signed builds: Facebook trusts its own certificate
 
