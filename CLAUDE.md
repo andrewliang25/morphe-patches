@@ -160,6 +160,17 @@ Before patching any LINE "limit", establish **who decides**. A constraint LINE c
 - **Ask which process opens the resource, not just which decides.** The call ringtone is patchable because LINE's own `MediaPlayer` opens the URI in-process; Google sign-in is not, because GmsCore reads the real signature in another process.
 - **"Patchable" is not "worth patching."** The ringtone came out patchable and shipped nothing: following the device ringtone is a feature nobody asked for, and an in-app picker needs a new Activity plus a settings row injected into obfuscated declarative Kotlin. Record the finding in `docs/line-patch-map.md` and stop.
 
+## Development procedure
+
+Every new patch or fix goes through these six steps, in order. Each step ends on its completion criterion.
+
+1. **Investigate.** Locate the code that draws or decides the surface: first in the decompile, then by measurement on the device. Done when a logging build shows that the target method runs while the surface is on the screen (see "Verified bytecode does NOT mean the code runs"). Record the anchors and the dead ends in the `docs/*-map.md` of the app.
+2. **Develop.** Work on a `feat/` or `fix/` branch off `dev`. Done when `buildAndroid` passes and the patch applies to the pinned APK.
+3. **Device test.** Build the test APK through `../patched-apps`: stage the bundle in `temp/andrewliang25-rv/`, then `docker run --rm --platform linux/amd64 -v "$PWD":/repo -w /repo rvmm-build ./build.sh <test>.toml`. Install it with `../platform-tools/adb install -r`. Done when the disassembly shows the edit, `BranchSweep` is clean, and the device shows the change with no crash. For a rare or server-capped surface, force and observe in one build: a helper before the forced gate logs each case that the patch stops. Keep probe branches local.
+4. **Clean up.** Remove probe code, dead code and backstory from comments. Done when the diff holds only the shipping change and its docs.
+5. **Simple English.** Load `simple-english:simple-english` and run its self-check on the new comments, docs, patch descriptions, commit message and PR body.
+6. **Commit, push, PR.** Write one conventional commit with no `Co-Authored-By` trailer, because semantic-release copies the message into the release notes. Push the branch and open a PR into `dev`. The PR body gives a summary, how the patch works, and a testing checklist. An item that was not observed on the device stays unchecked, with the reason.
+
 ## Release pipeline — do not fight it
 
 Fully automated by **semantic-release** (`.releaserc`, `.github/workflows/release.yml`):
