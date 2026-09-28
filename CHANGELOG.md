@@ -1,3 +1,9 @@
+## [3.3.0-dev.4](https://github.com/andrewliang25/morphe-patches/compare/v3.3.0-dev.3...v3.3.0-dev.4) (2026-09-28)
+
+### ✨ New Features
+
+* hide Facebook affiliate product links ([a934b40](https://github.com/andrewliang25/morphe-patches/commit/a934b40608e5645cf119dd4101ded7767a9cdc73))
+
 ## [3.3.0-dev.3](https://github.com/andrewliang25/morphe-patches/compare/v3.3.0-dev.2...v3.3.0-dev.3) (2026-09-28)
 
 ### ✨ New Features

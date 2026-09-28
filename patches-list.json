@@ -1,6 +1,6 @@
 {
   "NOTE": "Do NOT manually edit this file. This file is automatically updated when semantic release (release.yml) runs. Manually editing this file can break your releases and break third party tools that use this file.",
-  "version": "3.3.0-dev.3",
+  "version": "3.3.0-dev.4",
   "patches": [
     {
       "name": "[Ad] Block ad telemetry",
@@ -695,6 +695,34 @@
               "versionCodes": null,
               "isExperimental": false,
               "minSdk": null,
+              "description": null
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "[General] Hide affiliate product links",
+      "description": "Removes the product cards of affiliate shop links from Reels, feed posts and comments. The \"Commission eligible\" label stays.",
+      "default": true,
+      "dependencies": [],
+      "compatiblePackages": [
+        {
+          "packageName": "com.facebook.katana",
+          "name": "Facebook",
+          "description": null,
+          "apkFileType": "APKM",
+          "appIconColor": "#0864FF",
+          "signatures": null,
+          "targets": [
+            {
+              "version": "577.0.0.50.72",
+              "versionCodes": {
+                "ARM64_V8A": 474426275
+              },
+              "isExperimental": false,
+              "minSdk": 30,
               "description": null
             }
           ]
