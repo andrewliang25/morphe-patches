@@ -157,6 +157,12 @@ story-viewer half of that work is still **not device-tested**.
 | `[Ad] Disable Audience Network` | 5 manifest components | All have `android:enabled="false"` |
 | `[General] Open links in external browser` | `BrowserLiteActivity->onCreate` and `->onNewIntent`, hooked after their super call | Both branches resolve to a target index: `onCreate` to the trace-close marker load, `onNewIntent` to the original next instruction |
 | `[Stories] Download any story` | The one capability check in `StoryViewerMoreButtonCallback`, plus the body of the action's tap handler | `const/4` into the register its `move-result` wrote, so the cached capability reads true; then the handler runs our own download, which skips Facebook's licensed-music check (issue #110) |
+| `[Feed] Hide post prompts` | The static `(LX/2Pv;)Z` predicate on `NTFeedStoryBumperComponent` (`LX/2Xd;->A03`) returns false | Two instructions at index 0. See [Prompts inside posts and reels](#prompts-inside-posts-and-reels) |
+| `[Reels] Hide interest prompts` | The interest-prompt predicate `LX/8qp;->A0O(LX/5LS;)Z` returns false | Two instructions at index 0. See [Prompts inside posts and reels](#prompts-inside-posts-and-reels) |
+| `[Feed] Block feed auto refresh` | 3 sites of the feed loader and the feed fragment: the reset schedule in `onUserLeftApp` (`LX/ecb;->A0Q`), `maybeRefreshForWarmStart` (`LX/ecb;->A05`) and `refreshForRevisit` (`LX/2Vz;`) | One call removed, and two early returns. See [Feed auto refresh](#feed-auto-refresh) |
+| `[Stories] View stories anonymously` | The seen sender (`LX/A5o;->A00`, next to the kept `getRequest`) returns at once. The seen helper (`LX/A3k;->A00`) tells the extension about each card. 33 reads of the two seen fields go through the extension | `return-void` at index 0, one range call at index 0, and 33 one-for-one `invoke` swaps. See [Anonymous story views](#anonymous-story-views) |
+| `[General] Hide affiliate product links` | The overlay predicate `LX/8qp;->A0C` returns false. The feed footer id `LX/33g;->A00` and the floating card model `OrganicAffiliateFloatingCtaPlugin->A00` return null | Two instructions at index 0 of each. See [Affiliate links](#affiliate-links) |
+| `[Stories] Disable auto advance` | The auto-play predicate `LX/9xI;->A01`, the check for `disable_storyviewer_autoplay`, returns true | Two instructions at index 0. See [Story auto advance](#story-auto-advance) |
 
 Together the eight patches rewrite 28 classes, and they add the extension on top of that. The CLI
 prints this count as `Stripping N modified classes`. Two controlled runs on 2026-09-19 against
@@ -380,6 +386,7 @@ manifest. It includes the parts that are not worth a patch, so that nobody finds
 | Stories **tray** ads (the row on the feed) | Not traced. Every `B5t` source found so far is viewer-side | ❌ inserter not located |
 | Reels and Watch feed ads | `LX/50Q;->Cwp` plus the 3 on-demand inserts: `LX/54e;->A02` (realtime intent), `LX/6S7;` (SFD), `LX/6SZ;` (POE) | ✅ |
 | Reels banner ads (the product card over a reel) | The banner helper `LX/9ft;->A07`. See [Ads fetched while a reel plays](#ads-fetched-while-a-reel-plays) | ✅ |
+| Affiliate product cards (on a reel, under a feed post, in the comments) | `LX/8qp;->A0C`, `LX/33g;->A00`, `OrganicAffiliateFloatingCtaPlugin->A00`. See [Affiliate links](#affiliate-links) | ✅ |
 | Other Reels ad chrome | `FbShortsAdsRootKComponent`, `ReelsAdsFloatingCtaPlugin`, `FbShortsAdsPostScrollNudge*` | Not necessary once insertion stops |
 | In-stream ads (pre-roll, mid-roll, post-roll) | The ad-break server API `LX/6lf;`, the idle-state query `LX/7ez;->A0B` and the lookup tick `LX/7f5;->A0g`. See [Ads fetched while a reel plays](#ads-fetched-while-a-reel-plays) | ✅ |
 | Pause ads | `PauseAdComponent`, `PauseAdUtil`. The fetch `LX/7f8;->A03` uses the banner helper | ✅ through the banner site |
@@ -471,6 +478,125 @@ The nag interstitials of Facebook are the **Quick Promotion and megaphone** syst
 (`MegaphoneController`, `MegaphoneStore`, `MegaphoneQueue`, `MegaphoneFetcher` at `LX/2iY;`,
 `QpMegaphoneWrapperComponent`). The patch above covers the ones in the feed. Only the interstitial
 path has no anchor.
+
+### Prompts inside posts and reels
+
+"Are you interested in this post?" (feed) and "Are you interested in this reel?" (Reels) are not
+feed units, so `[Feed] Hide suggested and promoted posts` cannot remove them. Each is a strip
+that the server attaches to one post or reel. Two patches remove them: `[Feed] Hide post prompts`
+and `[Reels] Hide interest prompts`. A logging build on 2026-09-28 found both gates. It logged entry
+to all 264 name-kept `*Plugin` classes under `feed/`, `feedplugins/` and `fbshorts/`.
+
+**Feed: story bumpers.** Facebook calls the strip a *bumper*. The server sends it as a native
+template on the story (`GraphQLStory.A0Z()`, model `LX/nkT;`). `NTFeedStoryBumperPlugin` (a kept
+name) draws it with `NTFeedStoryBumperComponent` (`LX/2Xd;`), which names itself in a string
+literal in its constructor. When the prompt was on the screen, this was the only prompt-like
+plugin that rendered. `InlineSurveyPlugin`, `BelowUFIFooterFeedPositionalSurveyPlugin` and
+`PersistentBumperBelowUFIFooterPlugin` did not run.
+
+The static `LX/2Xd;->A03(LX/2Pv;)Z` answers "does this story have a bumper?". It is true when the
+story has a bumper model or a non-empty bumper list. Every path that draws a bumper asks it:
+
+* `LX/1xW;->A1q` (the plugin enable switch). The case of the bumper plugin returns `A03` directly.
+* `LX/3SH;->A1N`, the older renderer, which skips the bumper when `A03` is false.
+* `LX/2XY;->A00` ("does the story have a call-to-action row"), `LX/71E;->A1N` and `LX/7sY;->render`.
+
+The patch removes every bumper kind, not only the interest prompt. All the kinds in the dex are
+engagement prompts:
+
+* `INTERESTED_BUMPER` and `NOT_INTERESTED_BUMPER` (`LX/TgK;`).
+* `SHOW_LESS_NEWSFEED_BUMPER_*` and `FEED_INTEREST_BUMPER`.
+* `ENCOURAGE_POSTING_BUMPER`, `CHAT_SUGGESTION_POST_BUMPER` and `GEN_AI_SUGGESTED_POST_BUMPER`.
+* `FB_FEED_NEWSFEED_ACTIVE_NOW_BUMPER` and the `MESSENGER_GROWTH_FB_FEED_BUMPER_*` kinds.
+
+The server sends the kind in a field (`bumper_class`). The device test got no bumpers after the first
+sessions, so it gives no list of the kinds in use. See the note on the server cap that follows.
+
+**Reels: an overlay item.** The prompt over a reel is one value of the reel overlay enum `LX/7ZW;`,
+`INTERESTED_OR_NOT_INTERESTED_BUMPER`. The enum also holds banners, location, polls and
+`GRANULAR_SIGNALS_SURVEY` and `TUNE_YOUR_ALGORITHM`. `LX/8qp;->A0O(reel)` decides if the reel gets
+the prompt. It is true when the reel has the overlay item (`LX/7ZX;->A00`) or a client flag
+(`LX/8qp;->A0N`), and two server settings allow it. The reel overlay `LX/Az4;` asks it twice:
+
+* In `render`, before it adds the prompt to the list of overlay slots.
+* In `A05`, before it calls the prompt builder `LX/BEN;->A00`, which makes `LX/Azn;` and `LX/Azo;`.
+
+The patch finds `A0O` without an obfuscated name. It reads the constant names from the `<clinit>`
+of the enum, and binds the field of the constant. Then it sweeps for the one method that reads that
+field, takes one argument and returns a boolean. The other readers return a component or take more
+arguments.
+
+The patch does not force `LX/8qp;->A0N`. It is a server flag on the reel, and `LX/8qp;->A0G` also
+reads it. `LX/8rZ;->A06` builds the same prompt from `A0N` and `7ZX.A00`, without `A0O`. It never
+ran in the Reels tab, thus the patch does not change it. The device test never showed
+`TUNE_YOUR_ALGORITHM` or `GRANULAR_SIGNALS_SURVEY`, thus no patch removes them.
+
+**The server caps the prompts.** The first three sessions showed the feed prompt within 20 posts
+and the reel prompt at about 1 reel in 36. The later sessions got no bumper and no reel prompt, in
+builds with the patches and in builds without them. Thus "no prompt" from one session is not proof.
+In the test build, a helper ran before each forced gate and computed the original inputs again. The
+helper logs each prompt that the patch stops. While the cap was active, it logged none.
+
+### Affiliate links
+
+A creator can attach a shop link (for example Shopee) to a post or a reel and earn a commission.
+This is not a sponsored post, so the sponsored-post patches do not remove it. The server sends
+the link with the post, and Facebook shows a product card for it in three places.
+`[General] Hide affiliate product links` removes the three cards. It keeps the "Commission
+eligible" label, because the label is a disclosure. Logging builds on 2026-09-28 found each gate,
+on the posts and reels of one Taiwanese page where most posts carry a Shopee link.
+
+**The card on a reel.** The card is the overlay kind `AFFILIATE_EYEBROW` of the reel overlay enum
+`LX/7ZW;`, the same enum as the interest prompt. The builder of the overlay list `LX/Az9;->A02`
+adds it only when `LX/8qp;->A0C(FbUserSession, reel, PlayerOrigin)Z` is true. On the test reel the
+list held only this kind, and `LX/Axz;->A00` picked it for the `TOP` slot. The case of the kind
+builds `FBShortsBrandFundedAffiliateLinkAttachmentComponent` (`LX/SR8;`). The patch makes the
+predicate return false. It finds the predicate by shape: the `invoke-static …Z` three
+instructions before the `sget-object` of the constant and the `add` that follows it.
+
+**The card under a feed post.** The card is a server-built (Bloks) footer of the attachment. A
+walk of the view tree found the card's views, `X.4gy` hosts from the Bloks library. The footer
+builder `LX/498;->A1N` asks `LX/33g;->A00(surface, attachment)` for the id of the footer. With an
+id, it builds the Bloks footer (`FigAttachmentFooterComponentSpec->A00`, component `LX/7gL;`,
+which logs `affiliate_footer_rendered`). With null, it builds the plain footer, which is empty for
+these posts. The video plugin also asks `33g.A00` (`LX/6Cb;->isFooterHidden…` and
+`isFooterEmpty…`, which keep their names). The patch makes `33g.A00` return null. It finds
+`33g.A00` as the only call that returns a string in `isFooterHidden…`.
+
+**The card in the comment sheet.** This card floats above the comment box. It is the plugin
+`OrganicAffiliateFloatingCtaPlugin`, which keeps its class name
+(`com/facebook/feedback/comments/plugins/indicatorpill/organicaffiliatefloatingcta/`). Its static
+`A00(LX/AZu;)LX/7sU;` reads the card model from the sheet data. The plugin table `LX/Aa2;` calls it
+twice:
+
+* `A05` case 3 (enabled?) returns true only when the model is not null.
+* `A03` case 3 (build) throws `IllegalStateException` when the model is null.
+
+The patch makes `A00` return null. Then `A05` returns false and `A03` never runs for this plugin.
+
+**The "Commission eligible" label (not changed).** In Reels the label is the sponsor disclosure
+`FbShortsViewerDisclosureComponent` (`LX/SQT;`). `LX/B0z;->A03` shows it when any of six reasons
+is true, and the commission flag `LX/B0z;->A00` is one of them. In the feed the label is in the
+post header, and `LX/2US;->A05(GraphQLStory)Z` reads the same flag. A test build that forced
+`B0z.A00` false removed the Reels label.
+
+**GraphQL keys.** The server keys the fields of a model by the `hashCode()` of the field name.
+For example, `1055778621` is `"sponsor_relationship".hashCode()`. Thus the literals stay the same
+between builds. To find the name of a key, hash each string literal in the dex and compare. The
+commission flag (`-962870708`) has no literal in the dex, thus its name is not known.
+
+**Dead ends.** These looked right and changed nothing on the device:
+
+* `AffiliateLinkCommentCardFlyoutTopContentPlugin`, case 0 of the flyout plugin table `LX/1xW;`
+  (build `A0V`, enabled `A24`). A build that forced `A24` case 0 false did not change the
+  floating card.
+* The feed pill `deepdivepill/impl/affiliate/AffiliatePlugin`, case 0 of `LX/39F;` (enabled `A0E`
+  compares the pill type with `"affiliate"`). A build that forced the comparison false did not
+  change the feed card, and `AffiliatePlugin.A00` never ran.
+* `LX/3Av;->isRenderableBloksFooter`. A build that forced it false did not change the feed card.
+  `7gL.render` uses its result only for logging.
+* The five `FBShorts*Affiliate*Component` renders and the template host `LX/Akt;` did not run for
+  the feed card.
 
 ### Out of scope
 
@@ -921,6 +1047,194 @@ None of these is a Redex name.
 - **It is a different claim.** Every other patch here unlocks something Facebook ships and gates in
   its own process. Saving media that the server chose not to offer belongs in the patch description,
   not in a footnote.
+
+## Feed auto refresh
+
+`[Feed] Block feed auto refresh` (issue #128) keeps your place in the news feed when you come back
+to the app. Without it, Facebook shows a new feed after a few minutes away. The post that you read
+is gone, and it is not in your history.
+
+### What a device test shows
+
+A logging build on 2026-09-28 recorded every refresh entry point and the cause of each edge that
+entered the feed. The test scrolled 5 posts, left the app and came back:
+
+| Time away | Stock result | Load on return |
+|---|---|---|
+| 30 s | Same post | None |
+| 3 min, screen off | Different post | No new edges. `refreshForRevisit` decision 8 |
+| 10 min, home screen | Different post | New edges with cause `warm` |
+
+With the patch, the same test kept the post after 4, 10 and 30 minutes on the home screen, and no
+load ran on the return.
+
+A stack trace at the `warm` load named its path: `NewsFeedFragment.onStart` →
+`onUserEnteredFeed` (`LX/ecb;->A0F`) → `maybeRefreshForWarmStart` (`LX/ecb;->A05`) →
+`MainFeedCSRDataLoaderImpl.doHeadLoad` (`LX/1mq;->A0M`).
+
+### The three sites
+
+Facebook replaces the feed in three ways, and the patch stops each one:
+
+1. **The loader reset.** `onUserLeftApp` (`LX/ecb;->A0Q(Z)V`) records the time that you left and
+   schedules the runnable `LX/22A;` after a delay that the server sets. The runnable resets the
+   loader (`3Vo.A0q("onUserLeftApp runnable")`) if the app is still in the background.
+   `onUserEnterApp` and `onUserEnteredFeed` cancel it. After a long absence the feed is empty, so
+   the return loads it again. The patch removes the one schedule call. The time stamp and the cancel
+   calls stay.
+2. **The warm start.** `maybeRefreshForWarmStart(source)` loads a new head when the feed is empty
+   (`doHeadLoadOnEmptyFeed`) or stale. It already returns 2 when its own check skips the refresh.
+   The patch returns 2 at entry when the feed is not empty. An empty feed still loads.
+3. **The revisit refresh.** `onResume` and `onAppForeground` call `refreshForRevisit` (a kept
+   name). Its fourth argument is a decision: 7 after a short absence, 8 when the feed is stale. The
+   patch returns false for these two reasons. False is the result for "no refresh", and neither
+   caller reads it.
+
+Sites 2 and 3 are not enough alone. In a build with only these two sites, the `warm` load after 10
+minutes still came through the empty-feed branch. The reset emptied the feed before the return.
+
+These paths stay stock, and the device test confirms the first three:
+
+* A cold start (cause `cold_start`).
+* A tap on the Home tab (cause `tab_click`).
+* Pull to refresh (cause `manual`).
+* The revisit refresh after an activity result or a full-screen video.
+
+If Android stops the app process in the background, the patch cannot keep the feed. The next start
+is then a cold start.
+
+### Anchors
+
+Each site anchors on a name that Redex keeps or on a string literal. The method name
+`refreshForRevisit` stays. `maybeRefreshForWarmStart` and `doHeadLoadOnEmptyFeed` are string
+literals in site 2. `onUserLeftApp` and `BaseFeedCSRDataLoaderAdapter` are string literals in site 1.
+The patch finds the empty-feed check as the first private `()Z` call in site 2. It finds the
+schedule call by its parameters `(Runnable, String, String, long)`. It also checks that site 2
+still returns 2 to skip.
+
+### Other refresh paths
+
+The logging build saw these, and they did not change the feed in the test:
+
+* `refresh_stale_post_on_pause` (`LX/8CI;->run`). It runs on each pause, and it logged decision 1
+  (`do_nothing`) in every run.
+* `maybeRefreshStalePost` (`LX/2Vz;->A09`), from `onSetUserVisibleHint` (a tab switch) and from the
+  pause runnable.
+* `NewsFeedTabDataFetchSpec` (`LX/4Kz;->A00`). It never ran.
+* `decideForegroundAutoScroll` (`LX/2QT;`, a kept name). It can scroll the feed to the top after
+  `onAppForeground`, but no scroll to the top ran in the test.
+
+FroggoMorphePatches has a patch for this on 573 (`Facebook573RefreshPatch.kt`). It edits seven sites
+by obfuscated name. It skips the same loader reset, at the call in the app exit callback. It also
+drops the automatic causes at the head load and at the network response.
+
+## Anonymous story views
+
+`[Stories] View stories anonymously` (issue #111) stops the report that puts you in the viewer
+list of a story. Stories that you saw still show as seen on the device. The patch is off by
+default, because it changes what other people see.
+
+### The report
+
+The story viewer keeps the cards that you saw in its seen helper, `StoryViewerSeenHelper`
+(`LX/A3k;`). It sends them in one request when the viewer pauses or closes (`on_pause`,
+`on_detach`, `max_queue_size`). The request is `DirectSeenMutation`
+(`direct_message_thread_update_seen_state`). `LX/A5o;->getRequest` builds it with the fields
+`story_ids_list`, `derived_story_buckets_ids_list`, `bucket_to_story_card_id_filters`,
+`idempotence_token` and `is_story_peek_view`. The request has no flag for an anonymous view.
+
+A logging build hooked the constructor of `LX/1wp;`, the base of every GraphQL operation. Viewing
+a story made one operation only: `DirectSeenMutation`. The patch makes the sender, the one void
+method of that class that calls `getRequest`, return at once. With the patch, the same logging
+build saw no `DirectSeenMutation`.
+
+The patch cannot show the viewer list itself. A test of that needs a second account that posts a
+story.
+
+### The seen state on the device
+
+Stock Facebook marks a story as seen on the device only when the server answers the report. The
+answer merges into the GraphQL cache, and the tray reads its seen state from there. `CIQ.A01`,
+which runs between `getRequest` and the send, only sets a retry policy. There is no optimistic
+update. Thus, with the report stopped, each story stays "Unseen".
+
+The patch keeps the seen state in the extension (`AnonymousStories`) instead:
+
+* **Cards.** The seen helper `LX/A3k;->A00(session, StoryBucket, StoryCard, …)` runs for each card
+  that the viewer shows. The patch passes the bucket and the card to the extension, which saves
+  the card id from the kept `getId()`.
+* **Buckets.** When each card of a bucket is seen, the extension saves the bucket. A card counts
+  as seen when it is saved, or when the card itself says that it is seen. The viewer skips a card
+  that the server marked as seen before, so the second test is necessary. The card list and the
+  seen getter have obfuscated names. The extension finds the list by reflection: it is the one
+  no-argument getter of the bucket that returns story cards. The patch finds the getter
+  (`StoryCard.A1b()` here) from the read of `is_seen_by_viewer` in `RegularStoryCard`.
+* **Reads.** Facebook reads a tree field by the `hashCode` of its name. The patch swaps each
+  `TreeJNI.getBooleanValue` read of `"is_seen_by_viewer".hashCode()` (6 reads) and
+  `"is_bucket_seen_by_viewer".hashCode()` (27 reads) for a static call with the same two
+  registers. The extension returns the value from the server, or true for a saved card or bucket.
+  If a step fails, the value from the server stands.
+
+The tray label comes from `LX/3Sw;->Bax()` (282 reads at start-up). A build that forced every
+bucket read to true made every tray label "seen", so the swapped reads cover the tray.
+
+### New stories
+
+A tray bucket has no list of its stories (`3Sw.B8N()` was empty on the device), so the tray
+cannot compare story ids. Each tray bucket has one time field, `getTimeValue(767170141)` (`BOU()J`),
+in epoch seconds. The extension saves that time with the bucket. The bucket stays seen while the
+time does not increase, so a new story shows as new again. If the tray did not read the bucket
+before you saw it, the next tray read gives the time.
+
+The new-story case is not device-tested. It needs a person who posts a story after you saw the
+others.
+
+### What the device test showed
+
+* A bucket with one watched card and more cards stays "Unseen", as in stock.
+* After each card of a bucket was seen, the tray label lost "Unseen". It stayed seen after a
+  restart, when the tray loads from the server again.
+* A bucket where the server marked the first card as seen before also changed to seen.
+* Saved entries go after 48 hours, because a story is live for 24 hours.
+
+### Anchors
+
+* `getRequest` (a kept name) and the string literals `story_ids_list` and `is_story_peek_view`
+  find the sender.
+* The string literal `max_queue_size` and the kept parameter types `StoryBucket` and `StoryCard`
+  find the seen helper.
+* The two field names give the hashes. They are GraphQL field names, so they do not change.
+* The tray time field (767170141) is a hash with no name found in the dex. Confirm it again on a
+  version bump.
+
+## Story auto advance
+
+Issue #109 asks for a story to stay on the screen until you tap or swipe.
+`[Stories] Disable auto advance` does this. It is off by default.
+
+**How a story ends.** A frame callback of `StoryViewerProgressBarControllerImpl` (`LX/9ui;->A02`,
+named in a trace string) moves the progress bar. `LX/9ui;->A03` limits the progress to 0–1000 and
+gives it to the progress listeners through `LX/9uH;->A02`. At 1000, the auto-play navigation
+controller `LX/9xI;` (`StoryviewerAutoPlayNavigationController`, named in a trace string) runs
+`A00(StoryCard)`. It moves to the next card, or to the stories of the next person
+(`moveToNextBucketOrThread`).
+
+**Facebook's own switch.** Before it moves, `A00` asks the static predicate `LX/9xI;->A01`. The
+predicate is true when the preference `disable_storyviewer_autoplay` (`LX/2Ah;->A06`) is on, in
+perf tests and in end-to-end tests. When it is true, `A00` returns and the card stays. The only
+other caller of `A01` is `LX/UgZ;->run`, a delayed move to the next card, which also stops. The
+patch makes `A01` return true. `A00` also stops when TalkBack touch exploration is on
+(`LX/1J9;->A00`).
+
+**Anchors.** The trace string finds `A00`. A table of trace names (`LX/9av;->A00`) holds the same
+string, thus the fingerprint pins the `(StoryCard)V` shape. The predicate is the one static method
+of the class that takes the class, returns a boolean and calls `EndToEnd.isRunningEndToEndTest`.
+
+**What the device test showed.** A photo card filled its bar and stayed for more than 15 seconds.
+A video card played to the end and stayed on its last frame. A tap on the right side went to the
+next card, or to the next person after the last card. One video story froze its bar in the middle
+and showed a black screen. The probe logged no end of a card there, and `A01` has no caller in the
+player. Thus the patch is probably not the cause, but no build without the patch played that story.
 
 ## Re-signed builds: Facebook trusts its own certificate
 

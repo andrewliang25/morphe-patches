@@ -1,3 +1,33 @@
+## [3.3.0-dev.5](https://github.com/andrewliang25/morphe-patches/compare/v3.3.0-dev.4...v3.3.0-dev.5) (2026-09-28)
+
+### ✨ New Features
+
+* disable Facebook story auto advance ([8a2aa76](https://github.com/andrewliang25/morphe-patches/commit/8a2aa76d2162daedb553c7f75d4a3819f5edd948))
+
+## [3.3.0-dev.4](https://github.com/andrewliang25/morphe-patches/compare/v3.3.0-dev.3...v3.3.0-dev.4) (2026-09-28)
+
+### ✨ New Features
+
+* hide Facebook affiliate product links ([a934b40](https://github.com/andrewliang25/morphe-patches/commit/a934b40608e5645cf119dd4101ded7767a9cdc73))
+
+## [3.3.0-dev.3](https://github.com/andrewliang25/morphe-patches/compare/v3.3.0-dev.2...v3.3.0-dev.3) (2026-09-28)
+
+### ✨ New Features
+
+* view Facebook stories anonymously ([1bd74ed](https://github.com/andrewliang25/morphe-patches/commit/1bd74eda91cb6c30b7a128a355a7713ccffd662e)), closes [#111](https://github.com/andrewliang25/morphe-patches/issues/111) [#111](https://github.com/andrewliang25/morphe-patches/issues/111)
+
+## [3.3.0-dev.2](https://github.com/andrewliang25/morphe-patches/compare/v3.3.0-dev.1...v3.3.0-dev.2) (2026-09-28)
+
+### ✨ New Features
+
+* block Facebook feed auto refresh ([84a62de](https://github.com/andrewliang25/morphe-patches/commit/84a62de440a50bbb16bbd97d4cc2d7192bc2ad32)), closes [#128](https://github.com/andrewliang25/morphe-patches/issues/128) [#128](https://github.com/andrewliang25/morphe-patches/issues/128)
+
+## [3.3.0-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v3.2.0...v3.3.0-dev.1) (2026-09-28)
+
+### ✨ New Features
+
+* hide Facebook interest prompts in the feed and Reels ([16464b2](https://github.com/andrewliang25/morphe-patches/commit/16464b2ba606745de0ebe9cc52f18ef42e6a05d8))
+
 ## [3.2.0](https://github.com/andrewliang25/morphe-patches/compare/v3.1.0...v3.2.0) (2026-09-25)
 
 ### 🐛 Bug Fixes
