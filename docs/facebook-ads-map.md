@@ -161,6 +161,7 @@ story-viewer half of that work is still **not device-tested**.
 | `[Reels] Hide interest prompts` | The interest-prompt predicate `LX/8qp;->A0O(LX/5LS;)Z` returns false | Two instructions at index 0. See [Prompts inside posts and reels](#prompts-inside-posts-and-reels) |
 | `[Feed] Block feed auto refresh` | 3 sites of the feed loader and the feed fragment: the reset schedule in `onUserLeftApp` (`LX/ecb;->A0Q`), `maybeRefreshForWarmStart` (`LX/ecb;->A05`) and `refreshForRevisit` (`LX/2Vz;`) | One call removed, and two early returns. See [Feed auto refresh](#feed-auto-refresh) |
 | `[Stories] View stories anonymously` | The seen sender (`LX/A5o;->A00`, next to the kept `getRequest`) returns at once. The seen helper (`LX/A3k;->A00`) tells the extension about each card. 33 reads of the two seen fields go through the extension | `return-void` at index 0, one range call at index 0, and 33 one-for-one `invoke` swaps. See [Anonymous story views](#anonymous-story-views) |
+| `[General] Hide affiliate product links` | The overlay predicate `LX/8qp;->A0C` returns false. The feed footer id `LX/33g;->A00` and the floating card model `OrganicAffiliateFloatingCtaPlugin->A00` return null | Two instructions at index 0 of each. See [Affiliate links](#affiliate-links) |
 
 Together the eight patches rewrite 28 classes, and they add the extension on top of that. The CLI
 prints this count as `Stripping N modified classes`. Two controlled runs on 2026-09-19 against
@@ -384,6 +385,7 @@ manifest. It includes the parts that are not worth a patch, so that nobody finds
 | Stories **tray** ads (the row on the feed) | Not traced. Every `B5t` source found so far is viewer-side | ❌ inserter not located |
 | Reels and Watch feed ads | `LX/50Q;->Cwp` plus the 3 on-demand inserts: `LX/54e;->A02` (realtime intent), `LX/6S7;` (SFD), `LX/6SZ;` (POE) | ✅ |
 | Reels banner ads (the product card over a reel) | The banner helper `LX/9ft;->A07`. See [Ads fetched while a reel plays](#ads-fetched-while-a-reel-plays) | ✅ |
+| Affiliate product cards (on a reel, under a feed post, in the comments) | `LX/8qp;->A0C`, `LX/33g;->A00`, `OrganicAffiliateFloatingCtaPlugin->A00`. See [Affiliate links](#affiliate-links) | ✅ |
 | Other Reels ad chrome | `FbShortsAdsRootKComponent`, `ReelsAdsFloatingCtaPlugin`, `FbShortsAdsPostScrollNudge*` | Not necessary once insertion stops |
 | In-stream ads (pre-roll, mid-roll, post-roll) | The ad-break server API `LX/6lf;`, the idle-state query `LX/7ez;->A0B` and the lookup tick `LX/7f5;->A0g`. See [Ads fetched while a reel plays](#ads-fetched-while-a-reel-plays) | ✅ |
 | Pause ads | `PauseAdComponent`, `PauseAdUtil`. The fetch `LX/7f8;->A03` uses the banner helper | ✅ through the banner site |
@@ -533,6 +535,67 @@ and the reel prompt at about 1 reel in 36. The later sessions got no bumper and 
 builds with the patches and in builds without them. Thus "no prompt" from one session is not proof.
 In the test build, a helper ran before each forced gate and computed the original inputs again. The
 helper logs each prompt that the patch stops. While the cap was active, it logged none.
+
+### Affiliate links
+
+A creator can attach a shop link (for example Shopee) to a post or a reel and earn a commission.
+This is not a sponsored post, so the sponsored-post patches do not remove it. The server sends
+the link with the post, and Facebook shows a product card for it in three places.
+`[General] Hide affiliate product links` removes the three cards. It keeps the "Commission
+eligible" label, because the label is a disclosure. Logging builds on 2026-09-28 found each gate,
+on the posts and reels of one Taiwanese page where most posts carry a Shopee link.
+
+**The card on a reel.** The card is the overlay kind `AFFILIATE_EYEBROW` of the reel overlay enum
+`LX/7ZW;`, the same enum as the interest prompt. The builder of the overlay list `LX/Az9;->A02`
+adds it only when `LX/8qp;->A0C(FbUserSession, reel, PlayerOrigin)Z` is true. On the test reel the
+list held only this kind, and `LX/Axz;->A00` picked it for the `TOP` slot. The case of the kind
+builds `FBShortsBrandFundedAffiliateLinkAttachmentComponent` (`LX/SR8;`). The patch makes the
+predicate return false. It finds the predicate by shape: the `invoke-static …Z` three
+instructions before the `sget-object` of the constant and the `add` that follows it.
+
+**The card under a feed post.** The card is a server-built (Bloks) footer of the attachment. A
+walk of the view tree found the card's views, `X.4gy` hosts from the Bloks library. The footer
+builder `LX/498;->A1N` asks `LX/33g;->A00(surface, attachment)` for the id of the footer. With an
+id, it builds the Bloks footer (`FigAttachmentFooterComponentSpec->A00`, component `LX/7gL;`,
+which logs `affiliate_footer_rendered`). With null, it builds the plain footer, which is empty for
+these posts. The video plugin also asks `33g.A00` (`LX/6Cb;->isFooterHidden…` and
+`isFooterEmpty…`, which keep their names). The patch makes `33g.A00` return null. It finds
+`33g.A00` as the only call that returns a string in `isFooterHidden…`.
+
+**The card in the comment sheet.** This card floats above the comment box. It is the plugin
+`OrganicAffiliateFloatingCtaPlugin`, which keeps its class name
+(`com/facebook/feedback/comments/plugins/indicatorpill/organicaffiliatefloatingcta/`). Its static
+`A00(LX/AZu;)LX/7sU;` reads the card model from the sheet data. The plugin table `LX/Aa2;` calls it
+twice:
+
+* `A05` case 3 (enabled?) returns true only when the model is not null.
+* `A03` case 3 (build) throws `IllegalStateException` when the model is null.
+
+The patch makes `A00` return null. Then `A05` returns false and `A03` never runs for this plugin.
+
+**The "Commission eligible" label (not changed).** In Reels the label is the sponsor disclosure
+`FbShortsViewerDisclosureComponent` (`LX/SQT;`). `LX/B0z;->A03` shows it when any of six reasons
+is true, and the commission flag `LX/B0z;->A00` is one of them. In the feed the label is in the
+post header, and `LX/2US;->A05(GraphQLStory)Z` reads the same flag. A test build that forced
+`B0z.A00` false removed the Reels label.
+
+**GraphQL keys.** The server keys the fields of a model by the `hashCode()` of the field name.
+For example, `1055778621` is `"sponsor_relationship".hashCode()`. Thus the literals stay the same
+between builds. To find the name of a key, hash each string literal in the dex and compare. The
+commission flag (`-962870708`) has no literal in the dex, thus its name is not known.
+
+**Dead ends.** These looked right and changed nothing on the device:
+
+* `AffiliateLinkCommentCardFlyoutTopContentPlugin`, case 0 of the flyout plugin table `LX/1xW;`
+  (build `A0V`, enabled `A24`). A build that forced `A24` case 0 false did not change the
+  floating card.
+* The feed pill `deepdivepill/impl/affiliate/AffiliatePlugin`, case 0 of `LX/39F;` (enabled `A0E`
+  compares the pill type with `"affiliate"`). A build that forced the comparison false did not
+  change the feed card, and `AffiliatePlugin.A00` never ran.
+* `LX/3Av;->isRenderableBloksFooter`. A build that forced it false did not change the feed card.
+  `7gL.render` uses its result only for logging.
+* The five `FBShorts*Affiliate*Component` renders and the template host `LX/Akt;` did not run for
+  the feed card.
 
 ### Out of scope
 
