@@ -1,7 +1,7 @@
 {
-  "created_at": "2026-09-28T07:11:36",
-  "description": "## [3.3.0-dev.2](https://github.com/andrewliang25/morphe-patches/compare/v3.3.0-dev.1...v3.3.0-dev.2) (2026-09-28)\n\n### ✨ New Features\n\n* block Facebook feed auto refresh ([84a62de](https://github.com/andrewliang25/morphe-patches/commit/84a62de440a50bbb16bbd97d4cc2d7192bc2ad32)), closes [#128](https://github.com/andrewliang25/morphe-patches/issues/128) [#128](https://github.com/andrewliang25/morphe-patches/issues/128)",
-  "download_url": "https://github.com/andrewliang25/morphe-patches/releases/download/v3.3.0-dev.2/patches-3.3.0-dev.2.mpp",
+  "created_at": "2026-09-28T07:16:30",
+  "description": "## [3.3.0-dev.3](https://github.com/andrewliang25/morphe-patches/compare/v3.3.0-dev.2...v3.3.0-dev.3) (2026-09-28)\n\n### ✨ New Features\n\n* view Facebook stories anonymously ([1bd74ed](https://github.com/andrewliang25/morphe-patches/commit/1bd74eda91cb6c30b7a128a355a7713ccffd662e)), closes [#111](https://github.com/andrewliang25/morphe-patches/issues/111) [#111](https://github.com/andrewliang25/morphe-patches/issues/111)",
+  "download_url": "https://github.com/andrewliang25/morphe-patches/releases/download/v3.3.0-dev.3/patches-3.3.0-dev.3.mpp",
   "signature_download_url": "",
-  "version": "3.3.0-dev.2"
+  "version": "3.3.0-dev.3"
 }

@@ -1,3 +1,9 @@
+## [3.3.0-dev.3](https://github.com/andrewliang25/morphe-patches/compare/v3.3.0-dev.2...v3.3.0-dev.3) (2026-09-28)
+
+### ✨ New Features
+
+* view Facebook stories anonymously ([1bd74ed](https://github.com/andrewliang25/morphe-patches/commit/1bd74eda91cb6c30b7a128a355a7713ccffd662e)), closes [#111](https://github.com/andrewliang25/morphe-patches/issues/111) [#111](https://github.com/andrewliang25/morphe-patches/issues/111)
+
 ## [3.3.0-dev.2](https://github.com/andrewliang25/morphe-patches/compare/v3.3.0-dev.1...v3.3.0-dev.2) (2026-09-28)
 
 ### ✨ New Features

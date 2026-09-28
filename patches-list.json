@@ -1,6 +1,6 @@
 {
   "NOTE": "Do NOT manually edit this file. This file is automatically updated when semantic release (release.yml) runs. Manually editing this file can break your releases and break third party tools that use this file.",
-  "version": "3.3.0-dev.2",
+  "version": "3.3.0-dev.3",
   "patches": [
     {
       "name": "[Ad] Block ad telemetry",
@@ -1028,6 +1028,34 @@
       "name": "[Stories] Hide sponsored stories",
       "description": "Removes ad cards from the story viewer, so swiping through stories only shows stories people posted.",
       "default": true,
+      "dependencies": [],
+      "compatiblePackages": [
+        {
+          "packageName": "com.facebook.katana",
+          "name": "Facebook",
+          "description": null,
+          "apkFileType": "APKM",
+          "appIconColor": "#0864FF",
+          "signatures": null,
+          "targets": [
+            {
+              "version": "577.0.0.50.72",
+              "versionCodes": {
+                "ARM64_V8A": 474426275
+              },
+              "isExperimental": false,
+              "minSdk": 30,
+              "description": null
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "[Stories] View stories anonymously",
+      "description": "Stops Facebook telling the server which stories you saw, so you are not in the viewer list. Stories that you saw still show as seen on this device.",
+      "default": false,
       "dependencies": [],
       "compatiblePackages": [
         {
