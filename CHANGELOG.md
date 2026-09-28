@@ -1,3 +1,9 @@
+## [3.3.0-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v3.2.0...v3.3.0-dev.1) (2026-09-28)
+
+### ✨ New Features
+
+* hide Facebook interest prompts in the feed and Reels ([16464b2](https://github.com/andrewliang25/morphe-patches/commit/16464b2ba606745de0ebe9cc52f18ef42e6a05d8))
+
 ## [3.2.0](https://github.com/andrewliang25/morphe-patches/compare/v3.1.0...v3.2.0) (2026-09-25)
 
 ### 🐛 Bug Fixes
