@@ -1,6 +1,6 @@
 {
   "NOTE": "Do NOT manually edit this file. This file is automatically updated when semantic release (release.yml) runs. Manually editing this file can break your releases and break third party tools that use this file.",
-  "version": "3.3.0-dev.4",
+  "version": "3.3.0-dev.5",
   "patches": [
     {
       "name": "[Ad] Block ad telemetry",
@@ -1000,6 +1000,34 @@
       "name": "[Reels] Hide sponsored reels",
       "description": "Removes ads from Reels and Watch, including product banners over a reel and ads inside a video.",
       "default": true,
+      "dependencies": [],
+      "compatiblePackages": [
+        {
+          "packageName": "com.facebook.katana",
+          "name": "Facebook",
+          "description": null,
+          "apkFileType": "APKM",
+          "appIconColor": "#0864FF",
+          "signatures": null,
+          "targets": [
+            {
+              "version": "577.0.0.50.72",
+              "versionCodes": {
+                "ARM64_V8A": 474426275
+              },
+              "isExperimental": false,
+              "minSdk": 30,
+              "description": null
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "[Stories] Disable auto advance",
+      "description": "Keeps each story on the screen until you tap or swipe to the next one.",
+      "default": false,
       "dependencies": [],
       "compatiblePackages": [
         {

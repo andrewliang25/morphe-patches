@@ -1,3 +1,9 @@
+## [3.3.0-dev.5](https://github.com/andrewliang25/morphe-patches/compare/v3.3.0-dev.4...v3.3.0-dev.5) (2026-09-28)
+
+### ✨ New Features
+
+* disable Facebook story auto advance ([8a2aa76](https://github.com/andrewliang25/morphe-patches/commit/8a2aa76d2162daedb553c7f75d4a3819f5edd948))
+
 ## [3.3.0-dev.4](https://github.com/andrewliang25/morphe-patches/compare/v3.3.0-dev.3...v3.3.0-dev.4) (2026-09-28)
 
 ### ✨ New Features
