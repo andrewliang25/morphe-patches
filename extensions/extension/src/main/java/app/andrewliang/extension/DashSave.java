@@ -156,6 +156,13 @@ final class DashSave {
             ByteBuffer buffer = ByteBuffer.allocate(bufferSize);
             MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
 
+            // Some AAC tracks start before zero, so the extractor gives their first frames
+            // negative times. As a result, a negative time does not end a track. Only an empty
+            // read does. The muxer refuses a negative time, so both tracks move by the same
+            // lead-in. This keeps the picture and the sound in sync.
+            long leadIn = Math.min(0L, videoIn.getSampleTime());
+            if (audioIn != null) leadIn = Math.min(leadIn, audioIn.getSampleTime());
+
             boolean videoDone = false;
             boolean audioDone = audioIn == null;
 
@@ -163,16 +170,7 @@ final class DashSave {
                 long videoTime = videoDone ? Long.MAX_VALUE : videoIn.getSampleTime();
                 long audioTime = audioDone ? Long.MAX_VALUE : audioIn.getSampleTime();
 
-                if (!videoDone && videoTime < 0) {
-                    videoDone = true;
-                    continue;
-                }
-                if (!audioDone && audioTime < 0) {
-                    audioDone = true;
-                    continue;
-                }
-
-                boolean takeVideo = videoTime <= audioTime;
+                boolean takeVideo = !videoDone && (audioDone || videoTime <= audioTime);
                 MediaExtractor from = takeVideo ? videoIn : audioIn;
                 int track = takeVideo ? videoTrack : audioTrack;
 
@@ -185,7 +183,7 @@ final class DashSave {
 
                 info.offset = 0;
                 info.size = size;
-                info.presentationTimeUs = from.getSampleTime();
+                info.presentationTimeUs = (takeVideo ? videoTime : audioTime) - leadIn;
                 info.flags = (from.getSampleFlags() & MediaExtractor.SAMPLE_FLAG_SYNC) != 0
                     ? MediaCodec.BUFFER_FLAG_KEY_FRAME
                     : 0;
