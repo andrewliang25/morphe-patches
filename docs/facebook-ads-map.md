@@ -160,6 +160,7 @@ story-viewer half of that work is still **not device-tested**.
 | `[Feed] Hide post prompts` | The static `(LX/2Pv;)Z` predicate on `NTFeedStoryBumperComponent` (`LX/2Xd;->A03`) returns false | Two instructions at index 0. See [Prompts inside posts and reels](#prompts-inside-posts-and-reels) |
 | `[Reels] Hide interest prompts` | The interest-prompt predicate `LX/8qp;->A0O(LX/5LS;)Z` returns false | Two instructions at index 0. See [Prompts inside posts and reels](#prompts-inside-posts-and-reels) |
 | `[Feed] Block feed auto refresh` | 3 sites of the feed loader and the feed fragment: the reset schedule in `onUserLeftApp` (`LX/ecb;->A0Q`), `maybeRefreshForWarmStart` (`LX/ecb;->A05`) and `refreshForRevisit` (`LX/2Vz;`) | One call removed, and two early returns. See [Feed auto refresh](#feed-auto-refresh) |
+| `[Stories] View stories anonymously` | The seen sender (`LX/A5o;->A00`, next to the kept `getRequest`) returns at once. The seen helper (`LX/A3k;->A00`) tells the extension about each card. 33 reads of the two seen fields go through the extension | `return-void` at index 0, one range call at index 0, and 33 one-for-one `invoke` swaps. See [Anonymous story views](#anonymous-story-views) |
 
 Together the eight patches rewrite 28 classes, and they add the extension on top of that. The CLI
 prints this count as `Stripping N modified classes`. Two controlled runs on 2026-09-19 against
@@ -1062,6 +1063,85 @@ The logging build saw these, and they did not change the feed in the test:
 FroggoMorphePatches has a patch for this on 573 (`Facebook573RefreshPatch.kt`). It edits seven sites
 by obfuscated name. It skips the same loader reset, at the call in the app exit callback. It also
 drops the automatic causes at the head load and at the network response.
+
+## Anonymous story views
+
+`[Stories] View stories anonymously` (issue #111) stops the report that puts you in the viewer
+list of a story. Stories that you saw still show as seen on the device. The patch is off by
+default, because it changes what other people see.
+
+### The report
+
+The story viewer keeps the cards that you saw in its seen helper, `StoryViewerSeenHelper`
+(`LX/A3k;`). It sends them in one request when the viewer pauses or closes (`on_pause`,
+`on_detach`, `max_queue_size`). The request is `DirectSeenMutation`
+(`direct_message_thread_update_seen_state`). `LX/A5o;->getRequest` builds it with the fields
+`story_ids_list`, `derived_story_buckets_ids_list`, `bucket_to_story_card_id_filters`,
+`idempotence_token` and `is_story_peek_view`. The request has no flag for an anonymous view.
+
+A logging build hooked the constructor of `LX/1wp;`, the base of every GraphQL operation. Viewing
+a story made one operation only: `DirectSeenMutation`. The patch makes the sender, the one void
+method of that class that calls `getRequest`, return at once. With the patch, the same logging
+build saw no `DirectSeenMutation`.
+
+The patch cannot show the viewer list itself. A test of that needs a second account that posts a
+story.
+
+### The seen state on the device
+
+Stock Facebook marks a story as seen on the device only when the server answers the report. The
+answer merges into the GraphQL cache, and the tray reads its seen state from there. `CIQ.A01`,
+which runs between `getRequest` and the send, only sets a retry policy. There is no optimistic
+update. Thus, with the report stopped, each story stays "Unseen".
+
+The patch keeps the seen state in the extension (`AnonymousStories`) instead:
+
+* **Cards.** The seen helper `LX/A3k;->A00(session, StoryBucket, StoryCard, …)` runs for each card
+  that the viewer shows. The patch passes the bucket and the card to the extension, which saves
+  the card id from the kept `getId()`.
+* **Buckets.** When each card of a bucket is seen, the extension saves the bucket. A card counts
+  as seen when it is saved, or when the card itself says that it is seen. The viewer skips a card
+  that the server marked as seen before, so the second test is necessary. The card list and the
+  seen getter have obfuscated names. The extension finds the list by reflection: it is the one
+  no-argument getter of the bucket that returns story cards. The patch finds the getter
+  (`StoryCard.A1b()` here) from the read of `is_seen_by_viewer` in `RegularStoryCard`.
+* **Reads.** Facebook reads a tree field by the `hashCode` of its name. The patch swaps each
+  `TreeJNI.getBooleanValue` read of `"is_seen_by_viewer".hashCode()` (6 reads) and
+  `"is_bucket_seen_by_viewer".hashCode()` (27 reads) for a static call with the same two
+  registers. The extension returns the value from the server, or true for a saved card or bucket.
+  If a step fails, the value from the server stands.
+
+The tray label comes from `LX/3Sw;->Bax()` (282 reads at start-up). A build that forced every
+bucket read to true made every tray label "seen", so the swapped reads cover the tray.
+
+### New stories
+
+A tray bucket has no list of its stories (`3Sw.B8N()` was empty on the device), so the tray
+cannot compare story ids. Each tray bucket has one time field, `getTimeValue(767170141)` (`BOU()J`),
+in epoch seconds. The extension saves that time with the bucket. The bucket stays seen while the
+time does not increase, so a new story shows as new again. If the tray did not read the bucket
+before you saw it, the next tray read gives the time.
+
+The new-story case is not device-tested. It needs a person who posts a story after you saw the
+others.
+
+### What the device test showed
+
+* A bucket with one watched card and more cards stays "Unseen", as in stock.
+* After each card of a bucket was seen, the tray label lost "Unseen". It stayed seen after a
+  restart, when the tray loads from the server again.
+* A bucket where the server marked the first card as seen before also changed to seen.
+* Saved entries go after 48 hours, because a story is live for 24 hours.
+
+### Anchors
+
+* `getRequest` (a kept name) and the string literals `story_ids_list` and `is_story_peek_view`
+  find the sender.
+* The string literal `max_queue_size` and the kept parameter types `StoryBucket` and `StoryCard`
+  find the seen helper.
+* The two field names give the hashes. They are GraphQL field names, so they do not change.
+* The tray time field (767170141) is a hash with no name found in the dex. Confirm it again on a
+  version bump.
 
 ## Re-signed builds: Facebook trusts its own certificate
 
