@@ -49,9 +49,9 @@ private val SUGGESTED_FEED_UNITS = listOf(
 
 @Suppress("unused")
 val hideSuggestedPostsPatch = bytecodePatch(
-    name = "[Feed] Hide suggested and promoted posts",
-    description = "Removes posts that Facebook adds to the feed, such as \"Pages you may " +
-        "like\", upsells and surveys.",
+    name = "[Feed] Hide page suggestions and promo cards",
+    description = "Removes the items that Facebook adds to the feed, such as \"Pages you may " +
+        "like\", promo cards and surveys. \"Suggested for you\" posts stay.",
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_FACEBOOK)
