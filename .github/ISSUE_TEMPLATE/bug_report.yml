@@ -11,6 +11,32 @@ body:
         Before creating a new bug report, please keep the following in mind:
 
         - **Do not submit a duplicate bug report**: Search for existing bug reports [here](https://github.com/andrewliang25/morphe-patches/issues?q=label%3A%22Bug+report%22).
+  - type: input
+    id: app-version
+    attributes:
+      label: App and version
+      description: The patched app and its version.
+      placeholder: "LINE 26.14.0"
+    validations:
+      required: true
+  - type: input
+    id: bundle-version
+    attributes:
+      label: Bundle version
+      description: The version of Andrew's Patches that you applied.
+      placeholder: "v3.3.2-dev.1"
+    validations:
+      required: true
+  - type: textarea
+    id: patches-applied
+    attributes:
+      label: Patches applied
+      description: List all the patches that you applied, not only the patch with the bug.
+      placeholder: |
+        - [Ad] Remove banner ads
+        - [Chat] Keep unsent messages
+    validations:
+      required: true
   - type: textarea
     attributes:
       label: Bug description
