@@ -149,7 +149,7 @@ story-viewer half of that work is still **not device-tested**.
 | Patch | Target | Verified in the patched dex |
 |---|---|---|
 | `[Feed] Hide sponsored posts` | `LX/1lD;->addNewEdgeToCollection` guard on `GraphQLFeedStoryCategory.SPONSORED` (it is `A0K`) | The branch lands on original instruction 0. Try blocks moved from `@fb` to `@107` |
-| `[Feed] Hide suggested and promoted posts` | The same chokepoint, plus a new `LX/1lD;->isSuggestedOrPromotedFeedUnit` | 15 `instance-of` arms, all of which branch to `@3e` |
+| `[Feed] Hide page suggestions and promo cards` | The same chokepoint, plus a new `LX/1lD;->isSuggestedOrPromotedFeedUnit` | 15 `instance-of` arms, all of which branch to `@3e` |
 | `[Stories] Hide sponsored stories` | 4 bucket data sources return their input list: `LX/awi;`, `LX/Apf;`, `LX/gq4;`, `LX/A2v;` | Each `return-object` names that method's own `p3`: `v28`, `v74`, `v9`, `v35` |
 | `[Reels] Hide sponsored reels` | The page filter at the controller's `(List)Z` entry and at the item collection, plus `return-void` in `LX/50Q;->Cwp` (`maybeInsertAds`), `LX/54e;->A02`, `LX/6S7;->run`, `LX/6SZ;->run` | Every `return-void` lands before the QPL marker, so no trace section stays open. The filters are device-tested. See [Reels ads arrive inside the page](#reels-ads-arrive-inside-the-page-not-through-an-insert) |
 | `[Ad] Block background ad prefetch` | 8 void methods across 7 schedulers with kept names | All are `return-void`. Constructors and the `A00()Z` gate are untouched |
@@ -459,7 +459,7 @@ Audience Network SDK. `[Ad] Disable Audience Network` disables them.
 ### Injected units that are not ads
 
 These are not paid ads, but they use the same chokepoint. All the model classes keep their real
-names, so `instance-of` is enough. `[Feed] Hide suggested and promoted posts` drops them:
+names, so `instance-of` is enough. `[Feed] Hide page suggestions and promo cards` drops them:
 
 ```
 GraphQLPagesYouMayLikeFeedUnit / Paginated… / Creative… / GraphQLPYMLWithLargeImageFeedUnit
@@ -474,6 +474,18 @@ Two are excluded. `GraphQLFriendsLocationsFeedUnit` is a real feature. People Yo
 container feed unit with a kept name. Only the item types are reachable, and to drop those does not
 remove the row.
 
+Two kinds of units stay in the feed:
+
+* **"Suggested for you" posts stay by choice.** Each one is a plain `GraphQLStory` from a page or
+  group that the user does not follow. No feed-unit type marks it as a suggestion, so a filter must
+  find the story field that does. Such a filter removes all recommended posts and leaves only
+  posts from followed sources. That is too much (issue #143).
+* **`DiscoverFeedUnit` carousels** have no class of their own. The unit is the generic tree model
+  `LX/3zZ;`, and only its type tag `-152311274` identifies it (`TreeJNI.mTypeTag`, tested by
+  `LX/3zZ;->A00(ILjava/lang/Object;)Z`). Thus `instance-of` cannot match it.
+  `com/facebook/feed/discoverunits/DiscoverUnitComponent` draws it. We do not know yet
+  what it shows. It can be recommendations of the kind that the first item keeps.
+
 The nag interstitials of Facebook are the **Quick Promotion and megaphone** system
 (`MegaphoneController`, `MegaphoneStore`, `MegaphoneQueue`, `MegaphoneFetcher` at `LX/2iY;`,
 `QpMegaphoneWrapperComponent`). The patch above covers the ones in the feed. Only the interstitial
@@ -482,7 +494,7 @@ path has no anchor.
 ### Prompts inside posts and reels
 
 "Are you interested in this post?" (feed) and "Are you interested in this reel?" (Reels) are not
-feed units, so `[Feed] Hide suggested and promoted posts` cannot remove them. Each is a strip
+feed units, so `[Feed] Hide page suggestions and promo cards` cannot remove them. Each is a strip
 that the server attaches to one post or reel. Two patches remove them: `[Feed] Hide post prompts`
 and `[Reels] Hide interest prompts`. A logging build on 2026-09-28 found both gates. It logged entry
 to all 264 name-kept `*Plugin` classes under `feed/`, `feedplugins/` and `fbshorts/`.

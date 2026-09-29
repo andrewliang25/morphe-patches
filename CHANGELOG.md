@@ -1,3 +1,9 @@
+## [3.3.2-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v3.3.1...v3.3.2-dev.1) (2026-09-29)
+
+### 🐛 Bug Fixes
+
+* **facebook:** rename "Hide suggested and promoted posts" to "Hide page suggestions and promo cards" ([e466869](https://github.com/andrewliang25/morphe-patches/commit/e46686992675ea757590095ebd7eef059475f202)), closes [#143](https://github.com/andrewliang25/morphe-patches/issues/143)
+
 ## [3.3.1](https://github.com/andrewliang25/morphe-patches/compare/v3.3.0...v3.3.1) (2026-09-28)
 
 ### 🐛 Bug Fixes
