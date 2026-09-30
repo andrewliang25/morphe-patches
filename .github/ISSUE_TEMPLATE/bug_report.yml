@@ -27,6 +27,16 @@ body:
       placeholder: "v3.3.2-dev.1"
     validations:
       required: true
+  - type: dropdown
+    id: installation-mode
+    attributes:
+      label: Installation mode
+      description: How you installed the patched app. Standard signs the app again. Root Mount keeps the original signature.
+      options:
+        - Standard
+        - Root Mount
+    validations:
+      required: true
   - type: textarea
     id: patches-applied
     attributes:
