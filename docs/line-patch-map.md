@@ -566,6 +566,39 @@ no usable web url in the intent, reuse LINE's `r7()` resolver (anchor on the sta
 `"STANDALONE"` literals and read the obfuscated `l5()`/`r7()` descriptors from the matches — do not
 hardcode `sv3.n`, which drifts).
 
+### Browser checkout path (issue #161)
+
+A merchant website in a mobile browser does not link to LINE directly. Its LINE Pay button opens a
+web-pay page first, and that page then opens LINE:
+
+```
+merchant checkout in the browser
+  ► https://web-pay.line.me/web/payment/wait?transactionReserveId=<reserveId>
+      (forwarder: a form submit on Android Chrome, else location.replace)
+  ► https://web-pay.line.me/web/payment/waitPreLogin?transactionReserveId=<reserveId>
+      (the user taps 繼續; the page calls mobile-check, and while the status is RESERVE:)
+  ► intent://pay/payment/<reserveId>#Intent;scheme=line;action=android.intent.action.VIEW;
+      category=android.intent.category.BROWSABLE;package=jp.naver.line.android;end
+  ► line://pay/payment/<reserveId>  →  PayLaunchActivity
+```
+
+- The intent comes from the `SCHEME.ANDROID` template and `conf.url.ANDROID.appScheme`
+  (`/pay/payment/<reserveId>`) in the inline script of `waitPreLogin`.
+- On Chrome 73 and later, `init()` returns early. LINE opens only after the tap on 繼續, not on page
+  load.
+- LINE gets the same `line://pay/payment/<reserveId>` link as in the merchant-app case. Thus the
+  redirect handles the browser path with no change.
+- The two web-pay pages show the transaction only for a valid reserve id. A dummy id gives a
+  `載入失敗` (load failed) page, so this flow cannot be read without a real transaction.
+
+**Open (issue #161):** one merchant fails on a Standard install. The user sees a web page in LINE:
+`無法完成付款操作 / 您必須透過LINE應用程式操作此功能` with an `更新` link. The suspected cause
+is that this merchant accepts payment only inside LINE. Then the standalone app sends the payment
+back to LINE. We do not know yet which link the standalone app uses, or which app shows the error.
+LINE also has Pay web screens that the patch does not hook: `PayWebActivity` and
+`PayWebStandaloneActivity` (the internal `linepay://payweb` route, `av3.b.PAY_WEB_APP`, launched from
+`e24.r1`), plus the legacy `LaunchActivity` and `WebViewActivity`.
+
 ---
 
 ## Message unsend (receive side) & the "[Chat] Keep unsent messages" patch
