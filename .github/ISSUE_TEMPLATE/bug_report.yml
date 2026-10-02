@@ -37,6 +37,22 @@ body:
         - Root Mount
     validations:
       required: true
+  - type: input
+    id: device-model
+    attributes:
+      label: Device model
+      description: The model of your device.
+      placeholder: "POCO F8 Ultra"
+    validations:
+      required: true
+  - type: input
+    id: rom-android-version
+    attributes:
+      label: ROM and Android version
+      description: The ROM of your device and its Android version.
+      placeholder: "HyperOS 3.0.309.0 Stable by xiaomi.eu, Android 16"
+    validations:
+      required: true
   - type: textarea
     id: patches-applied
     attributes:
