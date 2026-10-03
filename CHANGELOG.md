@@ -1,3 +1,9 @@
+## [3.3.3-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v3.3.2...v3.3.3-dev.1) (2026-10-03)
+
+### 🐛 Bug Fixes
+
+* make search result cards black in the AMOLED theme ([3268483](https://github.com/andrewliang25/morphe-patches/commit/326848304a9ac7d6b63c535689a1ca6b6383a52f)), closes [#333334](https://github.com/andrewliang25/morphe-patches/issues/333334) [#3B3C3E](https://github.com/andrewliang25/morphe-patches/issues/3B3C3E) [#136](https://github.com/andrewliang25/morphe-patches/issues/136)
+
 ## [3.3.2](https://github.com/andrewliang25/morphe-patches/compare/v3.3.1...v3.3.2) (2026-09-29)
 
 ### 🐛 Bug Fixes
