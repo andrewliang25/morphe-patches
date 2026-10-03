@@ -144,6 +144,19 @@ Route 1 also tests the **token**, because a colour alone cannot tell a card from
 opaque and dark test is what keeps light mode correct with no mode check: a light-mode card is white
 and falls through. Route 4 has no token, so it uses the colour alone, like routes 2 and 3.
 
+Because the token shows that the colour is a background, route 1 uses a higher limit,
+`MAX_TOKEN_CHANNEL = 0x34`. The FDS palette has three background levels:
+
+| Token | Dark colour | Where |
+|---|---|---|
+| `WASH` | `#101011` | the page |
+| `SURFACE_BACKGROUND` | `#252728` | the feed, the bars |
+| `CARD_BACKGROUND`, `CARD_BACKGROUND_FLAT`, `COMMENT_BACKGROUND` | `#333334` | search result cards, link preview footers, comments |
+| `POPOVER_BACKGROUND` | `#3B3C3E` | menus. This colour is above the limit, so menus stay visible. |
+
+With `0x2A` on route 1, the search result cards stayed `#333334` on a black page (issue #136). The
+feed uses no `CARD_BACKGROUND`, so the gap showed only in search.
+
 ---
 
 ## Anchoring
@@ -200,6 +213,7 @@ crash, no `Resources$NotFoundException`.
 | Comments sheet | `#101011` | `#000000` |
 | Profile header card and "At a glance" rows (route 4, 2026-09-24) | `#252728` | `#000000` |
 | Settings & privacy, and its Notifications page (route 4, 2026-09-24) | `#252728` | `#000000` |
+| Search result cards (route 1 `CARD_BACKGROUND`, 2026-10-03) | `#333334` | `#000000` |
 
 After route 4, the buttons and the search field on those screens are `#191919`. They are a
 translucent layer, so they darken with the page and stay visible. Light mode keeps these screens
@@ -231,6 +245,10 @@ and resolves Mig tokens through `LX/1tK`. The Mig hook stays because it costs no
 To repeat it, make `apply` log `((Enum<?>) token).name()` with the colour and return the colour
 unchanged, then read `adb logcat -s AndrewFbTheme:I` while walking the app in both modes. Do not
 push the probe commit.
+
+To find the source of one grey that stays, log only that colour range, once for each token, with a
+`Throwable` for the stack. For issue #136, one run named `CARD_BACKGROUND` from `X.BVD.render`
+through `LX/1tK;->A01`.
 
 ---
 
