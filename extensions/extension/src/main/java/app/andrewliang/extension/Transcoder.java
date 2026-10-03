@@ -1,5 +1,6 @@
 package app.andrewliang.extension;
 
+import android.media.AudioFormat;
 import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaExtractor;
@@ -12,9 +13,9 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 /**
- * Encodes one video track again as H.264, which the MP4 muxer and every player accept.
+ * Encodes one track again, into a codec that every player and every app accepts.
  *
- * <p>It reads the video track from one MP4 file and writes one MP4 file that holds only the new
+ * <p>Each method reads one track from one MP4 file and writes one MP4 file that holds only the new
  * track. {@link DashSave} then joins the video and the sound as it does for a track it copies.
  *
  * <p>The video goes from the decoder straight into the input surface of the H.264 encoder. The
@@ -36,6 +37,8 @@ final class Transcoder {
 
     private static final int MIN_VIDEO_BIT_RATE = 2_000_000;
     private static final int MAX_VIDEO_BIT_RATE = 16_000_000;
+
+    private static final int AUDIO_BIT_RATE_PER_CHANNEL = 96_000;
 
     /**
      * Encode the video track of [in] as H.264 into [out].
@@ -123,7 +126,141 @@ final class Transcoder {
         }
     }
 
+    /** Encode the audio track of [in] as AAC-LC into [out]. */
+    static void toAacLc(File in, File out) throws IOException {
+        MediaExtractor extractor = new MediaExtractor();
+        MediaCodec decoder = null;
+        MediaCodec encoder = null;
+        Output output = null;
+
+        try {
+            extractor.setDataSource(in.getPath());
+            MediaFormat source = DashSave.selectTrack(extractor, "audio/");
+            if (source == null) throw new IOException("the file holds no audio track");
+
+            decoder = MediaCodec.createDecoderByType(source.getString(MediaFormat.KEY_MIME));
+            decoder.configure(source, null, null, 0);
+            decoder.start();
+
+            output = new Output(out, 0);
+
+            MediaCodec.BufferInfo decoded = new MediaCodec.BufferInfo();
+            MediaCodec.BufferInfo encoded = new MediaCodec.BufferInfo();
+            boolean inputDone = false;
+            boolean decoderDone = false;
+            int sampleRate = 0;
+            int channels = 0;
+            long framesQueued = 0;
+            long startUs = -1;
+            boolean endQueued = false;
+            long lastProgress = System.currentTimeMillis();
+
+            while (!output.done) {
+                boolean progress = false;
+
+                if (!inputDone) {
+                    int index = decoder.dequeueInputBuffer(TIMEOUT_US);
+                    if (index >= 0) {
+                        inputDone = feed(extractor, decoder, index);
+                        progress = true;
+                    }
+                }
+
+                if (!decoderDone) {
+                    int index = decoder.dequeueOutputBuffer(decoded, TIMEOUT_US);
+
+                    if (index == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED && encoder == null) {
+                        // The decoder knows the real rate and channels only after the first frame.
+                        MediaFormat pcm = decoder.getOutputFormat();
+                        int encoding = intOf(pcm, MediaFormat.KEY_PCM_ENCODING, AudioFormat.ENCODING_PCM_16BIT);
+                        if (encoding != AudioFormat.ENCODING_PCM_16BIT) {
+                            throw new IOException("the decoder gives PCM encoding " + encoding);
+                        }
+
+                        sampleRate = pcm.getInteger(MediaFormat.KEY_SAMPLE_RATE);
+                        channels = pcm.getInteger(MediaFormat.KEY_CHANNEL_COUNT);
+                        encoder = aacEncoder(sampleRate, channels);
+                        progress = true;
+                    } else if (index >= 0) {
+                        if (encoder == null) throw new IOException("the decoder gave samples before a format");
+
+                        if (startUs < 0) startUs = Math.max(0L, decoded.presentationTimeUs);
+
+                        ByteBuffer pcm = decoder.getOutputBuffer(index);
+                        pcm.position(decoded.offset);
+                        pcm.limit(decoded.offset + decoded.size);
+
+                        // An input buffer of the encoder can be smaller than one decoded frame.
+                        while (pcm.hasRemaining()) {
+                            int slot = encoder.dequeueInputBuffer(TIMEOUT_US);
+                            if (slot < 0) {
+                                output.drain(encoder, encoded, 0);
+                                lastProgress = checkStall(false, lastProgress);
+                                continue;
+                            }
+
+                            ByteBuffer target = encoder.getInputBuffer(slot);
+                            target.clear();
+                            int bytes = Math.min(pcm.remaining(), target.remaining());
+                            bytes -= bytes % (2 * channels);
+                            if (bytes == 0) throw new IOException("the encoder input buffer is too small");
+
+                            ByteBuffer slice = pcm.duplicate();
+                            slice.limit(pcm.position() + bytes);
+                            target.put(slice);
+                            pcm.position(pcm.position() + bytes);
+
+                            long timeUs = startUs + framesQueued * 1_000_000L / sampleRate;
+                            framesQueued += bytes / (2 * channels);
+                            encoder.queueInputBuffer(slot, 0, bytes, timeUs, 0);
+                            lastProgress = System.currentTimeMillis();
+                        }
+
+                        decoder.releaseOutputBuffer(index, false);
+
+                        if ((decoded.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) decoderDone = true;
+                        progress = true;
+                    }
+                }
+
+                if (decoderDone && encoder != null && !endQueued) {
+                    int index = encoder.dequeueInputBuffer(TIMEOUT_US);
+                    if (index >= 0) {
+                        long timeUs = startUs + framesQueued * 1_000_000L / sampleRate;
+                        encoder.queueInputBuffer(index, 0, 0, timeUs, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
+                        endQueued = true;
+                        progress = true;
+                    }
+                }
+
+                if (decoderDone && encoder == null) throw new IOException("the decoder gave no audio");
+
+                if (encoder != null && output.drain(encoder, encoded, decoderDone ? TIMEOUT_US : 0)) {
+                    progress = true;
+                }
+
+                lastProgress = checkStall(progress, lastProgress);
+            }
+        } finally {
+            release(decoder);
+            release(encoder);
+            if (output != null) output.close();
+            extractor.release();
+        }
+    }
+
     // ---------------------------------------------------------------- internals
+
+    private static MediaCodec aacEncoder(int sampleRate, int channels) throws IOException {
+        MediaFormat format = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AAC, sampleRate, channels);
+        format.setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectLC);
+        format.setInteger(MediaFormat.KEY_BIT_RATE, AUDIO_BIT_RATE_PER_CHANNEL * channels);
+
+        MediaCodec encoder = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_AUDIO_AAC);
+        encoder.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
+        encoder.start();
+        return encoder;
+    }
 
     /** Give the next sample of [extractor] to [decoder]. Returns whether that was the end. */
     private static boolean feed(MediaExtractor extractor, MediaCodec decoder, int index) {

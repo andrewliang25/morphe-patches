@@ -1024,6 +1024,35 @@ needs no search by id. The patch gives the button the real name of `abrManifestC
 the names of `videoHdUri` and `videoUri`. On the device, one reel had a 720p `videoHdUri`, and its
 manifest listed a 1080x1920 AV1 track. The button saved that track (17 s, 6.2 MB).
 
+### Option "Save as H.264" (issue #155)
+
+WhatsApp refuses a saved reel ("Can't send this video"). Each such file was 1080x1920 AV1 with
+xHE-AAC sound (`mp4a.40.42`). The single files that WhatsApp accepts are H.264 with HE-AAC. So
+both tracks differ, and the option converts both.
+
+Both download patches have the option `saveAsH264` (off by default). Each patch makes its own
+flag in `MediaDownload` return true (`storiesAsH264`, `reelsAsH264`). When the flag is on:
+
+- Each video track that is not H.264 is encoded again as H.264.
+- xHE-AAC sound is encoded again as AAC-LC. Other AAC sound is copied.
+- At the same size, the save still prefers an H.264 track, because it needs no encode.
+
+With the Morphe CLI, `-O` applies to the `-e` that comes **before** it:
+`-e '[Reels] Download any reel' -O saveAsH264=true`. In a test build, an `-O` in front of the reel
+`-e` set the option of the story patch, which was the `-e` before it.
+
+Device-confirmed on 2026-10-03 on a re-signed 577.0.0.50.72 (Android 17, Snapdragon 7+ Gen 2):
+
+| Source | Result | Encode time |
+|---|---|---|
+| Reel, AV1 + xHE-AAC, 25.5 s | H.264 High 1080x1920 + AAC-LC, 18 MB | video 4.6 s, sound 1.0 s |
+| Reel, AV1 + xHE-AAC, 11.4 s | H.264 High 1080x1920 + AAC-LC, 12 MB | video 2.2 s, sound 0.5 s |
+| Story, VP9 (`vp09.00.40.08`) + xHE-AAC, 18 s | H.264 High 1080x1920 + AAC-LC, 9.5 MB | video 3.1 s, sound 0.7 s |
+
+No frame is lost: the gap between all frames is 33.3 ms. Both tracks start at 0. WhatsApp sends
+the converted reel. The file is about 2 to 3 times as large as the AV1 file, because the encoder
+uses at least twice the bit rate of the source.
+
 ### A photo story saves as a picture
 
 `RenditionPicker.videoTier` rated each address on a Facebook host as a plausible video, and a

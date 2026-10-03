@@ -49,12 +49,21 @@ final class DashManifest {
             return mime.startsWith("audio/");
         }
 
+        boolean isAvc() {
+            return codecs.startsWith("avc1") || codecs.startsWith("avc3");
+        }
+
         boolean isAv1() {
             return codecs.startsWith("av01");
         }
 
         boolean isVp9() {
             return codecs.startsWith("vp09");
+        }
+
+        /** xHE-AAC, which some apps cannot read. */
+        boolean isXheAac() {
+            return codecs.equals("mp4a.40.42");
         }
 
         /** The quality in the same unit as {@code 720p}: the short side, in pixels. */

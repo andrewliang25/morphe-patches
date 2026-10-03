@@ -1,6 +1,8 @@
 package app.andrewliang.patches.facebook.downloadstory
 
+import app.andrewliang.patches.facebook.shared.enableSaveAsH264
 import app.andrewliang.patches.facebook.shared.reportedFieldNames
+import app.andrewliang.patches.facebook.shared.saveAsH264Option
 import app.andrewliang.patches.shared.Constants.COMPATIBILITY_FACEBOOK
 import app.morphe.patcher.extensions.InstructionExtensions.addInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
@@ -45,6 +47,8 @@ val downloadStoryPatch = bytecodePatch(
 
     extendWith("extensions/extension.mpe")
 
+    val saveAsH264 = saveAsH264Option()
+
     // The patch has two halves, because Facebook limits this feature twice.
     //
     // The first limit decides whether the save item appears at all. The "More" menu of the story
@@ -62,6 +66,8 @@ val downloadStoryPatch = bytecodePatch(
     // Both halves stay because they are different limits. The first still has to be forced, or
     // there is no item to tap.
     execute {
+        if (saveAsH264.value == true) enableSaveAsH264("storiesAsH264")
+
         // The class of the action that the menu creates. The patch finds it through the event that
         // the action reports, because Redex gives the class a new name on every Facebook release.
         val saveAction = SaveStoryActionFingerprint.let { fingerprint ->
