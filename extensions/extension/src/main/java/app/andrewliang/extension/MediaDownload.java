@@ -207,11 +207,17 @@ public final class MediaDownload {
      * into one file. If this fails, the save gets the best single file, so the user still gets a
      * file.
      *
+     * <p>A track that cannot be copied into an MP4 is encoded again as H.264. That is VP9 always,
+     * and AV1 before Android 14.
+     *
      * @return whether a download started. {@code false} lets the caller save a single file.
      */
     private static boolean beginDash(Context context, String label, String manifest, List<String> urls) {
         List<DashManifest.Track> tracks = DashManifest.parse(manifest);
-        DashManifest.Track video = DashManifest.bestVideo(tracks, DashSave.canWriteAv1());
+
+        boolean copyAv1 = DashSave.canWriteAv1();
+        boolean allowAv1 = copyAv1 || DashSave.canDecodeAv1();
+        DashManifest.Track video = DashManifest.bestVideo(tracks, allowAv1, DashSave.canDecodeVp9());
 
         if (video == null) {
             if (manifest != null) {
@@ -230,12 +236,15 @@ public final class MediaDownload {
 
         DashManifest.Track audio = DashManifest.bestAudio(tracks);
 
+        boolean toAvc = video.isVp9() || (video.isAv1() && !copyAv1);
+
         Log.i(TAG, "saving " + label + " from its DASH manifest: " + video
             + (audio == null ? ", no sound track" : " + " + audio)
+            + (toAvc ? ", video to H.264" : "")
             + ", instead of " + (fallback == null ? "nothing" : describe(fallback)));
 
         start(safe, true, writer -> {
-            Downloader.Status status = DashSave.save(safe, video, audio, writer);
+            Downloader.Status status = DashSave.save(safe, video, audio, toAvc, writer);
             if (status == Downloader.Status.OK || fallback == null) return status;
 
             Log.w(TAG, "the DASH save ended with " + status + ", saving " + describe(fallback));

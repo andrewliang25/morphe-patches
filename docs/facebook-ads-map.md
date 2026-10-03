@@ -999,12 +999,19 @@ How the story save uses this:
    decode. Then it copies the result into MediaStore. If a step fails, the save gets the best
    single file.
 
-The save uses AV1 only if `MediaMuxer` can write it into an MP4 (Android 14 or later) **and** the
-device has an AV1 decoder. If not, a story saves at 360p.
+The MP4 muxer cannot hold every codec. It refuses VP9, on Android 17 too (`MPEG4Writer:
+Unsupported mime 'video/x-vnd.on2.vp9'`), and the WebM muxer takes no AAC sound. It writes AV1
+only from Android 14. For these tracks, `Transcoder` first encodes the video again as H.264, and
+the join then copies the new track:
 
-A VP9 story also saves at 360p. The MP4 muxer refuses VP9, on Android 17 too (`MPEG4Writer:
-Unsupported mime 'video/x-vnd.on2.vp9'`). The WebM muxer accepts VP9, but not AAC sound. Thus the
-save never picks VP9. A device test tried VP9 once, and the fallback saved the 360p file.
+- An AV1 track is copied on Android 14 or later, if the device has an AV1 decoder. On an older
+  device it is encoded again as H.264.
+- An 8-bit VP9 track (`vp09.PP.LL.08`) is always encoded again as H.264. A 10-bit VP9 track is
+  HDR and needs tone mapping, so the save does not use it and gets the single file.
+
+The decoder sends its frames straight into the input surface of the H.264 encoder. The size does
+not change, so no OpenGL step is necessary. If the encode fails, the save gets the best single
+file.
 
 The patch reads the field names from the `EVr` debug dump of each class (`videoId`, `videoHdUri`,
 `abrManifestContent`). No Redex name is in the patch.
