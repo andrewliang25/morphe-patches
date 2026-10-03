@@ -26,10 +26,18 @@ public final class AmoledTheme {
     private AmoledTheme() {}
 
     /**
-     * The largest value that a channel can have and still count as a background. Measured on a
-     * device: a card is {@code #252728}, but a divider is {@code #3A3B3C}.
+     * The largest value that a channel can have and still count as a background, when no token
+     * comes with the colour. Measured on a device: a card is {@code #252728}, but a divider is
+     * {@code #3A3B3C}.
      */
     private static final int MAX_CHANNEL = 0x2A;
+
+    /**
+     * The largest channel of a background that route one makes black. The token already shows that
+     * the colour is a background, so the limit can include the raised card, {@code #333334}, which
+     * search results and link previews use. A popover is {@code #3B3C3E} and keeps its colour.
+     */
+    private static final int MAX_TOKEN_CHANNEL = 0x34;
 
     /**
      * The largest difference between the channels of a background. A grey has almost none. A dark
@@ -87,7 +95,7 @@ public final class AmoledTheme {
      * @return black if this is a background that is already dark, or {@code color} unchanged.
      */
     public static int apply(int color, Object token) {
-        if (!isDarkNeutral(color)) return color;
+        if (!isDarkNeutral(color, MAX_TOKEN_CHANNEL)) return color;
         if (!(token instanceof Enum)) return color;
 
         return BACKGROUND_TOKENS.contains(((Enum<?>) token).name()) ? 0xFF000000 : color;
@@ -106,11 +114,11 @@ public final class AmoledTheme {
      */
     public static int parseColor(String text) {
         int color = Color.parseColor(text);
-        return isDarkNeutral(color) ? 0xFF000000 : color;
+        return isDarkNeutral(color, MAX_CHANNEL) ? 0xFF000000 : color;
     }
 
-    /** True for an opaque grey with each channel at or below {@link #MAX_CHANNEL}. */
-    private static boolean isDarkNeutral(int color) {
+    /** True for an opaque grey with each channel at or below {@code maxChannel}. */
+    private static boolean isDarkNeutral(int color, int maxChannel) {
         if ((color >>> 24) != 0xFF) return false;
 
         int red = (color >> 16) & 0xFF;
@@ -118,6 +126,6 @@ public final class AmoledTheme {
         int blue = color & 0xFF;
         int high = Math.max(red, Math.max(green, blue));
         int low = Math.min(red, Math.min(green, blue));
-        return high <= MAX_CHANNEL && high - low <= MAX_SPREAD;
+        return high <= maxChannel && high - low <= MAX_SPREAD;
     }
 }
