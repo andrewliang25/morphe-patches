@@ -1,3 +1,10 @@
+## [3.4.0-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v3.3.3-dev.1...v3.4.0-dev.1) (2026-10-03)
+
+### ✨ New Features
+
+* add the option "Save as H.264" to story and reel download ([f18cb4d](https://github.com/andrewliang25/morphe-patches/commit/f18cb4d2d47a657fa20de7504867d3278a4e3b3f)), closes [#155](https://github.com/andrewliang25/morphe-patches/issues/155)
+* save VP9 stories in full quality ([0bbd0f7](https://github.com/andrewliang25/morphe-patches/commit/0bbd0f73cffb1fc13f1d36650d7c3500ecf28c5f))
+
 ## [3.3.3-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v3.3.2...v3.3.3-dev.1) (2026-10-03)
 
 ### 🐛 Bug Fixes
