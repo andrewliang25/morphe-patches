@@ -999,12 +999,19 @@ How the story save uses this:
    decode. Then it copies the result into MediaStore. If a step fails, the save gets the best
    single file.
 
-The save uses AV1 only if `MediaMuxer` can write it into an MP4 (Android 14 or later) **and** the
-device has an AV1 decoder. If not, a story saves at 360p.
+The MP4 muxer cannot hold every codec. It refuses VP9, on Android 17 too (`MPEG4Writer:
+Unsupported mime 'video/x-vnd.on2.vp9'`), and the WebM muxer takes no AAC sound. It writes AV1
+only from Android 14. For these tracks, `Transcoder` first encodes the video again as H.264, and
+the join then copies the new track:
 
-A VP9 story also saves at 360p. The MP4 muxer refuses VP9, on Android 17 too (`MPEG4Writer:
-Unsupported mime 'video/x-vnd.on2.vp9'`). The WebM muxer accepts VP9, but not AAC sound. Thus the
-save never picks VP9. A device test tried VP9 once, and the fallback saved the 360p file.
+- An AV1 track is copied on Android 14 or later, if the device has an AV1 decoder. On an older
+  device it is encoded again as H.264.
+- An 8-bit VP9 track (`vp09.PP.LL.08`) is always encoded again as H.264. A 10-bit VP9 track is
+  HDR and needs tone mapping, so the save does not use it and gets the single file.
+
+The decoder sends its frames straight into the input surface of the H.264 encoder. The size does
+not change, so no OpenGL step is necessary. If the encode fails, the save gets the best single
+file.
 
 The patch reads the field names from the `EVr` debug dump of each class (`videoId`, `videoHdUri`,
 `abrManifestContent`). No Redex name is in the patch.
@@ -1016,6 +1023,35 @@ than a second after the download. Google Photos plays the file.
 needs no search by id. The patch gives the button the real name of `abrManifestContent`, next to
 the names of `videoHdUri` and `videoUri`. On the device, one reel had a 720p `videoHdUri`, and its
 manifest listed a 1080x1920 AV1 track. The button saved that track (17 s, 6.2 MB).
+
+### Option "Save as H.264" (issue #155)
+
+WhatsApp refuses a saved reel ("Can't send this video"). Each such file was 1080x1920 AV1 with
+xHE-AAC sound (`mp4a.40.42`). The single files that WhatsApp accepts are H.264 with HE-AAC. So
+both tracks differ, and the option converts both.
+
+Both download patches have the option `saveAsH264` (off by default). Each patch makes its own
+flag in `MediaDownload` return true (`storiesAsH264`, `reelsAsH264`). When the flag is on:
+
+- Each video track that is not H.264 is encoded again as H.264.
+- xHE-AAC sound is encoded again as AAC-LC. Other AAC sound is copied.
+- At the same size, the save still prefers an H.264 track, because it needs no encode.
+
+With the Morphe CLI, `-O` applies to the `-e` that comes **before** it:
+`-e '[Reels] Download any reel' -O saveAsH264=true`. In a test build, an `-O` in front of the reel
+`-e` set the option of the story patch, which was the `-e` before it.
+
+Device-confirmed on 2026-10-03 on a re-signed 577.0.0.50.72 (Android 17, Snapdragon 7+ Gen 2):
+
+| Source | Result | Encode time |
+|---|---|---|
+| Reel, AV1 + xHE-AAC, 25.5 s | H.264 High 1080x1920 + AAC-LC, 18 MB | video 4.6 s, sound 1.0 s |
+| Reel, AV1 + xHE-AAC, 11.4 s | H.264 High 1080x1920 + AAC-LC, 12 MB | video 2.2 s, sound 0.5 s |
+| Story, VP9 (`vp09.00.40.08`) + xHE-AAC, 18 s | H.264 High 1080x1920 + AAC-LC, 9.5 MB | video 3.1 s, sound 0.7 s |
+
+No frame is lost: the gap between all frames is 33.3 ms. Both tracks start at 0. WhatsApp sends
+the converted reel. The file is about 2 to 3 times as large as the AV1 file, because the encoder
+uses at least twice the bit rate of the source.
 
 ### A photo story saves as a picture
 

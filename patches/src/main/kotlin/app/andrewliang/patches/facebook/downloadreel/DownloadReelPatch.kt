@@ -1,6 +1,8 @@
 package app.andrewliang.patches.facebook.downloadreel
 
+import app.andrewliang.patches.facebook.shared.enableSaveAsH264
 import app.andrewliang.patches.facebook.shared.reportedFieldNames
+import app.andrewliang.patches.facebook.shared.saveAsH264Option
 import app.andrewliang.patches.shared.Constants.COMPATIBILITY_FACEBOOK
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.bytecodePatch
@@ -92,7 +94,11 @@ val downloadReelPatch = bytecodePatch(
     compatibleWith(COMPATIBILITY_FACEBOOK)
     extendWith("extensions/extension.mpe")
 
+    val saveAsH264 = saveAsH264Option()
+
     execute {
+        if (saveAsH264.value == true) enableSaveAsH264("reelsAsH264")
+
         // ---- the real names of the address fields ---------------------------------------------
         //
         // The source keeps a debug dump that pairs each field with the name it reports for it.

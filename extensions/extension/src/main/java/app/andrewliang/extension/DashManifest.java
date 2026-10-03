@@ -49,6 +49,23 @@ final class DashManifest {
             return mime.startsWith("audio/");
         }
 
+        boolean isAvc() {
+            return codecs.startsWith("avc1") || codecs.startsWith("avc3");
+        }
+
+        boolean isAv1() {
+            return codecs.startsWith("av01");
+        }
+
+        boolean isVp9() {
+            return codecs.startsWith("vp09");
+        }
+
+        /** xHE-AAC, which some apps cannot read. */
+        boolean isXheAac() {
+            return codecs.equals("mp4a.40.42");
+        }
+
         /** The quality in the same unit as {@code 720p}: the short side, in pixels. */
         int shortSide() {
             return Math.min(width, height);
@@ -94,21 +111,21 @@ final class DashManifest {
     }
 
     /**
-     * The best video track that {@code MediaMuxer} can write into an MP4, or {@code null}.
+     * The best video track that the save can turn into an MP4, or {@code null}.
      *
-     * <p>H.264 and H.265 are always permitted. AV1 is permitted only when [allowAv1] is true. A
-     * story often lists only AV1 tracks. But the muxer writes AV1 only from Android 14, and a
-     * device with no AV1 decoder cannot play the file. VP9 is never used, because the MP4 muxer
-     * refuses it, also on Android 17. At the same size, H.264 is the first choice, because all
-     * players can play it.
+     * <p>H.264 and H.265 are always permitted. AV1 is permitted only when [allowAv1] is true, and
+     * 8-bit VP9 only when [allowVp9] is true. The caller decides those from what the device can
+     * copy or encode again. A story often lists only AV1 tracks or only VP9 tracks. At the same
+     * size, H.264 is the first choice, because all players can play it and it needs no new
+     * encode.
      */
-    static Track bestVideo(List<Track> tracks, boolean allowAv1) {
+    static Track bestVideo(List<Track> tracks, boolean allowAv1, boolean allowVp9) {
         Track best = null;
 
         for (Track track : tracks) {
             if (!track.isVideo()) continue;
 
-            int family = videoFamily(track.codecs, allowAv1);
+            int family = videoFamily(track.codecs, allowAv1, allowVp9);
             if (family == 0) continue;
 
             if (best == null) {
@@ -121,7 +138,7 @@ final class DashManifest {
                 continue;
             }
 
-            int bestFamily = videoFamily(best.codecs, allowAv1);
+            int bestFamily = videoFamily(best.codecs, allowAv1, allowVp9);
             if (family != bestFamily) {
                 if (family > bestFamily) best = track;
                 continue;
@@ -151,12 +168,25 @@ final class DashManifest {
 
     // ---------------------------------------------------------------- internals
 
-    /** A higher number is a better choice: 3 for H.264, 2 for H.265, 1 for AV1, 0 for not used. */
-    private static int videoFamily(String codecs, boolean allowAv1) {
-        if (codecs.startsWith("avc1") || codecs.startsWith("avc3")) return 3;
-        if (codecs.startsWith("hvc1") || codecs.startsWith("hev1")) return 2;
-        if (allowAv1 && codecs.startsWith("av01")) return 1;
+    /**
+     * A higher number is a better choice: 4 for H.264, 3 for H.265, 2 for AV1, 1 for VP9, 0 for
+     * not used.
+     *
+     * <p>Only 8-bit VP9 is used. A 10-bit track is HDR, and its colors are wrong after an encode
+     * to H.264 with no tone mapping. A VP9 codec string gives the bit depth in its fourth part
+     * ({@code vp09.00.40.08}). The save takes a string with no fourth part as 8-bit.
+     */
+    private static int videoFamily(String codecs, boolean allowAv1, boolean allowVp9) {
+        if (codecs.startsWith("avc1") || codecs.startsWith("avc3")) return 4;
+        if (codecs.startsWith("hvc1") || codecs.startsWith("hev1")) return 3;
+        if (allowAv1 && codecs.startsWith("av01")) return 2;
+        if (allowVp9 && codecs.startsWith("vp09") && isEightBit(codecs)) return 1;
         return 0;
+    }
+
+    private static boolean isEightBit(String vp9Codecs) {
+        String[] parts = vp9Codecs.split("\\.");
+        return parts.length < 4 || parts[3].equals("08");
     }
 
     private static Track track(String setAttributes, String attributes, String body) {

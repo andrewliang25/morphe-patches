@@ -46,6 +46,19 @@ public final class MediaDownload {
     private static final AtomicInteger IN_FLIGHT = new AtomicInteger();
 
     /**
+     * Whether a story saves as H.264 with AAC-LC sound. The story patch makes this return
+     * {@code true} when its option "Save as H.264" is on.
+     */
+    private static boolean storiesAsH264() {
+        return false;
+    }
+
+    /** The same for a reel. The reel patch makes this return {@code true}. */
+    private static boolean reelsAsH264() {
+        return false;
+    }
+
+    /**
      * Save the media of the story that is open.
      *
      * <p>[host] is the story card. Its address is read by value, because the fields that hold it
@@ -62,7 +75,8 @@ public final class MediaDownload {
             PlayerSources.Source source = PlayerSources.find(host);
             if (source != null) {
                 addIfUsable(urls, source.hdUrl);
-                if (beginDash(context, "video " + source.videoId, source.manifest, urls)) return true;
+                String label = "video " + source.videoId;
+                if (beginDash(context, label, source.manifest, urls, storiesAsH264())) return true;
             }
 
             return begin(context, urls);
@@ -101,7 +115,7 @@ public final class MediaDownload {
             List<String> urls = collectVideoUrls(host, hdField, sdField);
 
             String manifest = RenditionPicker.fieldValue(host, manifestField);
-            if (beginDash(context, "the reel", manifest, urls)) return true;
+            if (beginDash(context, "the reel", manifest, urls, reelsAsH264())) return true;
 
             return begin(context, urls);
         } catch (Throwable t) {
@@ -207,11 +221,25 @@ public final class MediaDownload {
      * into one file. If this fails, the save gets the best single file, so the user still gets a
      * file.
      *
+     * <p>A track that cannot be copied into an MP4 is encoded again as H.264. That is VP9 always,
+     * and AV1 before Android 14. If [asH264] is true, every video track that is not H.264 is
+     * encoded again, and xHE-AAC sound is encoded again as AAC-LC. Some apps refuse AV1 and
+     * xHE-AAC. WhatsApp is one of them.
+     *
      * @return whether a download started. {@code false} lets the caller save a single file.
      */
-    private static boolean beginDash(Context context, String label, String manifest, List<String> urls) {
+    private static boolean beginDash(
+        Context context,
+        String label,
+        String manifest,
+        List<String> urls,
+        boolean asH264
+    ) {
         List<DashManifest.Track> tracks = DashManifest.parse(manifest);
-        DashManifest.Track video = DashManifest.bestVideo(tracks, DashSave.canWriteAv1());
+
+        boolean copyAv1 = !asH264 && DashSave.canWriteAv1();
+        boolean allowAv1 = copyAv1 || DashSave.canDecodeAv1();
+        DashManifest.Track video = DashManifest.bestVideo(tracks, allowAv1, DashSave.canDecodeVp9());
 
         if (video == null) {
             if (manifest != null) {
@@ -230,12 +258,17 @@ public final class MediaDownload {
 
         DashManifest.Track audio = DashManifest.bestAudio(tracks);
 
+        boolean toAvc = asH264 ? !video.isAvc() : video.isVp9() || (video.isAv1() && !copyAv1);
+        boolean toAacLc = asH264 && audio != null && audio.isXheAac();
+
         Log.i(TAG, "saving " + label + " from its DASH manifest: " + video
             + (audio == null ? ", no sound track" : " + " + audio)
+            + (toAvc ? ", video to H.264" : "")
+            + (toAacLc ? ", sound to AAC-LC" : "")
             + ", instead of " + (fallback == null ? "nothing" : describe(fallback)));
 
         start(safe, true, writer -> {
-            Downloader.Status status = DashSave.save(safe, video, audio, writer);
+            Downloader.Status status = DashSave.save(safe, video, audio, toAvc, toAacLc, writer);
             if (status == Downloader.Status.OK || fallback == null) return status;
 
             Log.w(TAG, "the DASH save ended with " + status + ", saving " + describe(fallback));

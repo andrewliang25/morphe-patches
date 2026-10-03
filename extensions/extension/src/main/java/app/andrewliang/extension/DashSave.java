@@ -26,6 +26,10 @@ import java.nio.ByteBuffer;
  * them again. So the file has the quality that the player streams, and the join takes less than a
  * second.
  *
+ * <p>The MP4 muxer cannot hold every codec. It refuses VP9, and it writes AV1 only from Android 14.
+ * Also, some apps refuse AV1 or xHE-AAC. In these cases, {@link Transcoder} first encodes the
+ * track again as H.264 or AAC-LC. That takes some seconds, and the join then copies the new track.
+ *
  * <p>The two tracks and the result go into the cache of the app first, because the muxer must seek
  * in its files. Only the finished file goes into the gallery, through the same
  * {@link Downloader.Sink} as all other saves. So an error at any step leaves nothing in the gallery.
@@ -43,25 +47,35 @@ final class DashSave {
 
     private static final int DEFAULT_SAMPLE_BUFFER = 2 * 1024 * 1024;
 
-    private static volatile Boolean canWriteAv1;
+    private static volatile Boolean hasAv1Decoder;
+    private static volatile Boolean hasVp9Decoder;
 
     /**
-     * Whether this device can save an AV1 track. The muxer writes AV1 into an MP4 from Android 14.
-     * The device must also have an AV1 decoder, or it cannot play the file.
+     * Whether this device can copy an AV1 track into an MP4. The muxer writes AV1 into an MP4 from
+     * Android 14. The device must also have an AV1 decoder, or it cannot play the file.
      */
     static boolean canWriteAv1() {
-        if (canWriteAv1 == null) canWriteAv1 = hasAv1Decoder();
-        return canWriteAv1;
+        return Build.VERSION.SDK_INT >= 34 && canDecodeAv1();
     }
 
-    private static boolean hasAv1Decoder() {
-        if (Build.VERSION.SDK_INT < 34) return false;
+    /** Whether this device can decode AV1, and so encode an AV1 track again as H.264. */
+    static boolean canDecodeAv1() {
+        if (hasAv1Decoder == null) hasAv1Decoder = hasDecoder(MediaFormat.MIMETYPE_VIDEO_AV1);
+        return hasAv1Decoder;
+    }
 
+    /** Whether this device can decode VP9, and so encode a VP9 track again as H.264. */
+    static boolean canDecodeVp9() {
+        if (hasVp9Decoder == null) hasVp9Decoder = hasDecoder(MediaFormat.MIMETYPE_VIDEO_VP9);
+        return hasVp9Decoder;
+    }
+
+    private static boolean hasDecoder(String mime) {
         try {
             for (MediaCodecInfo codec : new MediaCodecList(MediaCodecList.REGULAR_CODECS).getCodecInfos()) {
                 if (codec.isEncoder()) continue;
                 for (String type : codec.getSupportedTypes()) {
-                    if ("video/av01".equalsIgnoreCase(type)) return true;
+                    if (mime.equalsIgnoreCase(type)) return true;
                 }
             }
         } catch (Throwable ignored) {
@@ -74,16 +88,23 @@ final class DashSave {
     /**
      * Download [video] and [audio], join them, and write the result to [sink]. This blocks and
      * never throws. [audio] is {@code null} for a video with no sound.
+     *
+     * <p>If [toAvc] is true, the video is encoded again as H.264 before the join. If [toAacLc] is
+     * true, the sound is encoded again as AAC-LC. This takes some seconds for each minute of video.
      */
     static Downloader.Status save(
         Context application,
         DashManifest.Track video,
         DashManifest.Track audio,
+        boolean toAvc,
+        boolean toAacLc,
         Downloader.Sink sink
     ) {
         File folder = new File(application.getCacheDir(), CACHE_FOLDER);
         File videoFile = null;
         File audioFile = null;
+        File videoAvc = null;
+        File audioAac = null;
         File joined = null;
 
         try {
@@ -100,8 +121,26 @@ final class DashSave {
                 if (status != Downloader.Status.OK) return status;
             }
 
+            if (toAvc || (toAacLc && audioFile != null)) {
+                Feedback.show(application, "Converting...", false);
+            }
+
+            if (toAvc) {
+                videoAvc = File.createTempFile("video-avc", ".mp4", folder);
+                long started = System.currentTimeMillis();
+                Transcoder.toAvc(videoFile, videoAvc, video.bandwidth);
+                Log.i(TAG, "encoded the video as H.264 in " + (System.currentTimeMillis() - started) + " ms");
+            }
+
+            if (toAacLc && audioFile != null) {
+                audioAac = File.createTempFile("audio-aac", ".mp4", folder);
+                long started = System.currentTimeMillis();
+                Transcoder.toAacLc(audioFile, audioAac);
+                Log.i(TAG, "encoded the sound as AAC-LC in " + (System.currentTimeMillis() - started) + " ms");
+            }
+
             joined = File.createTempFile("joined", ".mp4", folder);
-            join(videoFile, audioFile, joined);
+            join(videoAvc != null ? videoAvc : videoFile, audioAac != null ? audioAac : audioFile, joined);
 
             return publish(joined, sink);
         } catch (Throwable t) {
@@ -110,6 +149,8 @@ final class DashSave {
         } finally {
             delete(videoFile);
             delete(audioFile);
+            delete(videoAvc);
+            delete(audioAac);
             delete(joined);
         }
     }
@@ -205,7 +246,7 @@ final class DashSave {
     }
 
     /** Select the first track of [kind] and return its format, or {@code null}. */
-    private static MediaFormat selectTrack(MediaExtractor extractor, String kind) {
+    static MediaFormat selectTrack(MediaExtractor extractor, String kind) {
         for (int i = 0; i < extractor.getTrackCount(); i++) {
             MediaFormat format = extractor.getTrackFormat(i);
             String mime = format.getString(MediaFormat.KEY_MIME);
