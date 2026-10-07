@@ -617,10 +617,32 @@ merchant checkout in the browser
 - The two web-pay pages show the transaction only for a valid reserve id. A dummy id gives a
   `載入失敗` (load failed) page, so this flow cannot be read without a real transaction.
 
-**Open (issue #161):** one merchant fails on a Standard install. The user sees a web page in LINE:
-`無法完成付款操作 / 您必須透過LINE應用程式操作此功能` with an `更新` link. The suspected cause
-is that this merchant accepts payment only inside LINE. Then the standalone app sends the payment
-back to LINE. We do not know yet which link the standalone app uses, or which app shows the error.
+**Merchants that refuse the standalone app (issue #161, not fixable).** Some merchants fail on a
+Standard install. The error is `無法完成付款操作 / 您必須透過LINE應用程式操作此功能，確定要開啟LINE應用程式嗎？`
+("You must use the LINE app for this function. Open LINE?") with an `更新` link. The
+**standalone LINE Pay app** shows this error, not LINE. A logcat capture and a screen recording
+(Samsung Internet, two restaurants on the same ordering system, LINE 26.14.0) show this sequence:
+
+```
+browser web-pay page ► 繼續 ► line://pay/... ► LineSchemeServiceActivity ► PayLaunchActivity
+  ► AndrewLinePay: "Redirecting com.linecorp.line.pay.base.PayLaunchActivity to the standalone LINE Pay app."
+  ► com.linepaytw.upay/.biz.main.SchemeActivity ► MainActivity (web view titled 付款給廠商)
+  ► the transaction loads, then the error page shows (Recents labels the card "LINE Pay")
+```
+
+- The redirect works: it finds the reserve id and opens the transaction in the standalone app.
+- The standalone app refuses the transaction after it loads it. Other merchants work for the same
+  user. Thus the refusal comes from a setting of this merchant or its ordering platform.
+- Nothing starts LINE again after the error, unless the user taps the prompt.
+- A patch cannot correct this. The standalone app sends these payments back to LINE, and LINE
+  cannot run its own Pay flow on a re-signed build. The only workaround that we tell users is to
+  pay in another way.
+- We did not test LINE Pay on a Root Mount install, and we will not test it. A Root Mount install
+  keeps the original signature, but the app still runs modified code. We do not know if LINE bans
+  an account that pays from a modified app. Do not recommend Root Mount for payments.
+- We do not know if the server or a script on the page makes this decision. Neither one is
+  patchable from the LINE APK, so we stopped here.
+
 LINE also has Pay web screens that the patch does not hook: `PayWebActivity` and
 `PayWebStandaloneActivity` (the internal `linepay://payweb` route, `av3.b.PAY_WEB_APP`, launched from
 `e24.r1`), plus the legacy `LaunchActivity` and `WebViewActivity`.
