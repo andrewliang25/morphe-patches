@@ -1,8 +1,13 @@
 package app.andrewliang.patches.line.keepunread
 
+import app.andrewliang.patches.line.shared.lineSettingsExtensionPatch
+import app.andrewliang.patches.line.shared.markLineSettingIncluded
+import app.andrewliang.patches.line.shared.readLineSetting
 import app.andrewliang.patches.shared.Constants.COMPATIBILITY_LINE
-import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
+import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.patch.bytecodePatch
+import app.morphe.patcher.util.smali.ExternalLabel
 
 @Suppress("unused")
 val keepChatsUnreadPatch = bytecodePatch(
@@ -12,6 +17,8 @@ val keepChatsUnreadPatch = bytecodePatch(
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_LINE)
+
+    dependsOn(lineSettingsExtensionPatch)
 
     // ReadWorkerFingerprint resolves na3.e.d — the only caller of TalkServiceClient.c1 — which
     // identifies the read-manager class. Both open-on-view and manual mark-as-read funnel
@@ -27,6 +34,16 @@ val keepChatsUnreadPatch = bytecodePatch(
                 method.parameterTypes.map { it.toString() } ==
                 listOf("Ljava/lang/String;", "Ljava/lang/String;")
         }
-        openReadWrapper.addInstructions(0, "return-void")
+        // With the switch off, the original body runs. v0 is a local, so nothing reads it at entry.
+        openReadWrapper.addInstructionsWithLabels(
+            0,
+            readLineSetting("keepChatsUnread", "v0") +
+                """
+                    if-eqz v0, :stock
+                    return-void
+                """,
+            ExternalLabel("stock", openReadWrapper.getInstruction(0)),
+        )
+        markLineSettingIncluded("keepChatsUnread")
     }
 }
