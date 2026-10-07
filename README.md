@@ -17,7 +17,7 @@ Morphe Manager to build a modified APK.
 ## 🩹 Patches list
 
 <!-- PATCHES_START EXPANDED -->
-> **[v3.4.0](https://github.com/andrewliang25/morphe-patches/releases/tag/v3.4.0)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;46 patches total
+> **[v3.5.0-dev.1](https://github.com/andrewliang25/morphe-patches/releases/tag/v3.5.0-dev.1)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;47 patches total
 <details open>
 <summary>📦 Facebook&nbsp;&nbsp;•&nbsp;&nbsp;18 patches</summary>
 <br>
@@ -51,7 +51,7 @@ Morphe Manager to build a modified APK.
 </details>
 
 <details open>
-<summary>📦 LINE&nbsp;&nbsp;•&nbsp;&nbsp;28 patches</summary>
+<summary>📦 LINE&nbsp;&nbsp;•&nbsp;&nbsp;29 patches</summary>
 <br>
 
 **🎯 Supported versions:**
@@ -76,6 +76,7 @@ Morphe Manager to build a modified APK.
 | [[Fix] Restore chat backup sign-in via MicroG-RE](#fix-restore-chat-backup-sign-in-via-microg-re) | Makes Google Drive chat backup and restore work on a re-signed build, through MicroG-RE. Root Mount does not need it. |  |
 | [[Fix] Restore location maps via MicroG-RE](#fix-restore-location-maps-via-microg-re) | Shows maps again on a re-signed build, with OpenFreeMap tiles. It needs MicroG-RE 7.0.0 or later. Root Mount does not need it. |  |
 | [[Fix] Restore push notifications](#fix-restore-push-notifications) | When LINE is fully closed, push notifications work again on a re-signed build. A Root Mount install does not need this patch. |  |
+| [[General] Andrew's Patch Setting](#general-andrew-s-patch-setting) | Adds "Andrew's Patch Setting" to LINE Settings, below "Profile". There you can turn some patches on or off without patching again, and see the credits and licenses. |  |
 | [[General] Disable VOOM](#general-disable-voom) | VOOM deep links, shares, and notifications do nothing. If you open the standalone VOOM feed, it closes. Messaging and the other tabs do not change. |  |
 | [[General] Hide Agent i buttons](#general-hide-agent-i-buttons) | Removes the Agent i button from the Home header and from the search bar. |  |
 | [[General] Hide new item badges](#general-hide-new-item-badges) | Hides the green dots and N badges that mark new items, on header buttons, tabs, menus, lists and settings rows. Unread message counts do not change. |  |

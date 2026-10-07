@@ -1,3 +1,9 @@
+## [3.5.0-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v3.4.0...v3.5.0-dev.1) (2026-10-07)
+
+### ✨ New Features
+
+* **LINE:** add "Andrew's Patch Setting" to turn patches on or off in LINE ([a94eed6](https://github.com/andrewliang25/morphe-patches/commit/a94eed6481d74eaf4a4b760259b10fd520dad961))
+
 ## [3.4.0](https://github.com/andrewliang25/morphe-patches/compare/v3.3.2...v3.4.0) (2026-10-03)
 
 ### 🐛 Bug Fixes
