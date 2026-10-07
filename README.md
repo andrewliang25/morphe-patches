@@ -100,6 +100,19 @@ Click here to add these patches to Morphe: https://morphe.software/add-source?gi
 
 Or add this repository URL as a patch source in Morphe: https://github.com/andrewliang25/morphe-patches
 
+#### Change LINE patches in the app
+
+With the "[General] Andrew's Patch Setting" patch, LINE **Settings** has an **Andrew's Patch
+Setting** row below **Profile**. There you can turn these patches on or off without patching
+again:
+
+- Keep chats unread, and keep unsent messages
+- Open links in external browser, and disable VOOM
+- Hide the LINE TODAY, Shopping, VOOM and Wallet tabs. A tab change shows after LINE restarts.
+
+A patch that you did not include in the build has no switch. The row also shows the author and the
+license.
+
 ### 🛠️ Building
 
 To build Andrew's Patches, obey the instructions in the
