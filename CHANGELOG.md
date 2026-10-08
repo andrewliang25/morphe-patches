@@ -1,3 +1,9 @@
+## [3.5.0-dev.2](https://github.com/andrewliang25/morphe-patches/compare/v3.5.0-dev.1...v3.5.0-dev.2) (2026-10-08)
+
+### ✨ New Features
+
+* **Facebook - [Reels] Picture-in-picture:** keep a reel playing in a small window ([a194a2f](https://github.com/andrewliang25/morphe-patches/commit/a194a2f4d45fce78fdb2dd130827d7447a026a1d)), closes [#174](https://github.com/andrewliang25/morphe-patches/issues/174)
+
 ## [3.5.0-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v3.4.0...v3.5.0-dev.1) (2026-10-07)
 
 ### ✨ New Features
