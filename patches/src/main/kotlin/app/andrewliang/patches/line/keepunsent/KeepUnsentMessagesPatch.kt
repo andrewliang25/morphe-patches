@@ -1,9 +1,14 @@
 package app.andrewliang.patches.line.keepunsent
 
+import app.andrewliang.patches.line.shared.lineSettingsExtensionPatch
+import app.andrewliang.patches.line.shared.markLineSettingIncluded
+import app.andrewliang.patches.line.shared.readLineSetting
 import app.andrewliang.patches.shared.Constants.COMPATIBILITY_LINE
-import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
+import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.bytecodePatch
+import app.morphe.patcher.util.smali.ExternalLabel
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
@@ -29,7 +34,7 @@ val keepUnsentMessagesPatch = bytecodePatch(
 ) {
     compatibleWith(COMPATIBILITY_LINE)
 
-    extendWith("extensions/extension.mpe")
+    dependsOn(lineSettingsExtensionPatch)
 
     // An incoming unsend is applied by the la8.x lambda, which rewrites chat_history.type to
     // na8.c.UNSENT and NULLs content/parameter/attachement_type/locations, then drops the row from
@@ -147,13 +152,22 @@ val keepUnsentMessagesPatch = bytecodePatch(
 
         // The guard register is dead here (the skipped block reassigns it immediately), so it is
         // free to borrow for the database reference before being forced to 1.
-        method.addInstructions(
+        //
+        // Both new branches go to the original `if-eqz` with the guard value it expects. A row
+        // that is already a tombstone (non-zero) skips the block as before. With the setting off,
+        // the guard is 0, so the stock unsend runs.
+        method.addInstructionsWithLabels(
             guardIndex + 2,
             """
+                if-nez v$guardRegister, :stock
+            """ + readLineSetting("keepUnsentMessages", "v$guardRegister") + """
+                if-eqz v$guardRegister, :stock
                 iget-object v$guardRegister, v$databaseHolderRegister, ${databaseField.definingClass}->${databaseField.name}:${databaseField.type}
                 invoke-static {v$guardRegister, v$messageIdRegister, v${messageIdRegister + 1}}, $EXTENSION->$INSERT_PLACEHOLDER
                 const/16 v$guardRegister, 0x1
             """,
+            ExternalLabel("stock", method.getInstruction(guardIndex + 2)),
         )
+        markLineSettingIncluded("keepUnsentMessages")
     }
 }

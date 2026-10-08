@@ -155,10 +155,11 @@ row, and the sibling "[Chat] Hide community button" which targets `OPEN_CHAT`).
 
 ## Main bottom-navigation tabs
 
-Every tab patch edits the **same** builder: `wy7.b.a() → List<jp.naver.line.android.activity.main.a>`
-(cached by `b()`), appending each tab as an `sget-object <main.a const>` + `ArrayList.add` pair. The
-enum is **not obfuscated**, so fingerprint on `returnType = "Ljava/util/List;"` +
-`fieldAccess(MAIN_TAB, "<CONST>")` and `removeInstructions(index, 2)`.
+Every tab patch edits the **same** builder: `b68/g.a() → List<jp.naver.line.android.activity.main.a>`
+in 26.14.0 (`wy7.b.a()` in 26.11.0), appending each tab as an `sget-object <main.a const>` +
+`ArrayList.add` pair. The enum is **not obfuscated**, so fingerprint on
+`returnType = "Ljava/util/List;"` + `fieldAccess(MAIN_TAB, "<CONST>")`. Each patch keeps the pair and
+skips it while its switch in "Andrew's Patch Setting" is on (`skipTab` in `line/shared/LineSettings.kt`).
 
 | Constant | Tracking name | Label resource | Shown when | Hidden by |
 |---|---|---|---|---|
@@ -173,16 +174,38 @@ enum is **not obfuscated**, so fingerprint on `returnType = "Ljava/util/List;"` 
 | `MINI` / `WALLET` | `minitab` / `wallettab` | — | `m2.a().Y().d()` / `m2.a().H0().l()` | [Tab] Hide Wallet tab |
 
 **`COMMERCE`, `COMMERCE_TW`, `SQUARE` and `TIMELINE` share one `if`/`else-if` chain**, competing for a
-single slot. Two rules follow:
+single slot. Three rules follow:
 
-- **Remove the `sget`+`add` pair; never force the gate false.** Forcing `g45.u.h()`
+- **Skip the `sget`+`add` pair; never force the gate false.** Forcing `g45.u.h()`
   (`CommerceTabConfiguration.isCommerceTabEnabled`) false falls *through* the chain and surfaces
-  `SQUARE` or `TIMELINE` in the freed slot — a tab the user never had. Removing only the body leaves
+  `SQUARE` or `TIMELINE` in the freed slot — a tab the user never had. Skipping only the body keeps
   the branch's trailing `goto`, so the slot stays empty, as stock LINE does when the gate is on.
 - **Anchor each patch on its own constants only.** The tab patches run in arbitrary order against one
   method and each fingerprint resolves *after* earlier mutations, so anchoring on a constant another
   patch removes breaks the match. (Thus [Tab] Hide Shopping tab avoids `TIMELINE` and `MINI`/`WALLET`; see
-  also `hidevoomtab/Fingerprints.kt`.)
+  also `hidevoomtab/Fingerprints.kt`.) The patches now skip pairs instead of deleting them, so every
+  constant stays, but keep the rule: a future patch may delete again.
+- **The switch value goes in `v2`.** `b68/g.a()` is `.locals 4`, and `v2` is dead at all seven pairs:
+  the code after each pair writes `v2` before it reads it, or never reads it again. Recheck this on a
+  version bump before you reuse `skipTab`.
+
+**The list is cached, but rebuilt on each `MainActivity.onCreate`, not once per process.**
+
+- `b68/g` is a process-wide singleton. Its companion `b68/g$a` is an `o70.a` service-locator key.
+- `b68/g.a()` builds a **new** list on every call and reads each tab's server gate then.
+- `b68/g.b()` memoizes it: it returns field `e` if set, otherwise it stores `unmodifiableList(a())` in
+  `e` under the lock in field `d`. Almost every reader uses `b()` (`MainActivity`, `MainActivity$a`,
+  `c$h`, `c68/d`, `ze6/d`, `wt7/i`, `GnbTabDataManagerTemporaryAccessorImpl`).
+- The tab manager constructor `jp/naver/line/android/activity/main/c.<init>` skips the cache: under the
+  lock it calls `a()` and writes the result into `e` (`c.smali:334-338`). Only `MainActivity.onCreate`
+  constructs it (`MainActivity.smali:1036`).
+- `MainActivity` is `singleTop` and handles rotation itself, so `onCreate` runs again only when the
+  activity is created again: back out of LINE, a process kill, a dark-mode change (`uiMode` is not in
+  its `configChanges`), or `recreate()`.
+
+So a tab switch shows after LINE's main screen is created again. The settings screen offers
+**Restart LINE**, which starts the launcher activity as a new task. It does not end the process
+(device-confirmed: the Wallet tab came and went with the same process id).
 
 **A missing tab is safe everywhere.** Tab→index lookups are `Math.max(list.indexOf(...), 0)`, clamping
 to Home (`jp/naver/line/android/activity/main/c.java`). `x66.d.a` only emits a `VoomSecondDepth`
@@ -494,7 +517,8 @@ starting point, so no one needs to sweep the APK again.
 | [Chat] Hide attach menu extra tools | `line.hideattachmenutools` | all server-driven `yi1.d` services |
 | [General] Redirect LINE Pay | `line.disablepay` | `PayLaunchActivity` / `PayLiffActivity` onCreate (see below) |
 | [Chat] Keep unsent messages | `line.keepunsent` | `la8.x.invoke` — the unsend DB write (see below) |
-| [Tab] Hide Shopping tab | `line.hideshoppingtab` | `COMMERCE` + `COMMERCE_TW` in `wy7.b.a()` (see above) |
+| [Tab] Hide Shopping tab | `line.hideshoppingtab` | `COMMERCE` + `COMMERCE_TW` in `b68/g.a()` (see above) |
+| [General] Andrew's Patch Setting | `line.settings` | a row below "Profile" in Settings, via `ka5/o2.a()` (see below) |
 | [Fix] Restore location maps via MicroG-RE | `line.fixlocationmaps` | `fo/p.b` — the maps module context (see below) |
 | [Chat] Hide tips under messages | `line.hidechattips` | `rm1.u.invokeSuspend` — the "CHECK" tip under a bubble (see below) |
 | [General] Hide Agent i buttons | `line.hideagenti` | `wm2.j` Home header icon + `function.search.line_ai_entry.enabled` (see below) |
@@ -502,7 +526,9 @@ starting point, so no one needs to sweep the APK again.
 
 Each is an independent, `default = true`, user-facing `bytecodePatch` — one feature (or one
 feature's full set of entry points) per patch. Most are instruction-level edits. *Redirect LINE
-Pay*, *[Chat] Keep unsent messages* and *[Fix] Restore location maps* carry extension code.
+Pay*, *[Chat] Keep unsent messages*, *[Fix] Restore location maps* and *[General] Andrew's Patch
+Setting* carry extension code. Eight patches also read a runtime switch from the extension (see
+"Settings screen" below).
 
 ## LINE Pay intake & the "[General] Redirect LINE Pay" patch
 
@@ -591,10 +617,32 @@ merchant checkout in the browser
 - The two web-pay pages show the transaction only for a valid reserve id. A dummy id gives a
   `載入失敗` (load failed) page, so this flow cannot be read without a real transaction.
 
-**Open (issue #161):** one merchant fails on a Standard install. The user sees a web page in LINE:
-`無法完成付款操作 / 您必須透過LINE應用程式操作此功能` with an `更新` link. The suspected cause
-is that this merchant accepts payment only inside LINE. Then the standalone app sends the payment
-back to LINE. We do not know yet which link the standalone app uses, or which app shows the error.
+**Merchants that refuse the standalone app (issue #161, not fixable).** Some merchants fail on a
+Standard install. The error is `無法完成付款操作 / 您必須透過LINE應用程式操作此功能，確定要開啟LINE應用程式嗎？`
+("You must use the LINE app for this function. Open LINE?") with an `更新` link. The
+**standalone LINE Pay app** shows this error, not LINE. A logcat capture and a screen recording
+(Samsung Internet, two restaurants on the same ordering system, LINE 26.14.0) show this sequence:
+
+```
+browser web-pay page ► 繼續 ► line://pay/... ► LineSchemeServiceActivity ► PayLaunchActivity
+  ► AndrewLinePay: "Redirecting com.linecorp.line.pay.base.PayLaunchActivity to the standalone LINE Pay app."
+  ► com.linepaytw.upay/.biz.main.SchemeActivity ► MainActivity (web view titled 付款給廠商)
+  ► the transaction loads, then the error page shows (Recents labels the card "LINE Pay")
+```
+
+- The redirect works: it finds the reserve id and opens the transaction in the standalone app.
+- The standalone app refuses the transaction after it loads it. Other merchants work for the same
+  user. Thus the refusal comes from a setting of this merchant or its ordering platform.
+- Nothing starts LINE again after the error, unless the user taps the prompt.
+- A patch cannot correct this. The standalone app sends these payments back to LINE, and LINE
+  cannot run its own Pay flow on a re-signed build. The only workaround that we tell users is to
+  pay in another way.
+- We did not test LINE Pay on a Root Mount install, and we will not test it. A Root Mount install
+  keeps the original signature, but the app still runs modified code. We do not know if LINE bans
+  an account that pays from a modified app. Do not recommend Root Mount for payments.
+- We do not know if the server or a script on the page makes this decision. Neither one is
+  patchable from the LINE APK, so we stopped here.
+
 LINE also has Pay web screens that the patch does not hook: `PayWebActivity` and
 `PayWebStandaloneActivity` (the internal `linepay://payweb` route, `av3.b.PAY_WEB_APP`, launched from
 `e24.r1`), plus the legacy `LaunchActivity` and `WebViewActivity`.
@@ -1369,6 +1417,238 @@ instruction, both `.catch` ranges rebase correctly, and a whole-APK offset sweep
 3. **QR / barcode scanning still works** — this is what proves leaving `DynamiteModule` alone kept
    ML Kit on real Play Services. The most important regression check.
 4. Without MicroG-RE installed, the build behaves exactly as an unpatched one (blank map, no crash).
+
+## Traffic interception & the "[General] Trust user-installed CAs" patch
+
+Issue #182. The goal is to let a developer read LINE's own HTTPS traffic through their own
+debugging proxy on their own device. LINE has three independent networking surfaces, and only one
+is patchable.
+
+### The three surfaces
+
+1. **Platform TLS stack** — `HttpsURLConnection`, OkHttp, and the LIFF / mini-app WebViews. This
+   stack obeys the app's Network Security Config (NSC) at `res/xml/network_security_config.xml`
+   (resource id `0x7f190020`, wired by `android:networkSecurityConfig` in the manifest).
+   **Patchable.**
+2. **LEGY native transport** — LINE's core messaging. `liblegy.so` runs over a privately bundled
+   TLS stack, `libssl3line.so` + `libcrypto3line.so` (a renamed OpenSSL/BoringSSL build). A bundled
+   TLS stack does not read the OS NSC and carries its own roots, so the NSC patch does nothing for
+   it. **Not patchable from resources or bytecode** (same class as LINE Pay / VKey — it needs a
+   native-library change, out of scope).
+3. **LINE Pay** — pinned in the NSC (`app-payatom.line-apps.com`) and also guarded by the VKey
+   V-Guard native engine. Out of scope.
+
+### Why the platform stack is blocked, and what unblocks it
+
+Two facts in the NSC decide it:
+
+- **Trust.** `<base-config>` is `cleartextTrafficPermitted="true"` with **no `<trust-anchors>`**.
+  This build is minSdk 30 / targetSdk 36, so on Android 7+ the default applies and a user-installed
+  proxy CA is rejected for every domain.
+- **Pinning.** `<pin-set>` blocks exist **only** on the bank hosts (`*.linebk.com`,
+  `*.kasikornbank.com`, `cwa.linebank.com.tw`) and Pay (`app-payatom.line-apps.com`). The LIFF and
+  mini-app hosts (`liff.line.me`, `miniapp.line.me`) sit in a `domain-config` with **no pin-set**.
+
+So for LIFF the only block is the missing trust. There is no OkHttp `CertificatePinner` in the
+bytecode (0 refs) — all app-level pinning lives in the NSC. The six `onReceivedSslError` handlers
+do not matter: once the CA is trusted, the chain validates, no SSL error fires, those handlers never
+run.
+
+### What the patch does
+
+`patches/line/allowdebugproxy/AllowDebugProxyPatch.kt` is a single `resourcePatch`. It appends one
+`<trust-anchors>` block to `<base-config>` with `src="system"` and `src="user"`. Nothing else.
+
+- `liff.line.me` / `miniapp.line.me` have no `<trust-anchors>` of their own, so they **inherit**
+  base-config's — mini-apps are covered with no edit to their block.
+- Every `<pin-set>` is left byte-identical, so bank and Pay stay pinned. A pin is checked after the
+  chain is trusted, so a proxy CA still fails the pin. Confirmed by diffing the patched NSC against
+  `work/decompiled-line-26.14.0/apktool/res/xml/network_security_config.xml`: the only change is the
+  new `<trust-anchors>` block.
+- `default = false`, because the patch widens trust for all non-pinned platform traffic. It is an
+  install-time choice, not a runtime toggle: an NSC edit injects no bytecode, so "Andrew's Patch
+  Setting" (which gates on an injected `LineSettings->x()Z` call) cannot switch it.
+
+### Scope note
+
+The patch intentionally covers only the platform stack. The real chat traffic rides LEGY over the
+bundled native TLS stack and stays invisible to a proxy. Do not try to remove the bank/Pay pins and
+do not attempt the native stack.
+
+### Values that drift on a version bump
+
+| What | 26.14.0 | How to re-find it |
+|---|---|---|
+| NSC resource | `res/xml/network_security_config.xml` | `android:networkSecurityConfig` in the manifest; the one `<base-config>` is the target. |
+| LIFF / mini-app hosts | `liff.line.me`, `miniapp.line.me` | In a `domain-config` with no `<pin-set>`; they inherit base-config trust. |
+| Bundled native TLS | `libssl3line.so`, `libcrypto3line.so`, `liblegy.so` | In `split_config.arm64_v8a.apk`. The reason native traffic is not patchable. |
+
+## Settings screen & the "[General] Andrew's Patch Setting" patch
+
+The patch adds a row, "Andrew's Patch Setting", to LINE's main Settings list, right below "Profile".
+The row opens a screen with runtime switches for eight patches, then credits and licenses. Who it
+helps: a user of the prebuilt APK from `patched-apps`, who otherwise cannot turn off one patch
+without patching the APK again. Anchors are 26.14.0.
+
+### How LINE builds the main Settings list
+
+- `com.linecorp.line.settings.main.LineUserMainSettingsFragment` (name kept in `@Metadata`) extends
+  `…settings.base.LineUserSettingItemListFragment`. It is a RecyclerView list, not Compose.
+- Its rows come from the singleton `ka5/o2` (extends `m55/q1`). `ka5/o2.<clinit>` builds about 57
+  rows once (`.locals 86`) and stores them in the static field `e`. `ka5/o2.a()` only returns `e`.
+  **Hook `a()`, not `<clinit>`.**
+- A plain row is `m55/v` (extends `m55/z`). The row key is `m55/z->a:String`. The title is an
+  **`int` string id**: `m55/v.c(Context, …)` calls `context.getString(y)`. Thus the title needs a
+  string resource. The patch adds `andrew_patch_settings` to `res/values/strings.xml`, and the
+  extension finds its id with `getIdentifier`, because ids are assigned after the bytecode patches.
+- **A row key is built at run time.** `ka5/a.a()` returns `"line-main-settings." + settingItemName`,
+  so the key of "About LINE" is `"line-main-settings.about-line"`, not `"about-line"`. The first
+  device build compared with the bare name, matched nothing, and added no row. The patch now gets
+  each key the way LINE does: the enum constant, then that accessor.
+- The template is the "About LINE" row: key `ka5/a.AboutLine.a()`, icon
+  `setting_ic_version`, title `settings_about`, event `b88/e.MORETAB_SETTINGS_ABOUTLINE`. It is built
+  with the 11-argument convenience constructor
+  `(String key, Integer icon, int title, aj8.p, aj8.p, b88.e, aj8.l, aj8.l, m55.u0, aj8.p, int mask)`.
+  The last argument is a Kotlin default mask. "About LINE" uses `0x20d0`. Bit `0x100` makes the event
+  null, which other rows also use (`0x1d0`, `0x23d0`).
+- `aj8.l` / `aj8.p` / `aj8.q` are LINE's renamed Kotlin `Function1` / `Function2` / `Function3`. The
+  method names stay `invoke` / `invoke` / `j`.
+
+| Argument | Field | What "About LINE" passes |
+|---|---|---|
+| 4th, `aj8.p` | `m55/v->z` | `ka5/o2$p`: a suspend subtitle provider. It returns the version only in a debug build (`d28.b.i`), so null in release. |
+| 5th, `aj8.p` | `m55/v->A` | a shared provider |
+| 7th, `aj8.l` | `m55/z->f` | `ka5/k2`: `Context → y65.d` |
+| 8th, `aj8.l` | `m55/z->h` | `ka5/l2`: **the tap handler of the main list**. The view holder calls it with the list fragment (`r55/h2.onClick`). |
+| 9th, `m55.u0` | `m55/z->i` | `new m55/u0$b(ka5/m2)`: the destination for settings search and navigation. `ka5/m2.j(Context, List, LineUserSettingsNavigationFragment)` opens `i55/x.ABOUT_SETTINGS`. |
+| 10th, `aj8.p` | `m55/z->j` | a shared provider |
+
+### How the patch adds the row
+
+1. `SettingsRowsFingerprint` finds `ka5/o2.<clinit>` by its two kept enum names: `AboutLine` and
+   `MORETAB_SETTINGS_ABOUTLINE`, both as `sget-object`. That leaves out the two enum initializers,
+   which `sput` them.
+2. From the "About LINE" construction, the patch reads the row class, the destination class and the
+   function types. It reads the default mask from the literal in the last register of the call.
+3. It finds the fields by following each constructor argument through register moves and through
+   the call to the base constructor (`fieldOfArgument`). So no obfuscated field name is hard-coded.
+4. It adds a new static method `ka5/o2.andrewRows(List)List`. The method finds the "About LINE"
+   row and builds a new `m55/v` with that row's providers, a null event, our key, title and icon.
+   A second pass finds the "Profile" row (`ka5/a.Profile`, row class `m55/r0`, so the pass compares
+   keys on the base class `m55/z`). `LineSettings.insertRow` puts the new row below it, or first if
+   "Profile" is missing. If the title resource is missing, the method returns the list unchanged.
+   The loops are in the new method, not in an existing one.
+5. `a()` gets a branchless `invoke-static` + `move-result-object` before its `return-object`.
+
+**The tap handler must be a real `Serializable` class.** `m55/u0$b` is `Parcelable`, and its
+`writeToParcel` casts its `aj8.q` to `java.io.Serializable`. A `java.lang.reflect.Proxy` is
+fragile there. So the extension class `LineSettingsClick` implements `Serializable` and declares
+`invoke(Object)` and `j(Object, Object, Object)`. At patch time, the patch adds the resolved
+`aj8.l` and `aj8.q` to its `interfaces` list (`MutableClass.getInterfaces()` is mutable).
+
+**The tap handler gets a Fragment, not a Context.** LINE renames the androidx classes
+(`androidx/fragment/app/v` is `Fragment`) but keeps their method names, so
+`fragment.getClass().getMethod("getContext")` works.
+
+**The screen is a full-screen framework `Dialog` drawn with LINE's own resources.** It has no
+manifest entry and no fragment. It inflates LINE's settings layouts and uses LINE's styles, found by
+resource name, which R8 keeps.
+
+**Colors come from the page under the dialog, not from resources.** LINE has two color layers, and
+resources are only the lower one:
+
+- Resource colors such as `@color/primaryBackground` follow the night bit of the context. LINE sets
+  that bit from "Use Black theme when in dark mode" (Settings ▸ Themes), not from the system.
+- LINE's theme engine then paints the chosen theme (Black, or a shop theme) over its own pages at
+  run time. `settings_root` then has a `StateListDrawable` background, not the resource color.
+
+Device-confirmed: the test had that switch off, the system in dark mode, and Black picked by hand.
+A probe read `viewNight=16` (light) for the settings fragment and `appNight=32` for the
+application. `primaryBackground` resolved to white. LINE's pages were black, but a page drawn from
+resources was white.
+
+Thus `LineSettingsScreen.Look` copies these values from the Settings page under the dialog:
+
+- The background of `settings_root`.
+- The text colors of a `setting_title` and a `setting_description`. A group header gives the
+  description color when no description shows.
+- The text colors of a `LineUserSettingGroupHeaderItemView` and of the header title.
+
+The back arrow takes the color of the header title. The engine colors the arrow on its view, so a
+copy of the drawable keeps the resource color. If a view is not found, its resource color stays.
+The device test covered the switch on and off, with Black picked by hand.
+
+**The page under the dialog is not always the Settings list.** LINE's settings search also finds
+the row, and a tap there calls the `aj8.q` handler over the search results page. That page has no
+`settings_root`, `setting_title` or group header, so the first build fell back to resource colors
+and was white under Black. Each value now also tries the views of the search page: `item_title`
+(or `empty_title_text`), `item_path` (or `empty_description_text`), and the search box
+`input_text` for the header title. The background is the first opaque one under
+`android.R.id.content`. Device-confirmed: both entry points are black under Black, and the white
+and other themes also match.
+
+**The press effect needs the same treatment.** LINE's row background
+`line_user_settings_button_bg_semantic` has a light pressed state, which the engine repaints only on
+LINE's own rows. On these rows it flashed white under Black. Each row now gets a `RippleDrawable` in
+the copied title color at about 12% opacity. Text rows take their click on the outer view, so their
+`setting_item_container` uses `setDuplicateParentStateEnabled(true)` to show the press.
+
+| Part | LINE resource |
+|---|---|
+| Background | `@color/primaryBackground` (the `line_user_settings_fragment` background) |
+| Header | `header_ic_back_semantic` (back arrow, closes the dialog) + `text_header_title_new_design`, height `@dimen/header_height` |
+| Section title | `line_user_settings_group_header_item_text_semantic`, with the padding `LineUserSettingGroupHeaderItemView` sets (`…item_container_padding_horizontal`, `…item_header_small_padding_top`, `…item_header_padding_bottom`) |
+| Switch row | layout `line_user_settings_switch_item_view` (`setting_title`, `setting_description`, `setting_switch` `CheckedTextView`, `setting_item_container`). Its `setting_divider` is hidden, as on LINE's own switch pages. |
+| Tappable row | layout `line_user_settings_text_item_view`. `setting_inlined_value` must stay visible (empty): the arrow is attached to it, and hiding it pulls the arrow next to the title. |
+| Note | layout `line_user_settings_description_item` |
+| Row icon | `andrew_ic_settings`, added by the patch: the path of LINE's header gear `navi_top_setting` (38dp, black), moved into a 22dp vector and colored `@color/octonaryAltNeutralFill`, like the `setting_ic_*` row icons. LINE has no gear among its row icons. |
+
+Device findings (Xiaomi, Android 16):
+
+- The dialog draws behind the system bars, so the root view pads itself with the
+  `WindowInsets.Type.systemBars()` insets, and sets light or dark bar icons from the background.
+- The first version used `Theme_DeviceDefault_DayNight` colors. On this ROM `colorAccent` is white
+  and the default text color is gray, so it looked unlike LINE. LINE's own layouts fix that.
+- **Restart LINE must not end the process.** `startActivity(makeRestartActivityTask(...))` followed
+  by `Runtime.exit(0)` closed LINE and started nothing. A new task alone is enough, because LINE
+  rebuilds its tab list in `MainActivity.onCreate` (see "Main bottom-navigation tabs").
+- A switch is written with `commit()`, not `apply()`, because a user can close LINE right after a
+  change.
+
+### The switches
+
+| Switch | Patch | Gate |
+|---|---|---|
+| Keep chats unread | `keepunread` | entry of `na3/e.b(String,String)`, `v0` |
+| Keep unsent messages | `keepunsent` | before the guard's `if-eqz` in `la8/x.invoke`: `if-nez vG` (already a tombstone) and the switch both branch to it |
+| Open links in external browser | `externalbrowser` | entry of `OpenUriActivity$b.a`, `v0` |
+| Disable VOOM | `disablevoom` | entry of `bh8/n0.a`, and after `super.onCreate` in `LineVoomActivity`, `v0` at both. A probe showed that the handler gate runs and reads the switch on `line://home/discover`. Stock LINE refuses that link too, so the "off" result was not seen on the screen. |
+| Hide LINE TODAY / Shopping / VOOM / Wallet tab | the four tab patches | each `sget`+`add` pair in `b68/g.a()`, `v2` |
+
+- Every gate is `invoke-static LineSettings-><x>()Z` + `move-result` + a branch to an
+  `ExternalLabel` on an original instruction.
+- **Every switch is on by default.** A stored value counts only while the row is in the build:
+  `LineSettings.rowIncluded()` is a plain `return false`, and the settings patch rewrites it to return
+  true. Without that, a user who turned a switch off and then installed a build without the row
+  is stuck with "off".
+- Each patch rewrites its own `LineSettings.<x>Included()` to return true, so the screen lists only
+  the switches of patches in the build.
+- Each of the eight patches depends on the nameless `lineSettingsExtensionPatch`, which bundles the
+  extension. Before, only `keepunsent` brought it.
+- The values are read from SharedPreferences `andrew_line_settings` once and then kept in memory,
+  because `keepunsent` reads its switch on the database path of each unsent message.
+
+### To add a switch
+
+1. Add `<feature>()` and `<feature>Included()` to `LineSettings.java`, and a row to
+   `LineSettingsScreen.addSwitches`.
+2. In the patch, depend on `lineSettingsExtensionPatch`, put the gate around the edit with
+   `readLineSetting("<feature>", "vN")` and an `ExternalLabel`, and call
+   `markLineSettingIncluded("<feature>")`.
+3. Pick a register that is dead at the gate. Check it in the smali, then check the result with
+   `Dumpx` and `BranchSweep`.
+
+---
 
 ## Watch list — surfaced in 26.14.0, not yet actionable
 

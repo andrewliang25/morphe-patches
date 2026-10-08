@@ -163,6 +163,7 @@ story-viewer half of that work is still **not device-tested**.
 | `[Stories] View stories anonymously` | The seen sender (`LX/A5o;->A00`, next to the kept `getRequest`) returns at once. The seen helper (`LX/A3k;->A00`) tells the extension about each card. 33 reads of the two seen fields go through the extension | `return-void` at index 0, one range call at index 0, and 33 one-for-one `invoke` swaps. See [Anonymous story views](#anonymous-story-views) |
 | `[General] Hide affiliate product links` | The overlay predicate `LX/8qp;->A0C` returns false. The feed footer id `LX/33g;->A00` and the floating card model `OrganicAffiliateFloatingCtaPlugin->A00` return null | Two instructions at index 0 of each. See [Affiliate links](#affiliate-links) |
 | `[Stories] Disable auto advance` | The auto-play predicate `LX/9xI;->A01`, the check for `disable_storyviewer_autoplay`, returns true | Two instructions at index 0. See [Story auto advance](#story-auto-advance) |
+| `[Reels] Picture-in-picture` | The result of the surface check `LX/52v;->A0O` at two call sites: in `LX/Aus;->A01` and in `LX/7s8;->A0J` | One `const/16` after each `move-result`. The check itself still runs. See [Reels picture in picture](#reels-picture-in-picture) |
 
 Together the eight patches rewrite 28 classes, and they add the extension on top of that. The CLI
 prints this count as `Stripping N modified classes`. Two controlled runs on 2026-09-19 against
@@ -1283,6 +1284,59 @@ A video card played to the end and stayed on its last frame. A tap on the right 
 next card, or to the next person after the last card. One video story froze its bar in the middle
 and showed a black screen. The probe logged no end of a card there, and `A01` has no caller in the
 player. Thus the patch is probably not the cause, but no build without the patch played that story.
+
+## Reels picture in picture
+
+Issue #174 asks for picture in picture (PiP) for all Facebook media. Facebook 577 has its own PiP
+for the Reels tab, and `[Reels] Picture-in-picture` turns it on. The patch is off by default. Feed
+videos and stories have no PiP code, thus the patch cannot give them PiP.
+
+**The PiP helper.** `LX/AIo;` is `ReelsPipUtil`. Its lambdas keep the names
+`ReelsPipUtil$setAutoEnterEnabled` (`LX/e4i;`) and `ReelsPipUtil$updatePiPParams` (`LX/e9Q;`). It
+uses the auto-enter mode of Android 12, thus the system starts PiP when you leave the app.
+
+| Method | Function |
+|---|---|
+| `A0J(Activity)Z` | Device check. It needs Android 12 and the system feature `android.software.picture_in_picture`. If flag `…194786` is on, it also needs more than 4 GB of RAM. If flag `…14775` is on, it also reads the preference `pip_enabled` |
+| `A05` → `A04` | Turns PiP on: it builds the params with auto enter, and `A08` calls `setPictureInPictureParams` |
+| `A0H(Activity)V` | Turns PiP off: it sets auto enter to false |
+
+The manifest already sets `supportsPictureInPicture` on `FbMainTabActivity`, `ImmersiveActivity` and
+`FullscreenVideoPlayerActivity`. The preference `pip_enabled` has a row in Settings ▸ Media
+(`MediaActivity`). The row shows only when flag `…14775` is on.
+
+**Where PiP turns on.** The bottom-nav Reels tab is `WatchFeedOrWarionFragment`, and its surface is
+`FB_SHORTS_IN_WATCH_TAB`. Two methods call `A05`:
+
+- `LX/Aus;->A02` runs when the tab opens. Its only caller is `WatchFeedOrWarionFragment->A08`.
+- `LX/7s8;->A0J` runs for each reel that plays. It is the data controller of the tab
+  (`VideoHomeDataControllerImpl`, named in a trace string).
+
+Both ask the surface check `LX/52v;->A0O` before the device check. `A0O` calls `A0H`, which runs the
+first lambda on `FB_SHORTS_IN_WATCH_TAB` and the second lambda on other surfaces. Here the lambdas
+are `LX/SGT;` cases 178 and 179. They read the server flags `0x10100330467035f` and
+`0x10102d5011c1feb`. On the test account, the flag of the Reels tab was false. That is the only
+reason why PiP did not start.
+
+**The patch.** The patch sets the result of `A0O` to true at the two call sites. `A0O` has 86
+callers, thus the patch does not change `A0O` itself. Facebook's other checks still apply: the
+device check, and `A07`, which accepts a width-to-height ratio from 0.418 to 1.0 (portrait or
+square).
+
+**Flags that are not needed.** The `0x10107bb` group holds about 23 PiP parameters
+(`…54778`, `…c477d`, `…8477b`, `…64779` and others). A probe build forced the gates in this group that
+come before `A05`, and PiP still did not start. With the surface check forced, the device test read
+none of these gates.
+
+**What the device test showed.** On 2026-10-08, with the patch alone: a reel in the Reels tab went
+to a PiP window when we pressed Home, and it continued to play with sound. Facebook opened again in
+full screen on the same reel. From the Home feed tab, Home gave no window. When we dragged the
+window away, it closed and the playback paused. The crash buffer was empty.
+
+**Anchors.** `android.software.picture_in_picture` finds `A0J`. `ai_styles_drafts`,
+`ai_styles_receiver` and `fb_shorts_viewer` together find `Aus.A02`. The trace string
+`VideoHomeDataControllerImpl.onLeaveFbShortsAdsView` and `UNIFIED_PLAYER_VDD_IN_WARION` find
+`7s8.A0J`. The surface check is the call that takes two `Function0` lambdas and returns a boolean.
 
 ## Re-signed builds: Facebook trusts its own certificate
 

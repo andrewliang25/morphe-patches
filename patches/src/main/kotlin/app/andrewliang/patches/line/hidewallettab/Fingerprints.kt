@@ -6,7 +6,7 @@ import app.morphe.patcher.fieldAccess
 private const val MAIN_TAB = "Ljp/naver/line/android/activity/main/a;"
 
 /**
- * Matches `wy7.b.a()` — the builder that assembles the ordered main bottom-nav tab list.
+ * Matches `b68.g.a()` (26.14.0) — the builder that assembles the ordered main bottom-nav tab list.
  *
  * The main-tab enum `jp.naver.line.android.activity.main.a` is non-obfuscated, so its `MINI`
  * and `WALLET` constants are stable anchors. The builder appends `MINI` (mini-tab mode,
