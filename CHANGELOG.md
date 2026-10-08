@@ -1,3 +1,9 @@
+## [3.5.0-dev.3](https://github.com/andrewliang25/morphe-patches/compare/v3.5.0-dev.2...v3.5.0-dev.3) (2026-10-08)
+
+### ✨ New Features
+
+* **LINE:** add "[General] Trust user-installed CAs" for LIFF traffic ([2c00dd6](https://github.com/andrewliang25/morphe-patches/commit/2c00dd6be27cc89cdd1f764f286eb217d3ea9dd8)), closes [#182](https://github.com/andrewliang25/morphe-patches/issues/182)
+
 ## [3.5.0-dev.2](https://github.com/andrewliang25/morphe-patches/compare/v3.5.0-dev.1...v3.5.0-dev.2) (2026-10-08)
 
 ### ✨ New Features
