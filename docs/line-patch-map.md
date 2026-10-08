@@ -1418,6 +1418,71 @@ instruction, both `.catch` ranges rebase correctly, and a whole-APK offset sweep
    ML Kit on real Play Services. The most important regression check.
 4. Without MicroG-RE installed, the build behaves exactly as an unpatched one (blank map, no crash).
 
+## Traffic interception & the "[General] Trust user-installed CAs" patch
+
+Issue #182. The goal is to let a developer read LINE's own HTTPS traffic through their own
+debugging proxy on their own device. LINE has three independent networking surfaces, and only one
+is patchable.
+
+### The three surfaces
+
+1. **Platform TLS stack** — `HttpsURLConnection`, OkHttp, and the LIFF / mini-app WebViews. This
+   stack obeys the app's Network Security Config (NSC) at `res/xml/network_security_config.xml`
+   (resource id `0x7f190020`, wired by `android:networkSecurityConfig` in the manifest).
+   **Patchable.**
+2. **LEGY native transport** — LINE's core messaging. `liblegy.so` runs over a privately bundled
+   TLS stack, `libssl3line.so` + `libcrypto3line.so` (a renamed OpenSSL/BoringSSL build). A bundled
+   TLS stack does not read the OS NSC and carries its own roots, so the NSC patch does nothing for
+   it. **Not patchable from resources or bytecode** (same class as LINE Pay / VKey — it needs a
+   native-library change, out of scope).
+3. **LINE Pay** — pinned in the NSC (`app-payatom.line-apps.com`) and also guarded by the VKey
+   V-Guard native engine. Out of scope.
+
+### Why the platform stack is blocked, and what unblocks it
+
+Two facts in the NSC decide it:
+
+- **Trust.** `<base-config>` is `cleartextTrafficPermitted="true"` with **no `<trust-anchors>`**.
+  This build is minSdk 30 / targetSdk 36, so on Android 7+ the default applies and a user-installed
+  proxy CA is rejected for every domain.
+- **Pinning.** `<pin-set>` blocks exist **only** on the bank hosts (`*.linebk.com`,
+  `*.kasikornbank.com`, `cwa.linebank.com.tw`) and Pay (`app-payatom.line-apps.com`). The LIFF and
+  mini-app hosts (`liff.line.me`, `miniapp.line.me`) sit in a `domain-config` with **no pin-set**.
+
+So for LIFF the only block is the missing trust. There is no OkHttp `CertificatePinner` in the
+bytecode (0 refs) — all app-level pinning lives in the NSC. The six `onReceivedSslError` handlers
+do not matter: once the CA is trusted, the chain validates, no SSL error fires, those handlers never
+run.
+
+### What the patch does
+
+`patches/line/allowdebugproxy/AllowDebugProxyPatch.kt` is a single `resourcePatch`. It appends one
+`<trust-anchors>` block to `<base-config>` with `src="system"` and `src="user"`. Nothing else.
+
+- `liff.line.me` / `miniapp.line.me` have no `<trust-anchors>` of their own, so they **inherit**
+  base-config's — mini-apps are covered with no edit to their block.
+- Every `<pin-set>` is left byte-identical, so bank and Pay stay pinned. A pin is checked after the
+  chain is trusted, so a proxy CA still fails the pin. Confirmed by diffing the patched NSC against
+  `work/decompiled-line-26.14.0/apktool/res/xml/network_security_config.xml`: the only change is the
+  new `<trust-anchors>` block.
+- `default = false`, because the patch widens trust for all non-pinned platform traffic. It is an
+  install-time choice, not a runtime toggle: an NSC edit injects no bytecode, so "Andrew's Patch
+  Setting" (which gates on an injected `LineSettings->x()Z` call) cannot switch it.
+
+### Scope note
+
+The patch intentionally covers only the platform stack. The real chat traffic rides LEGY over the
+bundled native TLS stack and stays invisible to a proxy. Do not try to remove the bank/Pay pins and
+do not attempt the native stack.
+
+### Values that drift on a version bump
+
+| What | 26.14.0 | How to re-find it |
+|---|---|---|
+| NSC resource | `res/xml/network_security_config.xml` | `android:networkSecurityConfig` in the manifest; the one `<base-config>` is the target. |
+| LIFF / mini-app hosts | `liff.line.me`, `miniapp.line.me` | In a `domain-config` with no `<pin-set>`; they inherit base-config trust. |
+| Bundled native TLS | `libssl3line.so`, `libcrypto3line.so`, `liblegy.so` | In `split_config.arm64_v8a.apk`. The reason native traffic is not patchable. |
+
 ## Settings screen & the "[General] Andrew's Patch Setting" patch
 
 The patch adds a row, "Andrew's Patch Setting", to LINE's main Settings list, right below "Profile".
