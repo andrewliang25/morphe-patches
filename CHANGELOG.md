@@ -1,3 +1,11 @@
+## [3.5.0](https://github.com/andrewliang25/morphe-patches/compare/v3.4.0...v3.5.0) (2026-10-08)
+
+### ✨ New Features
+
+* **Facebook - [Reels] Picture-in-picture:** keep a reel playing in a small window ([a194a2f](https://github.com/andrewliang25/morphe-patches/commit/a194a2f4d45fce78fdb2dd130827d7447a026a1d)), closes [#174](https://github.com/andrewliang25/morphe-patches/issues/174)
+* **LINE:** add "[General] Trust user-installed CAs" for LIFF traffic ([2c00dd6](https://github.com/andrewliang25/morphe-patches/commit/2c00dd6be27cc89cdd1f764f286eb217d3ea9dd8)), closes [#182](https://github.com/andrewliang25/morphe-patches/issues/182)
+* **LINE:** add "Andrew's Patch Setting" to turn patches on or off in LINE ([a94eed6](https://github.com/andrewliang25/morphe-patches/commit/a94eed6481d74eaf4a4b760259b10fd520dad961))
+
 ## [3.5.0-dev.3](https://github.com/andrewliang25/morphe-patches/compare/v3.5.0-dev.2...v3.5.0-dev.3) (2026-10-08)
 
 ### ✨ New Features

@@ -17,7 +17,7 @@ Morphe Manager to build a modified APK.
 ## 🩹 Patches list
 
 <!-- PATCHES_START EXPANDED -->
-> **[v3.5.0-dev.3](https://github.com/andrewliang25/morphe-patches/releases/tag/v3.5.0-dev.3)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;49 patches total
+> **[v3.5.0](https://github.com/andrewliang25/morphe-patches/releases/tag/v3.5.0)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;49 patches total
 <details open>
 <summary>📦 Facebook&nbsp;&nbsp;•&nbsp;&nbsp;19 patches</summary>
 <br>
