@@ -1,6 +1,7 @@
 package app.andrewliang.patches.line.hideadviews
 
 import app.andrewliang.patches.shared.Constants.COMPATIBILITY_LINE
+import app.andrewliang.patches.shared.resourceIdsPatch
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.bytecodePatch
 
@@ -24,8 +25,8 @@ private const val HIDE_SELF = """
     invoke-virtual {p0, v0}, Landroid/view/View;->setVisibility(I)V
 """
 
-// AdManager wrappers hide self after super <init>. et5/e is `.locals 0`, so it reuses the dead
-// defStyleAttr param p3 instead of v0.
+// AdManager wrappers hide self after super <init>. The general-header banner is `.locals 0`, so
+// it reuses the dead defStyleAttr param p3 instead of v0.
 private const val HIDE_SELF_CTOR_V0 = """
     const/16 v0, 0x8
     invoke-virtual {p0, v0}, Landroid/view/View;->setVisibility(I)V
@@ -43,6 +44,7 @@ val hideAdViewsPatch = bytecodePatch(
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_LINE)
+    dependsOn(resourceIdsPatch)
 
     execute {
         // Chat-list Smart Channel banner: hide its host container at controller construction.
@@ -52,13 +54,13 @@ val hideAdViewsPatch = bytecodePatch(
         LadAdViewFingerprint.method.addInstructions(0, HIDE_SELF)
         LyadAdViewFingerprint.method.addInstructions(0, HIDE_SELF)
 
-        // Google AdManager wrappers — BEST-EFFORT. Obfuscated names drift across versions,
-        // so skip silently if not found. It can never break the robust hiding above. Inject
+        // Google AdManager wrappers — BEST-EFFORT. Each is found by its layout, so skip
+        // silently if one is not found. It can never break the robust hiding above. Inject
         // setVisibility(GONE) on self right AFTER the super <init> call.
         val adManagerWrappers = listOf(
             AdManagerBannerChatroomFingerprint to HIDE_SELF_CTOR_V0,
             AdManagerNativeChatroomFingerprint to HIDE_SELF_CTOR_V0,
-            AdManagerBannerGeneralFingerprint to HIDE_SELF_CTOR_P3, // et5/e: .locals 0
+            AdManagerBannerGeneralFingerprint to HIDE_SELF_CTOR_P3, // .locals 0
             AdManagerNativeGeneralFingerprint to HIDE_SELF_CTOR_V0,
             AdManagerBannerMinorRegionFingerprint to HIDE_SELF_CTOR_V0,
             AdManagerNativeMinorRegionFingerprint to HIDE_SELF_CTOR_V0,

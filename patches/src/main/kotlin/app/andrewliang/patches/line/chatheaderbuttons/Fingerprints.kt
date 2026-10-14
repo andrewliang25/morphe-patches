@@ -2,39 +2,40 @@ package app.andrewliang.patches.line.chatheaderbuttons
 
 import app.andrewliang.patches.line.shared.ServerFlagFingerprint
 import app.morphe.patcher.Fingerprint
+import app.morphe.patcher.InstructionLocation.MatchAfterImmediately
 import app.morphe.patcher.fieldAccess
 import app.morphe.patcher.methodCall
-
-private const val BUTTON_ENUM = "Lq11/n;"
+import com.android.tools.smali.dexlib2.Opcode
 
 /**
  * The ChatTabHeaderStateImpl constructor (obfuscated) builds the Chats-tab header button set.
- * It adds each button to the button list as `sget-object <q11.n constant>` + `add(...)`. The
- * button enum constant names (OPEN_CHAT, CALENDAR, …) are non-obfuscated, because Kotlin enum
- * names survive, so we anchor on them.
+ * It adds each button to the button list as `sget-object <button constant>` + `add(...)` at once
+ * after it. The button enum constant names (OPEN_CHAT, CALENDAR, …) are non-obfuscated, because
+ * Kotlin enum names survive, so we anchor on them.
  *
- * The fingerprint matches its enum constant's `sget-object` followed at once by the list
- * `add` call. That pair lands only in the constructor. The enum's WhenMappings table reads the
- * same constants, but follows them with `ordinal()`, not `add`. The `hidecalendar` package
- * anchors the Chats-tab header calendar button the same way. Thus the two patches do not depend
- * on each other and work in either order when both are on.
+ * The OPEN_CHAT + `add` pair lands only in this constructor. The enum's WhenMappings table reads
+ * the same constant, but follows it with `ordinal()`, not `add`. The green-dot icon set
+ * (ChatTabHeaderStateImpl$greenDotVisibleIconSet) also adds OPEN_CHAT to a list, but it is a
+ * lambda, not a constructor. The `hidecalendar` package anchors the Chats-tab header calendar
+ * button the same way. Thus the two patches do not depend on each other and work in either
+ * order when both are on.
  */
-// The header button list is a `ki8/b` (the `add` calls target `Lki8/b;`). Pinning the `add`'s
-// definingClass separates it from the green-dot icon set (ChatTabHeaderStateImpl
-// $greenDotVisibleIconSet), which reads the same OPEN_CHAT constant but adds to a different
-// list class (`ki8/j`). Without this pin, OPEN_CHAT + add could silently match the green-dot
-// method instead of the header builder.
-private const val HEADER_LIST_ADD = "Lki8/b;"
-
 internal object CommunityButtonFingerprint : Fingerprint(
+    name = "<init>",
+    returnType = "V",
     filters = listOf(
-        fieldAccess(definingClass = BUTTON_ENUM, name = "OPEN_CHAT"),
-        methodCall(definingClass = HEADER_LIST_ADD, name = "add"),
+        fieldAccess(name = "OPEN_CHAT", opcode = Opcode.SGET_OBJECT),
+        methodCall(
+            name = "add",
+            returnType = "Z",
+            parameters = listOf("Ljava/lang/Object;"),
+            location = MatchAfterImmediately(),
+        ),
     ),
 )
 
 /**
- * The server flag for the AI Friends button (`g45.c.t()` in 26.14.0). The header builder adds
+ * The server flag for the AI Friends button . The header builder adds
  * `AI_FRIEND` if this flag is true, and `ALBUM` in its place if it is false.
  */
 internal object AiFriendsFlagFingerprint :

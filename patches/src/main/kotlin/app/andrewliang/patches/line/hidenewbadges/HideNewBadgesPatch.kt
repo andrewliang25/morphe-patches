@@ -1,6 +1,7 @@
 package app.andrewliang.patches.line.hidenewbadges
 
 import app.andrewliang.patches.shared.Constants.COMPATIBILITY_LINE
+import app.andrewliang.patches.shared.resourceIdsPatch
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.removeInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
@@ -150,6 +151,7 @@ val hideNewBadgesPatch = bytecodePatch(
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_LINE)
+    dependsOn(resourceIdsPatch)
 
     execute {
         // ---- Core sites. These resolve strictly: they are the badges the patch exists for, and
@@ -197,8 +199,8 @@ val hideNewBadgesPatch = bytecodePatch(
         //      Album row's own green dot. The badge views are found by the resource id their
         //      constructor binds, so no obfuscated field letter is hardcoded.
         listOf(
-            ChatMenuRowHolderFingerprint to listOf(0x7f0b18e9, 0x7f0b18f0),
-            ChatMenuAlbumRowHolderFingerprint to listOf(0x7f0b18e8),
+            ChatMenuRowHolderFingerprint to listOf("new_badge", "new_feature_badge"),
+            ChatMenuAlbumRowHolderFingerprint to listOf("new_album_badge"),
         ).forEach { (fingerprint, badgeIds) ->
             val constructor = fingerprint.methodOrNull ?: return@forEach
             val matches = fingerprint.instructionMatchesOrNull ?: return@forEach
