@@ -29,6 +29,45 @@ internal fun readLineSetting(feature: String, register: String) = """
 """
 
 /**
+ * Smali that sets the boolean in [register] to 0 while the switch [feature] is on. It calls the
+ * `(Z)Z` overload of [feature], so it needs no free register and no branch. [register] must be
+ * v0 to v15, because `invoke-static` takes 4-bit registers.
+ */
+internal fun hideIfLineSetting(feature: String, register: String) = """
+    invoke-static {$register}, $LINE_SETTINGS->$feature(Z)Z
+    move-result $register
+"""
+
+/**
+ * Makes the `Z` method return false at entry while the switch [feature] is on. With the switch
+ * off, the original body runs. [register] must be dead at entry: the original code must write it
+ * before it reads it.
+ */
+internal fun MutableMethod.returnFalseIfLineSetting(feature: String, register: String) =
+    addInstructionsWithLabels(
+        0,
+        readLineSetting(feature, register) +
+            """
+                if-eqz $register, :stock
+                const/4 $register, 0x0
+                return $register
+            """,
+        ExternalLabel("stock", getInstruction(0)),
+    )
+
+/**
+ * Skips the [count] instructions at [index] while the switch [feature] is on. The instructions
+ * stay in the method, so fingerprints still find them. [register] must be dead at [index] and
+ * after the skipped instructions.
+ */
+internal fun MutableMethod.skipIfLineSetting(index: Int, count: Int, feature: String, register: String) =
+    addInstructionsWithLabels(
+        index,
+        readLineSetting(feature, register) + "if-nez $register, :skip",
+        ExternalLabel("skip", getInstruction(index + count)),
+    )
+
+/**
  * Tells the settings screen that the patch of [feature] is in this build, so that the screen
  * shows its switch. It rewrites `<feature>Included()`, a plain "return false", to return true.
  */

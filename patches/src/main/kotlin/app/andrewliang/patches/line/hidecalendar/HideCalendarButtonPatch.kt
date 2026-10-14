@@ -1,12 +1,22 @@
 package app.andrewliang.patches.line.hidecalendar
 
+import app.andrewliang.patches.line.shared.hideIfLineSetting
+import app.andrewliang.patches.line.shared.lineSettingsExtensionPatch
+import app.andrewliang.patches.line.shared.markLineSettingIncluded
+import app.andrewliang.patches.line.shared.readLineSetting
+import app.andrewliang.patches.line.shared.returnFalseIfLineSetting
+import app.andrewliang.patches.line.shared.skipIfLineSetting
 import app.andrewliang.patches.shared.Constants.COMPATIBILITY_LINE
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
-import app.morphe.patcher.extensions.InstructionExtensions.removeInstructions
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
+import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
+import app.morphe.patcher.util.smali.ExternalLabel
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
+import com.android.tools.smali.dexlib2.iface.instruction.Instruction
+import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter
 
@@ -14,6 +24,7 @@ private const val HOME_STATE = "Llb2/g\$a;"
 private const val FILTER_NAME = "filterCalendarModules"
 private const val FILTER_DESC = "(Ljava/util/List;)Ljava/util/List;"
 private const val CALENDAR_MODULE_TYPE = "FriendsSubTabCalendar"
+private const val FEATURE = "hideCalendar"
 
 @Suppress("unused")
 val hideCalendarButtonPatch = bytecodePatch(
@@ -24,6 +35,9 @@ val hideCalendarButtonPatch = bytecodePatch(
 ) {
     compatibleWith(COMPATIBILITY_LINE)
 
+    dependsOn(lineSettingsExtensionPatch)
+
+    // With the switch off, every lever runs the original code.
     execute {
         // Resolve the Home-state constructor before any mutation. The patcher does not undo a
         // partial execute, so a lookup that throws after an earlier lever has already been
@@ -31,54 +45,61 @@ val hideCalendarButtonPatch = bytecodePatch(
         val homeState = mutableClassDefBy(HOME_STATE)
         val homeStateCtor = HomeStateCtorFingerprint.method
 
-        // 1. Chats-tab header: remove the `sget-object CALENDAR` + following list `add(...)` pair
-        //    so the header button is never added. instructionMatches[0] = the CALENDAR sget.
-        val calendarSgetIndex = CalendarButtonFingerprint.instructionMatches.first().index
-        CalendarButtonFingerprint.method.removeInstructions(calendarSgetIndex, 2)
+        // 1. Chats-tab header: skip the `sget-object CALENDAR` + following list `add(...)` pair
+        //    so the header button is never added. instructionMatches[0] = the CALENDAR sget. The
+        //    switch uses the register of the sget: the sget writes it, and the code after the add
+        //    writes it before it reads it.
+        val calendarSget = CalendarButtonFingerprint.instructionMatches.first()
+        CalendarButtonFingerprint.method.skipIfLineSetting(
+            calendarSget.index,
+            2,
+            FEATURE,
+            calendarSget.instruction.register(),
+        )
 
         // 2. Chat-room "+" attach menu: the CalendarButtonType (yi1.b) is shown only if its
         //    availability predicate `j(xk1.b)Z` returns true (the attach-menu filter yi1.p.f
         //    gates on it). Neuter that predicate to false. The item is then dropped by the
         //    existing filter in xi1.c. Anchor via the constructor (the sole reader of the
-        //    wi1.b$b.CALENDAR enum constant), then select `j` by its unique descriptor.
+        //    wi1.b$b.CALENDAR enum constant), then select `j` by its unique descriptor. The
+        //    switch uses p0: `j` writes it before it reads it.
         val attachMenuCalendarClass =
             mutableClassDefBy(AttachMenuCalendarButtonFingerprint.method.definingClass)
         val availabilityMethod = attachMenuCalendarClass.methods.first { method ->
             method.returnType == "Z" &&
                 method.parameterTypes.map { it.toString() } == listOf("Lxk1/b;")
         }
-        availabilityMethod.addInstructions(
-            0,
-            """
-                const/4 p0, 0x0
-                return p0
-            """,
-        )
+        availabilityMethod.returnFalseIfLineSetting(FEATURE, "p0")
 
         // 3. Chat-room top toolbar: ag1.e0.a adds the button at two chat-type branches, each a
-        //    `sget-object CALENDAR_BUTTON` + following `ag1.t1.g(...)` add call. Remove both
-        //    pairs. instructionMatches[0] = earlier site, [1] = later. Remove the higher index
-        //    first so the earlier one stays valid.
+        //    `sget-object CALENDAR_BUTTON` + following `ag1.t1.g(...)` add call. Skip both
+        //    pairs. instructionMatches[0] = earlier site, [1] = later. Patch the higher index
+        //    first so the earlier one stays valid. The switch uses the register of each sget, as
+        //    in lever 1.
         val toolbarMatches = ChatRoomToolbarCalendarButtonFingerprint.instructionMatches
         ChatRoomToolbarCalendarButtonFingerprint.method.apply {
-            removeInstructions(toolbarMatches[1].index, 2)
-            removeInstructions(toolbarMatches[0].index, 2)
+            skipIfLineSetting(toolbarMatches[1].index, 2, FEATURE, toolbarMatches[1].instruction.register())
+            skipIfLineSetting(toolbarMatches[0].index, 2, FEATURE, toolbarMatches[0].instruction.register())
         }
 
         // 4. Slide-out chat menu: the calendar row (z00.l) forwards its first ctor bool as the
         //    row's isVisible field (z00.a.e). The menu builder only renders rows whose e is true.
-        //    Force that bool false at method entry (p1 is the first param) so the row is filtered
-        //    out.
-        ChatMenuCalendarRowFingerprint.method.addInstructions(0, "const/4 p1, 0x0")
+        //    Clear that bool at method entry (p1 is the first param), so that the menu builder
+        //    leaves out the row.
+        ChatMenuCalendarRowFingerprint.method.addInstructions(0, hideIfLineSetting(FEATURE, "p1"))
 
         // 5. Message long-press menu: the calendar provider kh1.x0$c.a(...) returns a c81.c action
         //    or null (null = hide). Force it to return null. .locals 3 -> v0 is free.
-        ContextMenuCalendarProviderFingerprint.method.addInstructions(
+        val provider = ContextMenuCalendarProviderFingerprint.method
+        provider.addInstructionsWithLabels(
             0,
-            """
-                const/4 v0, 0x0
-                return-object v0
-            """,
+            readLineSetting(FEATURE, "v0") +
+                """
+                    if-eqz v0, :stock
+                    const/4 v0, 0x0
+                    return-object v0
+                """,
+            ExternalLabel("stock", provider.getInstruction(0)),
         )
 
         // 6. Friends sub-tab: the Calendar block is a server-driven module of type
@@ -100,11 +121,16 @@ val hideCalendarButtonPatch = bytecodePatch(
             ),
         )
         homeState.methods.add(filter)
-        // p0 = input List. v0 = result ArrayList, v1 = iterator, v2 = element, v3 = type/bool,
-        // v4 = the literal. The literal is the receiver of equals(), so a null type is safe.
+        // p0 = input List. v0 = switch, then result ArrayList, v1 = iterator, v2 = element,
+        // v3 = type/bool, v4 = the literal. The literal is the receiver of equals(), so a null type
+        // is safe. With the switch off, the method returns the input list.
         filter.addInstructions(
             0,
-            """
+            readLineSetting(FEATURE, "v0") +
+                """
+                if-nez v0, :filter
+                return-object p0
+                :filter
                 new-instance v0, Ljava/util/ArrayList;
                 invoke-direct {v0}, Ljava/util/ArrayList;-><init>()V
                 invoke-interface {p0}, Ljava/util/List;->iterator()Ljava/util/Iterator;
@@ -139,5 +165,9 @@ val hideCalendarButtonPatch = bytecodePatch(
                 move-result-object p1
             """,
         )
+        markLineSettingIncluded(FEATURE)
     }
 }
+
+/** The destination register of an `sget-object`, as smali. */
+private fun Instruction.register() = "v${(this as OneRegisterInstruction).registerA}"

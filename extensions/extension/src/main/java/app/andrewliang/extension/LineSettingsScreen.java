@@ -124,8 +124,12 @@ final class LineSettingsScreen {
         boolean general = LineSettings.externalBrowserIncluded() || LineSettings.disableVoomIncluded();
         boolean tabs = LineSettings.hideTodayTabIncluded() || LineSettings.hideShoppingTabIncluded()
                 || LineSettings.hideVoomTabIncluded() || LineSettings.hideWalletTabIncluded();
+        boolean buttons = LineSettings.hideAiFriendsIncluded() || LineSettings.hideCommunityButtonIncluded()
+                || LineSettings.hideCalendarIncluded() || LineSettings.hideEventsIncluded()
+                || LineSettings.hideGiftIncluded() || LineSettings.hideTransferIncluded()
+                || LineSettings.hideAttachToolsIncluded() || LineSettings.hideChatTipsIncluded();
 
-        if (!chats && !general && !tabs) {
+        if (!chats && !general && !tabs && !buttons) {
             content.addView(note(activity, "No patches in this build have a switch."));
             return;
         }
@@ -140,6 +144,49 @@ final class LineSettingsScreen {
                 content.addView(toggle(activity, LineSettings.KEEP_UNSENT_MESSAGES, "Keep unsent messages",
                         "Keeps messages that others unsend, with a notice below each one.", null));
             }
+        }
+
+        if (buttons) {
+            content.addView(section(activity, "Chat buttons"));
+            View restart = row(activity, "Restart LINE", "Shows your button changes now.", true);
+            restart.setVisibility(View.GONE);
+            restart.setOnClickListener(v -> restart(activity));
+            Runnable showRestart = () -> restart.setVisibility(View.VISIBLE);
+
+            if (LineSettings.hideAiFriendsIncluded()) {
+                content.addView(toggle(activity, LineSettings.HIDE_AI_FRIENDS, "Hide AI Friends button",
+                        "In the Chats tab. The Album button shows in its place.", showRestart));
+            }
+            if (LineSettings.hideCommunityButtonIncluded()) {
+                content.addView(toggle(activity, LineSettings.HIDE_COMMUNITY_BUTTON, "Hide community button",
+                        "In the Chats tab.", showRestart));
+            }
+            if (LineSettings.hideCalendarIncluded()) {
+                content.addView(toggle(activity, LineSettings.HIDE_CALENDAR, "Hide calendar buttons",
+                        "In the Chats tab, in chats and in the Home tab.", showRestart));
+            }
+            if (LineSettings.hideEventsIncluded()) {
+                content.addView(toggle(activity, LineSettings.HIDE_EVENTS, "Hide Events button",
+                        "In the chat menu.", showRestart));
+            }
+            if (LineSettings.hideGiftIncluded()) {
+                content.addView(toggle(activity, LineSettings.HIDE_GIFT, "Hide LINE GIFT button",
+                        "In the + menu of a chat.", showRestart));
+            }
+            if (LineSettings.hideTransferIncluded()) {
+                content.addView(toggle(activity, LineSettings.HIDE_TRANSFER, "Hide Transfer button",
+                        "In the + menu of a chat.", showRestart));
+            }
+            if (LineSettings.hideAttachToolsIncluded()) {
+                content.addView(toggle(activity, LineSettings.HIDE_ATTACH_TOOLS, "Hide attach menu extra tools",
+                        "Poll, Schedule and other server tools in the + menu of a chat.", showRestart));
+            }
+            if (LineSettings.hideChatTipsIncluded()) {
+                content.addView(toggle(activity, LineSettings.HIDE_CHAT_TIPS, "Hide tips under messages",
+                        "The \"CHECK\" tips under some messages.", showRestart));
+            }
+            content.addView(note(activity, "Some button changes show only after LINE restarts."));
+            content.addView(restart);
         }
 
         if (general) {
