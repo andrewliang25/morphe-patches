@@ -1,6 +1,6 @@
 {
   "NOTE": "Do NOT manually edit this file. This file is automatically updated when semantic release (release.yml) runs. Manually editing this file can break your releases and break third party tools that use this file.",
-  "version": "3.5.0",
+  "version": "3.6.0-dev.1",
   "patches": [
     {
       "name": "[Ad] Block ad telemetry",
@@ -142,7 +142,9 @@
       "name": "[Chat] Hide AI Friends button",
       "description": "Removes the AI Friends button from the Chats tab header. The Album button shows in its place.",
       "default": true,
-      "dependencies": [],
+      "dependencies": [
+        "BytecodePatch"
+      ],
       "compatiblePackages": [
         {
           "packageName": "jp.naver.line.android",
@@ -168,7 +170,9 @@
       "name": "[Chat] Hide Events button",
       "description": "Removes the \"Events\" row from the slide-out menu in a chat room. Events is a different feature from LINE Calendar, and it opens a server-hosted page.",
       "default": true,
-      "dependencies": [],
+      "dependencies": [
+        "BytecodePatch"
+      ],
       "compatiblePackages": [
         {
           "packageName": "jp.naver.line.android",
@@ -194,7 +198,9 @@
       "name": "[Chat] Hide LINE GIFT button",
       "description": "Removes the LINE GIFT tile from the + attach menu in a chat room.",
       "default": true,
-      "dependencies": [],
+      "dependencies": [
+        "BytecodePatch"
+      ],
       "compatiblePackages": [
         {
           "packageName": "jp.naver.line.android",
@@ -220,7 +226,9 @@
       "name": "[Chat] Hide Transfer button",
       "description": "Removes the Transfer (LINE Pay) tile from the + attach menu in a chat room.",
       "default": true,
-      "dependencies": [],
+      "dependencies": [
+        "BytecodePatch"
+      ],
       "compatiblePackages": [
         {
           "packageName": "jp.naver.line.android",
@@ -246,7 +254,9 @@
       "name": "[Chat] Hide attach menu extra tools",
       "description": "Removes the server-provided tools (Poll, Schedule and more) from the + menu in a chat. Built-in tiles stay.",
       "default": true,
-      "dependencies": [],
+      "dependencies": [
+        "BytecodePatch"
+      ],
       "compatiblePackages": [
         {
           "packageName": "jp.naver.line.android",
@@ -272,7 +282,9 @@
       "name": "[Chat] Hide calendar buttons",
       "description": "Removes every LINE Calendar button: in the Chats tab, the chat toolbar and menus, and the Home tab.",
       "default": true,
-      "dependencies": [],
+      "dependencies": [
+        "BytecodePatch"
+      ],
       "compatiblePackages": [
         {
           "packageName": "jp.naver.line.android",
@@ -298,7 +310,9 @@
       "name": "[Chat] Hide community button",
       "description": "Removes the community (OpenChat) button from the top of the Chats tab header.",
       "default": true,
-      "dependencies": [],
+      "dependencies": [
+        "BytecodePatch"
+      ],
       "compatiblePackages": [
         {
           "packageName": "jp.naver.line.android",
@@ -324,7 +338,9 @@
       "name": "[Chat] Hide tips under messages",
       "description": "Hides the \"CHECK\" tips under some messages, such as a received video.",
       "default": true,
-      "dependencies": [],
+      "dependencies": [
+        "BytecodePatch"
+      ],
       "compatiblePackages": [
         {
           "packageName": "jp.naver.line.android",

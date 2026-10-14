@@ -1,3 +1,9 @@
+## [3.6.0-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v3.5.0...v3.6.0-dev.1) (2026-10-14)
+
+### ✨ New Features
+
+* **LINE:** add runtime switches for the chat UI hide patches ([d17d8f5](https://github.com/andrewliang25/morphe-patches/commit/d17d8f5a390537ff4546f9f65ff9192878678dcb))
+
 ## [3.5.0](https://github.com/andrewliang25/morphe-patches/compare/v3.4.0...v3.5.0) (2026-10-08)
 
 ### ✨ New Features
