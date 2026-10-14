@@ -17,7 +17,7 @@ Morphe Manager to build a modified APK.
 ## 🩹 Patches list
 
 <!-- PATCHES_START EXPANDED -->
-> **[v3.6.0-dev.1](https://github.com/andrewliang25/morphe-patches/releases/tag/v3.6.0-dev.1)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;49 patches total
+> **[v3.6.0-dev.2](https://github.com/andrewliang25/morphe-patches/releases/tag/v3.6.0-dev.2)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;49 patches total
 <details open>
 <summary>📦 Facebook&nbsp;&nbsp;•&nbsp;&nbsp;19 patches</summary>
 <br>
@@ -57,8 +57,8 @@ Morphe Manager to build a modified APK.
 
 **🎯 Supported versions:**
 
-| 26.14.0 |
-| :---: |
+| 26.15.1 | 26.14.0 |
+| :---: | :---: |
 
 | 💊&nbsp;Patch | 📜&nbsp;Description | ⚙️&nbsp;Options |
 |----------|----------------|-----------|

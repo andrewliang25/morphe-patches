@@ -1,6 +1,6 @@
 {
   "NOTE": "Do NOT manually edit this file. This file is automatically updated when semantic release (release.yml) runs. Manually editing this file can break your releases and break third party tools that use this file.",
-  "version": "3.6.0-dev.1",
+  "version": "3.6.0-dev.2",
   "patches": [
     {
       "name": "[Ad] Block ad telemetry",
@@ -90,7 +90,9 @@
       "name": "[Ad] Hide ad views",
       "description": "Hides LINE display ads: the LINE Ads banners, the Smart Channel banner in the chat list and Google AdManager ads.",
       "default": true,
-      "dependencies": [],
+      "dependencies": [
+        "ResourcePatch"
+      ],
       "compatiblePackages": [
         {
           "packageName": "jp.naver.line.android",
@@ -101,10 +103,17 @@
           "signatures": null,
           "targets": [
             {
+              "version": "26.15.1",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 32,
+              "description": null
+            },
+            {
               "version": "26.14.0",
               "versionCodes": null,
               "isExperimental": false,
-              "minSdk": null,
+              "minSdk": 30,
               "description": null
             }
           ]
@@ -127,10 +136,17 @@
           "signatures": null,
           "targets": [
             {
+              "version": "26.15.1",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 32,
+              "description": null
+            },
+            {
               "version": "26.14.0",
               "versionCodes": null,
               "isExperimental": false,
-              "minSdk": null,
+              "minSdk": 30,
               "description": null
             }
           ]
@@ -155,10 +171,17 @@
           "signatures": null,
           "targets": [
             {
+              "version": "26.15.1",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 32,
+              "description": null
+            },
+            {
               "version": "26.14.0",
               "versionCodes": null,
               "isExperimental": false,
-              "minSdk": null,
+              "minSdk": 30,
               "description": null
             }
           ]
@@ -171,6 +194,7 @@
       "description": "Removes the \"Events\" row from the slide-out menu in a chat room. Events is a different feature from LINE Calendar, and it opens a server-hosted page.",
       "default": true,
       "dependencies": [
+        "ResourcePatch",
         "BytecodePatch"
       ],
       "compatiblePackages": [
@@ -183,10 +207,17 @@
           "signatures": null,
           "targets": [
             {
+              "version": "26.15.1",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 32,
+              "description": null
+            },
+            {
               "version": "26.14.0",
               "versionCodes": null,
               "isExperimental": false,
-              "minSdk": null,
+              "minSdk": 30,
               "description": null
             }
           ]
@@ -199,6 +230,7 @@
       "description": "Removes the LINE GIFT tile from the + attach menu in a chat room.",
       "default": true,
       "dependencies": [
+        "ResourcePatch",
         "BytecodePatch"
       ],
       "compatiblePackages": [
@@ -211,10 +243,17 @@
           "signatures": null,
           "targets": [
             {
+              "version": "26.15.1",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 32,
+              "description": null
+            },
+            {
               "version": "26.14.0",
               "versionCodes": null,
               "isExperimental": false,
-              "minSdk": null,
+              "minSdk": 30,
               "description": null
             }
           ]
@@ -227,6 +266,7 @@
       "description": "Removes the Transfer (LINE Pay) tile from the + attach menu in a chat room.",
       "default": true,
       "dependencies": [
+        "ResourcePatch",
         "BytecodePatch"
       ],
       "compatiblePackages": [
@@ -239,10 +279,17 @@
           "signatures": null,
           "targets": [
             {
+              "version": "26.15.1",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 32,
+              "description": null
+            },
+            {
               "version": "26.14.0",
               "versionCodes": null,
               "isExperimental": false,
-              "minSdk": null,
+              "minSdk": 30,
               "description": null
             }
           ]
@@ -267,10 +314,17 @@
           "signatures": null,
           "targets": [
             {
+              "version": "26.15.1",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 32,
+              "description": null
+            },
+            {
               "version": "26.14.0",
               "versionCodes": null,
               "isExperimental": false,
-              "minSdk": null,
+              "minSdk": 30,
               "description": null
             }
           ]
@@ -283,6 +337,7 @@
       "description": "Removes every LINE Calendar button: in the Chats tab, the chat toolbar and menus, and the Home tab.",
       "default": true,
       "dependencies": [
+        "ResourcePatch",
         "BytecodePatch"
       ],
       "compatiblePackages": [
@@ -295,10 +350,17 @@
           "signatures": null,
           "targets": [
             {
+              "version": "26.15.1",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 32,
+              "description": null
+            },
+            {
               "version": "26.14.0",
               "versionCodes": null,
               "isExperimental": false,
-              "minSdk": null,
+              "minSdk": 30,
               "description": null
             }
           ]
@@ -323,10 +385,17 @@
           "signatures": null,
           "targets": [
             {
+              "version": "26.15.1",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 32,
+              "description": null
+            },
+            {
               "version": "26.14.0",
               "versionCodes": null,
               "isExperimental": false,
-              "minSdk": null,
+              "minSdk": 30,
               "description": null
             }
           ]
@@ -339,6 +408,7 @@
       "description": "Hides the \"CHECK\" tips under some messages, such as a received video.",
       "default": true,
       "dependencies": [
+        "ResourcePatch",
         "BytecodePatch"
       ],
       "compatiblePackages": [
@@ -351,10 +421,17 @@
           "signatures": null,
           "targets": [
             {
+              "version": "26.15.1",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 32,
+              "description": null
+            },
+            {
               "version": "26.14.0",
               "versionCodes": null,
               "isExperimental": false,
-              "minSdk": null,
+              "minSdk": 30,
               "description": null
             }
           ]
@@ -379,10 +456,17 @@
           "signatures": null,
           "targets": [
             {
+              "version": "26.15.1",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 32,
+              "description": null
+            },
+            {
               "version": "26.14.0",
               "versionCodes": null,
               "isExperimental": false,
-              "minSdk": null,
+              "minSdk": 30,
               "description": null
             }
           ]
@@ -407,10 +491,17 @@
           "signatures": null,
           "targets": [
             {
+              "version": "26.15.1",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 32,
+              "description": null
+            },
+            {
               "version": "26.14.0",
               "versionCodes": null,
               "isExperimental": false,
-              "minSdk": null,
+              "minSdk": 30,
               "description": null
             }
           ]
@@ -547,10 +638,17 @@
           "signatures": null,
           "targets": [
             {
+              "version": "26.15.1",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 32,
+              "description": null
+            },
+            {
               "version": "26.14.0",
               "versionCodes": null,
               "isExperimental": false,
-              "minSdk": null,
+              "minSdk": 30,
               "description": null
             }
           ]
@@ -575,10 +673,17 @@
           "signatures": null,
           "targets": [
             {
+              "version": "26.15.1",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 32,
+              "description": null
+            },
+            {
               "version": "26.14.0",
               "versionCodes": null,
               "isExperimental": false,
-              "minSdk": null,
+              "minSdk": 30,
               "description": null
             }
           ]
@@ -601,10 +706,17 @@
           "signatures": null,
           "targets": [
             {
+              "version": "26.15.1",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 32,
+              "description": null
+            },
+            {
               "version": "26.14.0",
               "versionCodes": null,
               "isExperimental": false,
-              "minSdk": null,
+              "minSdk": 30,
               "description": null
             }
           ]
@@ -688,10 +800,17 @@
           "signatures": null,
           "targets": [
             {
+              "version": "26.15.1",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 32,
+              "description": null
+            },
+            {
               "version": "26.14.0",
               "versionCodes": null,
               "isExperimental": false,
-              "minSdk": null,
+              "minSdk": 30,
               "description": null
             }
           ]
@@ -716,10 +835,17 @@
           "signatures": null,
           "targets": [
             {
+              "version": "26.15.1",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 32,
+              "description": null
+            },
+            {
               "version": "26.14.0",
               "versionCodes": null,
               "isExperimental": false,
-              "minSdk": null,
+              "minSdk": 30,
               "description": null
             }
           ]
@@ -731,7 +857,9 @@
       "name": "[General] Hide Agent i buttons",
       "description": "Removes the Agent i button from the Home header and from the search bar.",
       "default": true,
-      "dependencies": [],
+      "dependencies": [
+        "ResourcePatch"
+      ],
       "compatiblePackages": [
         {
           "packageName": "jp.naver.line.android",
@@ -742,10 +870,17 @@
           "signatures": null,
           "targets": [
             {
+              "version": "26.15.1",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 32,
+              "description": null
+            },
+            {
               "version": "26.14.0",
               "versionCodes": null,
               "isExperimental": false,
-              "minSdk": null,
+              "minSdk": 30,
               "description": null
             }
           ]
@@ -785,7 +920,9 @@
       "name": "[General] Hide new item badges",
       "description": "Hides the green dots and N badges that mark new items, on header buttons, tabs, menus, lists and settings rows. Unread message counts do not change.",
       "default": true,
-      "dependencies": [],
+      "dependencies": [
+        "ResourcePatch"
+      ],
       "compatiblePackages": [
         {
           "packageName": "jp.naver.line.android",
@@ -796,10 +933,17 @@
           "signatures": null,
           "targets": [
             {
+              "version": "26.15.1",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 32,
+              "description": null
+            },
+            {
               "version": "26.14.0",
               "versionCodes": null,
               "isExperimental": false,
-              "minSdk": null,
+              "minSdk": 30,
               "description": null
             }
           ]
@@ -852,10 +996,17 @@
           "signatures": null,
           "targets": [
             {
+              "version": "26.15.1",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 32,
+              "description": null
+            },
+            {
               "version": "26.14.0",
               "versionCodes": null,
               "isExperimental": false,
-              "minSdk": null,
+              "minSdk": 30,
               "description": null
             }
           ]
@@ -878,10 +1029,17 @@
           "signatures": null,
           "targets": [
             {
+              "version": "26.15.1",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 32,
+              "description": null
+            },
+            {
               "version": "26.14.0",
               "versionCodes": null,
               "isExperimental": false,
-              "minSdk": null,
+              "minSdk": 30,
               "description": null
             }
           ]
@@ -904,10 +1062,17 @@
           "signatures": null,
           "targets": [
             {
+              "version": "26.15.1",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 32,
+              "description": null
+            },
+            {
               "version": "26.14.0",
               "versionCodes": null,
               "isExperimental": false,
-              "minSdk": null,
+              "minSdk": 30,
               "description": null
             }
           ]
@@ -930,10 +1095,17 @@
           "signatures": null,
           "targets": [
             {
+              "version": "26.15.1",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 32,
+              "description": null
+            },
+            {
               "version": "26.14.0",
               "versionCodes": null,
               "isExperimental": false,
-              "minSdk": null,
+              "minSdk": 30,
               "description": null
             }
           ]
@@ -956,10 +1128,17 @@
           "signatures": null,
           "targets": [
             {
+              "version": "26.15.1",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 32,
+              "description": null
+            },
+            {
               "version": "26.14.0",
               "versionCodes": null,
               "isExperimental": false,
-              "minSdk": null,
+              "minSdk": 30,
               "description": null
             }
           ]
@@ -982,10 +1161,17 @@
           "signatures": null,
           "targets": [
             {
+              "version": "26.15.1",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 32,
+              "description": null
+            },
+            {
               "version": "26.14.0",
               "versionCodes": null,
               "isExperimental": false,
-              "minSdk": null,
+              "minSdk": 30,
               "description": null
             }
           ]
@@ -997,7 +1183,9 @@
       "name": "[Premium] Hide premium unsend upsells",
       "description": "Removes the Premium unsend upsells that \"Disable LINE Premium\" leaves. Ordinary unsend still works.",
       "default": true,
-      "dependencies": [],
+      "dependencies": [
+        "ResourcePatch"
+      ],
       "compatiblePackages": [
         {
           "packageName": "jp.naver.line.android",
@@ -1008,10 +1196,17 @@
           "signatures": null,
           "targets": [
             {
+              "version": "26.15.1",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 32,
+              "description": null
+            },
+            {
               "version": "26.14.0",
               "versionCodes": null,
               "isExperimental": false,
-              "minSdk": null,
+              "minSdk": 30,
               "description": null
             }
           ]
@@ -1280,10 +1475,17 @@
           "signatures": null,
           "targets": [
             {
+              "version": "26.15.1",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 32,
+              "description": null
+            },
+            {
               "version": "26.14.0",
               "versionCodes": null,
               "isExperimental": false,
-              "minSdk": null,
+              "minSdk": 30,
               "description": null
             }
           ]
@@ -1308,10 +1510,17 @@
           "signatures": null,
           "targets": [
             {
+              "version": "26.15.1",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 32,
+              "description": null
+            },
+            {
               "version": "26.14.0",
               "versionCodes": null,
               "isExperimental": false,
-              "minSdk": null,
+              "minSdk": 30,
               "description": null
             }
           ]
@@ -1336,10 +1545,17 @@
           "signatures": null,
           "targets": [
             {
+              "version": "26.15.1",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 32,
+              "description": null
+            },
+            {
               "version": "26.14.0",
               "versionCodes": null,
               "isExperimental": false,
-              "minSdk": null,
+              "minSdk": 30,
               "description": null
             }
           ]
@@ -1364,10 +1580,17 @@
           "signatures": null,
           "targets": [
             {
+              "version": "26.15.1",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 32,
+              "description": null
+            },
+            {
               "version": "26.14.0",
               "versionCodes": null,
               "isExperimental": false,
-              "minSdk": null,
+              "minSdk": 30,
               "description": null
             }
           ]
