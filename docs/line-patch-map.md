@@ -1,17 +1,83 @@
 # LINE patch map & findings
 
 Reference notes for authoring LINE (`jp.naver.line.android`) patches, distilled from decompiling
-**LINE 26.14.0** (the version pinned in `app/andrewliang/patches/shared/Constants.kt`).
+**LINE 26.14.0**. The bundle supports **26.14.0 and 26.15.1** (see
+`app/andrewliang/patches/shared/Constants.kt` and "Two supported versions" below).
 
-> Descriptors were remapped from 26.11.0 to 26.14.0 on 2026-09-03. Device-confirmation notes below
-> record the version each behaviour was *tested* on, which may still read 26.11.0; the descriptors
-> around them are 26.14.0.
+> The obfuscated descriptors in this file are from 26.14.0, unless a note gives another version.
+> Device-confirmation notes record the version each behaviour was *tested* on.
 
 > ⚠️ **Obfuscation drift.** Names like `yi1.d`, `q11.q`, `z00.n`, `kh1.x0$c`, `wi1.b$b`, `k81.a`
 > are R8-obfuscated and **change between LINE versions**. The concepts and anchoring strategies are
 > durable; re-confirm every descriptor against the decompiled smali on a version bump. Prefer
 > anchors obfuscation cannot touch: Kotlin **enum-constant names** (`CALENDAR`, `GIFT`), **string
 > literals**, **resource ids**.
+
+---
+
+## Two supported versions (26.14.0 and 26.15.1)
+
+26.15.1 needs Android 12L (API 32). 26.14.0 needs Android 11 (API 30). Thus the bundle keeps
+26.14.0 for devices on Android 11 and 12. Each fingerprint must match both versions, so no patch
+has a table of names per version. Each anchor is a name that R8 keeps:
+
+- String literals, Kotlin `toString` text and Thrift operation names.
+- Kotlin enum-constant names, read with `sget-object`.
+- Resource names. Get the id at patch time with `resourceId(type, name)` in
+  `shared/ResourceIds.kt`. Put it in a lazy filter, `literal({ resourceId("string", "...") })`, and
+  add `resourceIdsPatch` to `dependsOn`.
+- Method shape: return type, parameter count, and instruction order.
+- Classes that LINE does not obfuscate (`ChatHistoryMenuFragment`, `UnsendMessageLdsDialog`,
+  `HeaderButton`).
+
+### What changed in 26.15.1
+
+The first apply of the 26.14.0 bundle to 26.15.1 applied 12 of 30 patches. No surface was removed.
+All 18 failures were R8 drift:
+
+- **New package prefixes.** For example `yi1` → `go1` (attach menu), `c81` → `jd1` (context-menu
+  actions), `lb2.g$a` → `kh2.h$a` (Home state), `ag1` → `il1` (chat header).
+- **R8 now renames the Kotlin stdlib.** `kotlin.Unit` is `ip8.i0` (its `INSTANCE` is field `a`),
+  `Lazy` is `ip8.l`, and `Function0..3` are `aq8.a`, `aq8.l`, `aq8.p` and `aq8.q`. Only
+  `kotlin/Metadata`, `Continuation` and a few other stdlib names stay. Do not anchor on a stdlib
+  type.
+- **The `Function3` method is `g`, not `j`.** `LineSettingsClick` declares both methods, and `g`
+  calls `j`.
+- **Resource ids moved.** A hardcoded id silently points at another view. In the first apply,
+  *[General] Hide new item badges* hid the bottom-bar **LIVE** badge.
+- **Code moved.** In 26.15.1 the two banner lambdas of *[Ad] Remove banner ads* are cases of one
+  `packed-switch`. A `return` at the start of the method would also break the other cases. The patch
+  returns right after each operation-name string instead.
+
+### Shared helpers
+
+| Helper | What it finds | Used by |
+|---|---|---|
+| `shared/ResourceIds.kt` | A resource id from its name in `res/values/public.xml` | Nine patches |
+| `line/shared/HomeState.kt` | The Home state class from its `PageData(modules=` text, the element type from the generic signature of its list field, and the module field as the one field whose type has `getType()` | Hide Home modules, Hide Home content feed, Disable LINE Premium, Hide calendar buttons |
+| `line/shared/AttachTile.kt` | The availability check of a "+" menu tile: the override of the one abstract `Z` method of the tile base class that takes one argument | Hide LINE GIFT, Hide Transfer, Hide calendar buttons |
+
+`HomeState.addModuleFilter` adds one `filterName(List)List` method and one branchless call at the
+top of the state constructor. A filter with a switch returns the input list while the switch is off.
+
+### How to check a bump
+
+A clean apply does not prove that each site changed. Eight sites of *Hide new item badges* are
+best-effort (`methodOrNull`), so a drifted anchor skips its site with no error. Compare the patched
+dex with the original dex method by method:
+
+1. List the methods that each version adds or changes.
+2. Pair the two lists by role. Each version must change the same number of methods.
+3. On the old version, compare the list with the list of the released bundle. It must be the same.
+4. Run `BranchSweep` on each patched dex.
+5. Read each site that reuses a register on the new version. The register must be dead there.
+
+On this bump, each version changes 64 LINE methods, and the 26.14.0 list is the same as the list of
+the released bundle.
+
+A `check-cast` passes the verifier but can still throw at run time. The first 26.15.1 build cast a
+copied field to the type of a new row argument, and Settings crashed with `ClassCastException`. Read
+what the value is at run time, not only what its declared type is (see "Settings screen").
 
 ---
 
@@ -1486,7 +1552,7 @@ do not attempt the native stack.
 ## Settings screen & the "[General] Andrew's Patch Setting" patch
 
 The patch adds a row, "Andrew's Patch Setting", to LINE's main Settings list, right below "Profile".
-The row opens a screen with runtime switches for eight patches, then credits and licenses. Who it
+The row opens a screen with runtime switches for 16 patches, then credits and licenses. Who it
 helps: a user of the prebuilt APK from `patched-apps`, who otherwise cannot turn off one patch
 without patching the APK again. Anchors are 26.14.0.
 
@@ -1530,8 +1596,21 @@ without patching the APK again. Anchors are 26.14.0.
    which `sput` them.
 2. From the "About LINE" construction, the patch reads the row class, the destination class and the
    function types. It reads the default mask from the literal in the last register of the call.
+   The row constructor is the first `invoke-direct/range` `<init>` after `AboutLine` whose
+   parameters include the event type and end with `I`. The patch finds each argument by its role,
+   not by its position, because 26.15.1 added an argument:
+   - The destination argument has the type of the destination base class. The click function is
+     the argument before it.
+   - The event argument has the event type. The patch passes null.
+   - The mask is the last argument.
+   - Each other argument is copied from the field where "About LINE" keeps it.
 3. It finds the fields by following each constructor argument through register moves and through
    the call to the base constructor (`fieldOfArgument`). So no obfuscated field name is hard-coded.
+   If the field has another type than the argument, the patch passes null. Such a field holds the
+   default that the constructor builds when the mask marks the argument unused. "About LINE" leaves
+   that argument unset. In 26.15.1 the new `vd5.o$e` argument is this case: its field holds a
+   `zb5.s` function. A `check-cast` there passed the verifier and threw `ClassCastException` when
+   Settings opened.
 4. It adds a new static method `ka5/o2.andrewRows(List)List`. The method finds the "About LINE"
    row and builds a new `m55/v` with that row's providers, a null event, our key, title and icon.
    A second pass finds the "Profile" row (`ka5/a.Profile`, row class `m55/r0`, so the pass compares
@@ -1543,8 +1622,10 @@ without patching the APK again. Anchors are 26.14.0.
 **The tap handler must be a real `Serializable` class.** `m55/u0$b` is `Parcelable`, and its
 `writeToParcel` casts its `aj8.q` to `java.io.Serializable`. A `java.lang.reflect.Proxy` is
 fragile there. So the extension class `LineSettingsClick` implements `Serializable` and declares
-`invoke(Object)` and `j(Object, Object, Object)`. At patch time, the patch adds the resolved
-`aj8.l` and `aj8.q` to its `interfaces` list (`MutableClass.getInterfaces()` is mutable).
+`invoke(Object)` and the `Function3` method. That method is `j(Object, Object, Object)` in 26.14.0
+and `g(Object, Object, Object)` in 26.15.1, so the class declares both. At patch time, the patch
+adds the resolved `aj8.l` and `aj8.q` to its `interfaces` list (`MutableClass.getInterfaces()` is
+mutable).
 
 **The tap handler gets a Fragment, not a Context.** LINE renames the androidx classes
 (`androidx/fragment/app/v` is `Fragment`) but keeps their method names, so
@@ -1624,17 +1705,37 @@ Device findings (Xiaomi, Android 16):
 | Open links in external browser | `externalbrowser` | entry of `OpenUriActivity$b.a`, `v0` |
 | Disable VOOM | `disablevoom` | entry of `bh8/n0.a`, and after `super.onCreate` in `LineVoomActivity`, `v0` at both. A probe showed that the handler gate runs and reads the switch on `line://home/discover`. Stock LINE refuses that link too, so the "off" result was not seen on the screen. |
 | Hide LINE TODAY / Shopping / VOOM / Wallet tab | the four tab patches | each `sget`+`add` pair in `b68/g.a()`, `v2` |
+| Hide AI Friends button | `chatheaderbuttons` | `hideAiFriends(Z)Z` before the `return` of the flag accessor `g45/c.t()` (`.locals 0`, so no free register) |
+| Hide community button | `chatheaderbuttons` | the `OPEN_CHAT` `sget`+`add` pair in `qz1/f.<init>`, the register of the `sget` (`v1`) |
+| Hide calendar buttons | `hidecalendar` | The `CALENDAR` pair in `qz1/f.<init>` (`v1`). Entry of `yi1/b.j` (`p0`). Both `CALENDAR_BUTTON` pairs in `ag1/e0.a` (`p6`). `hideCalendar(Z)Z` on `p1` at entry of `z00/l.<init>`. Entry of `kh1/x0$c.a` (`v0`). Entry of the added `filterCalendarModules` (`v0`). |
+| Hide Events button | `hideevents` | `hideEvents(Z)Z` after the `iget-boolean v6, o4.l` in `ChatHistoryMenuFragment` |
+| Hide LINE GIFT / Transfer button | `hidegift`, `hidetransfer` | entry of `yi1/h.j` and `yi1/j.j`, `p0` |
+| Hide attach menu extra tools | `hideattachmenutools` | entry of `yi1/d.f`, `p2` |
+| Hide tips under messages | `hidechattips` | `hideChatTips(Z)Z` after the `instance-of v3, sm1/g$b` in `rm1/u.invokeSuspend` |
 
-- Every gate is `invoke-static LineSettings-><x>()Z` + `move-result` + a branch to an
-  `ExternalLabel` on an original instruction.
+- A gate is one of two shapes. A branch gate is `invoke-static LineSettings-><x>()Z` +
+  `move-result` + a branch to an `ExternalLabel` on an original instruction
+  (`returnFalseIfLineSetting`, `skipIfLineSetting`). It needs a register that is dead at the gate.
+  A value gate is `invoke-static {vN}, LineSettings-><x>(Z)Z` + `move-result vN` on a "shown"
+  boolean that LINE already holds (`hideIfLineSetting`). It needs no free register and no branch,
+  so it fits `.locals 0` methods, but `vN` must be v0 to v15.
+- An entry gate in a `.locals 0` method uses a parameter register that the original code writes
+  before it reads, such as `p0` of `yi1/h.j`. With the switch off, that register holds the switch
+  value until the original code overwrites it.
+- Device test of the chat switches (26.14.0, Xiaomi, Android 16): all switches off, then on again.
+  The chat toolbar, the + menu, the chat menu, the long-press menu and the tips change when you
+  open a chat again, with no restart. The Chats-tab header (calendar, community) changes only
+  after LINE restarts, because `qz1/f.<init>` builds it once. The test account does not get AI
+  Friends (see "AI entry points"), so that switch was seen only to run with no crash. The Friends
+  sub-tab calendar block does not show on this account, so that lever was not seen either.
 - **Every switch is on by default.** A stored value counts only while the row is in the build:
   `LineSettings.rowIncluded()` is a plain `return false`, and the settings patch rewrites it to return
   true. Without that, a user who turned a switch off and then installed a build without the row
   is stuck with "off".
 - Each patch rewrites its own `LineSettings.<x>Included()` to return true, so the screen lists only
   the switches of patches in the build.
-- Each of the eight patches depends on the nameless `lineSettingsExtensionPatch`, which bundles the
-  extension. Before, only `keepunsent` brought it.
+- Each patch with a switch depends on the nameless `lineSettingsExtensionPatch`, which bundles the
+  extension.
 - The values are read from SharedPreferences `andrew_line_settings` once and then kept in memory,
   because `keepunsent` reads its switch on the database path of each unsent message.
 
@@ -1642,11 +1743,11 @@ Device findings (Xiaomi, Android 16):
 
 1. Add `<feature>()` and `<feature>Included()` to `LineSettings.java`, and a row to
    `LineSettingsScreen.addSwitches`.
-2. In the patch, depend on `lineSettingsExtensionPatch`, put the gate around the edit with
-   `readLineSetting("<feature>", "vN")` and an `ExternalLabel`, and call
-   `markLineSettingIncluded("<feature>")`.
-3. Pick a register that is dead at the gate. Check it in the smali, then check the result with
-   `Dumpx` and `BranchSweep`.
+2. In the patch, depend on `lineSettingsExtensionPatch`, put the gate around the edit with the
+   helpers in `line/shared/LineSettings.kt`, and call `markLineSettingIncluded("<feature>")`. A
+   value gate also needs the `<feature>(boolean)` overload in `LineSettings.java`.
+3. For a branch gate, pick a register that is dead at the gate. Check it in the smali, then check
+   the result with `Dumpx` and `BranchSweep`.
 
 ---
 
@@ -1716,6 +1817,23 @@ assuming:
 - **Read receipts:** `DisabledManualReadReceiptViewModel` is new and sounds relevant, but it is a
   40-line Square (OpenChat) component-graph stub that never touches `TalkServiceClient` or the
   `na3.e` read manager. *[Chat] Keep chats unread* is unaffected.
+
+---
+
+## Watch list — surfaced in 26.15.1
+
+Recorded 2026-10-14 during the 26.15.1 bump.
+
+- **Scroll preview is live.** 26.14.0 only had its strings. 26.15.1 reads the server key
+  `function.premium.common.scroll_preview` in the evaluator `d52.f`. It is not known whether
+  *[Premium] Disable LINE Premium* hides its upsell. The device test found no scroll-preview entry
+  in Settings ▸ Chats.
+- **`MANUAL_READ_RECEIPT` is staged.** A new enum constant, with no code that reads it yet. If it
+  goes live, examine it against *[Chat] Keep chats unread*.
+- **Badges that *[General] Hide new item badges* does not reach.** Seen on the device on both
+  versions: the "N" on the LINE Labs row in Settings, and the green dots on Edit, Unsend and Keep
+  Memo in the message long-press menu. With the tabs shown, the TODAY and Wallet tabs also show a
+  red dot, and Wallet service tiles show green dots.
 
 ---
 

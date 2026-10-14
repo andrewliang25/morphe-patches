@@ -25,12 +25,14 @@ val disableVoomPatch = bytecodePatch(
         // 1. Scheme handler for line://home/* : return the existing no-op "not handled"
         //    singleton at entry, so every VOOM deep link / share / notification does nothing.
         val handler = VoomSchemeHandlerFingerprint.method
+        val result = handler.returnType
+        val notHandled = "$result->b:${result.dropLast(1)}\$a;"
         handler.addInstructionsWithLabels(
             0,
             readLineSetting("disableVoom", "v0") +
                 """
                     if-eqz v0, :stock
-                    sget-object v0, Lah8/i;->b:Lah8/i${'$'}a;
+                    sget-object v0, $notHandled
                     return-object v0
                 """,
             ExternalLabel("stock", handler.getInstruction(0)),

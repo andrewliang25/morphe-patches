@@ -6,17 +6,16 @@ import app.morphe.patcher.string
 import com.android.tools.smali.dexlib2.AccessFlags
 
 /**
- * `bh8.n0.a(Context, String, k): i` — the URL-scheme handler that owns LINE's entire
+ * `a(Context, String, k): i` — the URL-scheme handler that owns LINE's entire
  * `line://home/` scheme space (VOOM's scheme host is "home"). Every VOOM deep link, share,
  * and scheme-notification routes here. Anchored on distinctive VOOM path-segment strings
  * (`"hashtaglist"`, `"deleteCache"`) rather than the obfuscated class name.
  *
- * Note: the disable injection returns `Lah8/i;->b:Lah8/i$a;` (the existing "not handled"
- * singleton) — those are obfuscated names, so this target needs re-mapping on LINE updates.
+ * The disable injection returns the existing "not handled" singleton, the static field `b` of
+ * the return type's `$a` companion. The patch reads the return type off the matched method.
  */
 internal object VoomSchemeHandlerFingerprint : Fingerprint(
     accessFlags = listOf(AccessFlags.PUBLIC, AccessFlags.FINAL),
-    returnType = "Lah8/i;",
     parameters = listOf("Landroid/content/Context;", "Ljava/lang/String;", "L"),
     filters = listOf(
         string("hashtaglist"),

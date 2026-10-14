@@ -18,18 +18,13 @@ val removeBannerAdsPatch = bytecodePatch(
 ) {
     compatibleWith(COMPATIBILITY_LINE)
 
-    // Both RECV methods are `.locals 1`, so v0 is free. Returning null is safe: the caller
-    // (repository eq5.a.a) wraps the whole path in a catch-all and degrades to "no banner".
+    // Both RECV lambdas can sit in a shared packed-switch, so inject right after the op-name
+    // `const-string` (instructionMatches[0]), inside the op's own case. That const-string has just
+    // written v0, so v0 is free. Returning null is safe: the repository caller wraps the whole
+    // path in a catch-all and degrades to "no banner".
     execute {
-        // getPrefetchableBanners: dedicated recv lambda -> return null immediately.
-        GetPrefetchableBannersRecvFingerprint.method.addInstructions(0, RETURN_NULL)
-
-        // getBanners: inject the null-return right after its `const-string "getBanners"`
-        // (before the paired n.a recv call). On 26.11.0 this method was a shared
-        // packed-switch and injecting past the string was required to spare the wallet
-        // default branch; on 26.14.0 it is a dedicated lambda, so this is simply the first
-        // safe point. instructionMatches[0] is the string("getBanners") filter match.
-        val bannerStringIndex = GetBannersRecvFingerprint.instructionMatches.first().index
-        GetBannersRecvFingerprint.method.addInstructions(bannerStringIndex + 1, RETURN_NULL)
+        listOf(GetBannersRecvFingerprint, GetPrefetchableBannersRecvFingerprint).forEach {
+            it.method.addInstructions(it.instructionMatches.first().index + 1, RETURN_NULL)
+        }
     }
 }

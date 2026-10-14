@@ -35,6 +35,14 @@ public final class LineSettings {
     static final String HIDE_SHOPPING_TAB = "hide_shopping_tab";
     static final String HIDE_VOOM_TAB = "hide_voom_tab";
     static final String HIDE_WALLET_TAB = "hide_wallet_tab";
+    static final String HIDE_AI_FRIENDS = "hide_ai_friends";
+    static final String HIDE_COMMUNITY_BUTTON = "hide_community_button";
+    static final String HIDE_CALENDAR = "hide_calendar";
+    static final String HIDE_EVENTS = "hide_events";
+    static final String HIDE_GIFT = "hide_gift";
+    static final String HIDE_TRANSFER = "hide_transfer";
+    static final String HIDE_ATTACH_TOOLS = "hide_attach_tools";
+    static final String HIDE_CHAT_TIPS = "hide_chat_tips";
 
     /** The resource name of the row title. The settings patch adds it to strings.xml. */
     private static final String TITLE_RESOURCE = "andrew_patch_settings";
@@ -78,6 +86,57 @@ public final class LineSettings {
         return isOn(HIDE_WALLET_TAB);
     }
 
+    public static boolean hideAiFriends() {
+        return isOn(HIDE_AI_FRIENDS);
+    }
+
+    public static boolean hideCommunityButton() {
+        return isOn(HIDE_COMMUNITY_BUTTON);
+    }
+
+    public static boolean hideCalendar() {
+        return isOn(HIDE_CALENDAR);
+    }
+
+    public static boolean hideEvents() {
+        return isOn(HIDE_EVENTS);
+    }
+
+    public static boolean hideGift() {
+        return isOn(HIDE_GIFT);
+    }
+
+    public static boolean hideTransfer() {
+        return isOn(HIDE_TRANSFER);
+    }
+
+    public static boolean hideAttachTools() {
+        return isOn(HIDE_ATTACH_TOOLS);
+    }
+
+    public static boolean hideChatTips() {
+        return isOn(HIDE_CHAT_TIPS);
+    }
+
+    // The patches that clear a "shown" boolean in place call these: they give false while the
+    // switch is on, and the value LINE computed while it is off.
+
+    public static boolean hideAiFriends(boolean shown) {
+        return shown && !hideAiFriends();
+    }
+
+    public static boolean hideCalendar(boolean shown) {
+        return shown && !hideCalendar();
+    }
+
+    public static boolean hideEvents(boolean shown) {
+        return shown && !hideEvents();
+    }
+
+    public static boolean hideChatTips(boolean shown) {
+        return shown && !hideChatTips();
+    }
+
     // The patches rewrite these methods to return true. Keep each one a plain "return false".
 
     static boolean rowIncluded() {
@@ -113,6 +172,38 @@ public final class LineSettings {
     }
 
     static boolean hideWalletTabIncluded() {
+        return false;
+    }
+
+    static boolean hideAiFriendsIncluded() {
+        return false;
+    }
+
+    static boolean hideCommunityButtonIncluded() {
+        return false;
+    }
+
+    static boolean hideCalendarIncluded() {
+        return false;
+    }
+
+    static boolean hideEventsIncluded() {
+        return false;
+    }
+
+    static boolean hideGiftIncluded() {
+        return false;
+    }
+
+    static boolean hideTransferIncluded() {
+        return false;
+    }
+
+    static boolean hideAttachToolsIncluded() {
+        return false;
+    }
+
+    static boolean hideChatTipsIncluded() {
         return false;
     }
 

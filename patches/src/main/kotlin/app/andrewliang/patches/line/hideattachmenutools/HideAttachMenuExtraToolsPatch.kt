@@ -1,7 +1,9 @@
 package app.andrewliang.patches.line.hideattachmenutools
 
+import app.andrewliang.patches.line.shared.lineSettingsExtensionPatch
+import app.andrewliang.patches.line.shared.markLineSettingIncluded
+import app.andrewliang.patches.line.shared.returnFalseIfLineSetting
 import app.andrewliang.patches.shared.Constants.COMPATIBILITY_LINE
-import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.bytecodePatch
 
 @Suppress("unused")
@@ -13,18 +15,15 @@ val hideAttachMenuExtraToolsPatch = bytecodePatch(
 ) {
     compatibleWith(COMPATIBILITY_LINE)
 
-    // Every server-driven attach service is rendered by the shared class yi1.d, shown only when its
-    // per-item gate f(...) returns true. yi1.d is the sole renderer of these services, so forcing
+    dependsOn(lineSettingsExtensionPatch)
+
+    // Every server-driven attach service is rendered by one shared class, shown only when its
+    // per-item gate f(...) returns true. That class is the sole renderer of these services, so forcing
     // its f() to unconditionally return false drops the entire set — with no dependency on any
-    // server channel id (the reason a single-service patch cannot be stable). p0 is `this`;
-    // clobbering it is fine because we return immediately.
+    // server channel id (the reason a single-service patch cannot be stable). The switch uses p2:
+    // f() writes it before it reads it.
     execute {
-        AttachMenuServiceGateFingerprint.method.addInstructions(
-            0,
-            """
-                const/4 p0, 0x0
-                return p0
-            """,
-        )
+        AttachMenuServiceGateFingerprint.method.returnFalseIfLineSetting("hideAttachTools", "p2")
+        markLineSettingIncluded("hideAttachTools")
     }
 }

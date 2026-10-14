@@ -6,6 +6,7 @@ import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.methodCall
 import app.morphe.patcher.patch.BytecodePatchContext
 import app.morphe.patcher.string
+import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 
@@ -26,16 +27,21 @@ internal open class ServerFlagFingerprint(key: String) : Fingerprint(
  * the same value that LINE gets when the server turns the flag off.
  */
 internal fun BytecodePatchContext.forceServerFlagFalse(fingerprint: ServerFlagFingerprint) {
-    val call = fingerprint.instructionMatches[1].instruction as ReferenceInstruction
-    val accessor = call.reference as MethodReference
-
-    mutableClassDefBy(accessor.definingClass).methods.single {
-        it.name == accessor.name && it.returnType == "Z" && it.parameterTypes.isEmpty()
-    }.addInstructions(
+    serverFlagAccessor(fingerprint).addInstructions(
         0,
         """
             const/4 v0, 0x0
             return v0
         """,
     )
+}
+
+/** The accessor of the flag that [fingerprint] found. */
+internal fun BytecodePatchContext.serverFlagAccessor(fingerprint: ServerFlagFingerprint): MutableMethod {
+    val call = fingerprint.instructionMatches[1].instruction as ReferenceInstruction
+    val accessor = call.reference as MethodReference
+
+    return mutableClassDefBy(accessor.definingClass).methods.single {
+        it.name == accessor.name && it.returnType == "Z" && it.parameterTypes.isEmpty()
+    }
 }

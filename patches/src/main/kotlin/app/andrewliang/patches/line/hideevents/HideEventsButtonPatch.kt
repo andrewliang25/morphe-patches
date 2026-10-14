@@ -1,9 +1,15 @@
 package app.andrewliang.patches.line.hideevents
 
+import app.andrewliang.patches.line.shared.hideIfLineSetting
+import app.andrewliang.patches.line.shared.lineSettingsExtensionPatch
+import app.andrewliang.patches.line.shared.markLineSettingIncluded
 import app.andrewliang.patches.shared.Constants.COMPATIBILITY_LINE
+import app.andrewliang.patches.shared.resourceIdsPatch
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
-import app.morphe.patcher.extensions.InstructionExtensions.removeInstruction
+import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
+import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.bytecodePatch
+import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
 
 @Suppress("unused")
@@ -14,17 +20,24 @@ val hideEventsButtonPatch = bytecodePatch(
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_LINE)
+    dependsOn(resourceIdsPatch)
 
-    // The Events row is a shared z00.n item built in ChatHistoryMenuFragment, gated by the boolean
-    // it loads from Lv00/o4;->l:Z right before the Events label; that value flows straight into the
-    // row's isVisible ctor arg. Replace the `iget-boolean` (matched filter [0]) with a const 0 into
-    // its own destination register, so only the Events row is dropped.
+    dependsOn(lineSettingsExtensionPatch)
+
+    // The Events row is a shared menu item built in ChatHistoryMenuFragment. Its isVisible ctor
+    // arg is the boolean loaded by the last `iget-boolean` before the Events label. Right after
+    // that `iget-boolean`, the switch clears the loaded value in its own register, so only the
+    // Events row is dropped.
     execute {
-        val flagMatch = EventsMenuRowFingerprint.instructionMatches.first()
-        val flagReg = (flagMatch.instruction as TwoRegisterInstruction).registerA
         EventsMenuRowFingerprint.method.apply {
-            removeInstruction(flagMatch.index)
-            addInstructions(flagMatch.index, "const/16 v$flagReg, 0x0")
+            val labelIndex = EventsMenuRowFingerprint.instructionMatches.first().index
+            val flagIndex = (labelIndex downTo 0).first {
+                getInstruction(it).opcode == Opcode.IGET_BOOLEAN
+            }
+            val flagReg = getInstruction<TwoRegisterInstruction>(flagIndex).registerA
+            if (flagReg > 15) throw PatchException("Events row flag is in v$flagReg")
+            addInstructions(flagIndex + 1, hideIfLineSetting("hideEvents", "v$flagReg"))
         }
+        markLineSettingIncluded("hideEvents")
     }
 }

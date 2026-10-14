@@ -17,7 +17,7 @@ Morphe Manager to build a modified APK.
 ## 🩹 Patches list
 
 <!-- PATCHES_START EXPANDED -->
-> **[v3.5.0](https://github.com/andrewliang25/morphe-patches/releases/tag/v3.5.0)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;49 patches total
+> **[v3.6.0-dev.2](https://github.com/andrewliang25/morphe-patches/releases/tag/v3.6.0-dev.2)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;49 patches total
 <details open>
 <summary>📦 Facebook&nbsp;&nbsp;•&nbsp;&nbsp;19 patches</summary>
 <br>
@@ -57,8 +57,8 @@ Morphe Manager to build a modified APK.
 
 **🎯 Supported versions:**
 
-| 26.14.0 |
-| :---: |
+| 26.15.1 | 26.14.0 |
+| :---: | :---: |
 
 | 💊&nbsp;Patch | 📜&nbsp;Description | ⚙️&nbsp;Options |
 |----------|----------------|-----------|
@@ -112,6 +112,9 @@ again:
 - Keep chats unread, and keep unsent messages
 - Open links in external browser, and disable VOOM
 - Hide the LINE TODAY, Shopping, VOOM and Wallet tabs. A tab change shows after LINE restarts.
+- Hide the chat buttons and tips: AI Friends, community, calendar, Events, LINE GIFT, Transfer,
+  the extra tools in the + menu, and the tips under messages. Some of these changes show only
+  after LINE restarts.
 
 A patch that you did not include in the build has no switch. The row also shows the author and the
 license.
