@@ -1,22 +1,15 @@
 package app.andrewliang.patches.line.hidepremium
 
+import app.andrewliang.patches.line.shared.resolveHomeState
 import app.andrewliang.patches.shared.Constants.COMPATIBILITY_LINE
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.bytecodePatch
-import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
-import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
-import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
-import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
-import com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter
 
-private const val HOME_STATE = "Llb2/g\$a;"
-private const val FILTER_NAME = "filterPremiumModules"
-private const val FILTER_DESC = "(Ljava/util/List;)Ljava/util/List;"
 private const val LYP_MODULE_TYPE = "HomeTabLypRecommendation"
 
 @Suppress("unused")
@@ -28,6 +21,8 @@ val hidePremiumPatch = bytecodePatch(
 ) {
     compatibleWith(COMPATIBILITY_LINE)
 
+    // The class names in these comments are from 26.14.0. R8 renames them on each version.
+    //
     // LINE gates every LYP premium surface on one market-availability config flag, a83.a.d() ==
     // g45.i1.Z(). The facade z73.k reads it three ways that all cascade from d():
     //   z() = H().d()            -> "premium enabled"   (35 entry-point gates)
@@ -98,35 +93,36 @@ val hidePremiumPatch = bytecodePatch(
         // backup entry point rather than leaving a hole.
         val backupFacade = mutableClassDefBy(PremiumBackupFacadeFingerprint.method.definingClass)
 
-        // bk4.k0 has exactly three ()Z methods. Select on shape rather than the drift-prone name
-        // `j`: it is the only one that opens with an `iget-object` (of the bk4.z lambda field)
-        // and calls nothing through an interface. `q()` opens with invoke-virtual; `r()` opens
-        // with an `iget-object` of a Lkotlin/Lazy; and reads it via invoke-interface.
+        // The facade has three ()Z methods. Select on shape rather than the drift-prone name: the
+        // gate is the only one that opens with an `iget-object` of its lambda field, then calls
+        // that lambda's `invoke()Object` by invoke-virtual. One sibling opens with
+        // invoke-virtual. The other reads a lazy field, and the lazy's getter is not `invoke`.
         val backupGate = backupFacade.methods.single { method ->
             method.returnType == "Z" &&
                 method.parameterTypes.isEmpty() &&
-                method.implementation?.instructions?.let { instructions ->
-                    instructions.first().opcode == Opcode.IGET_OBJECT &&
-                        instructions.none { it.opcode == Opcode.INVOKE_INTERFACE }
+                method.implementation?.instructions?.toList()?.let { instructions ->
+                    instructions.size > 1 &&
+                        instructions[0].opcode == Opcode.IGET_OBJECT &&
+                        instructions[1].opcode == Opcode.INVOKE_VIRTUAL &&
+                        ((instructions[1] as ReferenceInstruction).reference as MethodReference)
+                            .let { it.name == "invoke" && it.returnType == "Ljava/lang/Object;" }
                 } == true
         }
 
         // Third lever: the Home tab upsell module. The Home tab shows one server-driven list of
-        // typed modules. The LYP recommendation is the module of type "HomeTabLypRecommendation"
-        // (y82.k0$q0, payload y82.x). The master lever does not hide it. Its renderer and its
+        // typed modules. The LYP recommendation is the module of type "HomeTabLypRecommendation".
+        // The master lever does not hide it. Its renderer and its
         // view model read no premium gate. As a result the tab shows the module
         // whenever the server sends it, and a false market gate changes nothing.
         //
-        // Thus this patch removes the module from the list. It does not flip another gate. The
-        // list is the first ctor argument (field `a`) of the Compose state lb2.g$a. Every build
-        // path goes to that constructor. One literal comparison needs no extension code, so this
+        // Thus this patch removes the module from the list (see HomeState). It does not flip
+        // another gate. One literal comparison needs no extension code, so this
         // patch declares no extension.
         //
         // "[Home] Hide Home modules" and "[Home] Hide Home content feed" prepend the same call shape at the
         // same index. All three are pure List -> List filters on p1. Thus the patch that applies
         // last runs first, and the result is the same in every order.
-        val homeState = mutableClassDefBy(HOME_STATE)
-        val homeStateCtor = HomeStateCtorFingerprint.method
+        val homeState = resolveHomeState()
 
         // Every lookup is resolved. The patch mutates from this point.
         marketGate.addInstructions(
@@ -146,61 +142,16 @@ val hidePremiumPatch = bytecodePatch(
             """,
         )
 
-        // The loop lives in a new method, lb2.g$a.filterPremiumModules. If a patch injects a loop
-        // with a backward branch inline, the loop corrupts the layout of an existing method. ART
-        // then throws a VerifyError.
-        val filter = MutableMethod(
-            ImmutableMethod(
-                HOME_STATE,
-                FILTER_NAME,
-                listOf(ImmutableMethodParameter("Ljava/util/List;", null, null)),
-                "Ljava/util/List;",
-                AccessFlags.PUBLIC.value or AccessFlags.STATIC.value,
-                null,
-                null,
-                MutableMethodImplementation(6),
-            ),
-        )
-        homeState.methods.add(filter)
-        // p0 = input List. v0 = result ArrayList, v1 = iterator, v2 = element, v3 = type/bool,
-        // v4 = the literal. The literal is the receiver of equals(), so a null type is safe.
-        filter.addInstructions(
-            0,
-            """
-                new-instance v0, Ljava/util/ArrayList;
-                invoke-direct {v0}, Ljava/util/ArrayList;-><init>()V
-                invoke-interface {p0}, Ljava/util/List;->iterator()Ljava/util/Iterator;
-                move-result-object v1
-                :loop
-                invoke-interface {v1}, Ljava/util/Iterator;->hasNext()Z
-                move-result v2
-                if-eqz v2, :done
-                invoke-interface {v1}, Ljava/util/Iterator;->next()Ljava/lang/Object;
-                move-result-object v2
-                check-cast v2, Ly82/j0;
-                iget-object v3, v2, Ly82/j0;->e:Ly82/k0;
-                invoke-interface {v3}, Ly82/k0;->getType()Ljava/lang/String;
-                move-result-object v3
-                const-string v4, "$LYP_MODULE_TYPE"
-                invoke-virtual {v4, v3}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
-                move-result v3
-                if-nez v3, :loop
-                invoke-virtual {v0, v2}, Ljava/util/ArrayList;->add(Ljava/lang/Object;)Z
-                goto :loop
-                :done
-                return-object v0
-            """,
-        )
-
-        // At the top of lb2.g$a.<init>, replace the list parameter (p1) with the filtered copy
-        // before the constructor stores it. The call has no branch (invoke + move-result) and it
-        // reuses p1 (`.locals 0`).
-        homeStateCtor.addInstructions(
-            0,
-            """
-                invoke-static {p1}, $HOME_STATE->$FILTER_NAME$FILTER_DESC
-                move-result-object p1
-            """,
-        )
+        // The literal is the receiver of equals(), so a null type is safe.
+        with(homeState) {
+            addModuleFilter(
+                "filterPremiumModules",
+                """
+                    const-string v4, "$LYP_MODULE_TYPE"
+                    invoke-virtual {v4, v3}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+                    move-result v3
+                """,
+            )
+        }
     }
 }

@@ -1,5 +1,6 @@
 package app.andrewliang.patches.line.hidechattips
 
+import app.andrewliang.patches.shared.resourceId
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.literal
 import app.morphe.patcher.methodCall
@@ -15,14 +16,14 @@ import com.android.tools.smali.dexlib2.Opcode
  * false, the method keeps the stub hidden and removes its click listener.
  *
  * The other filters make the match unique in the APK: `String.valueOf(J)`, the
- * `view_tree_lifecycle_owner` tag id (0x7f0b29ab) and `ComposeView.setContent`.
+ * `view_tree_lifecycle_owner` tag id and `ComposeView.setContent`.
  */
 internal object ChatEntryBannerBindFingerprint : Fingerprint(
     name = "invokeSuspend",
     filters = listOf(
         opcode(Opcode.INSTANCE_OF),
         methodCall(definingClass = "Ljava/lang/String;", name = "valueOf"),
-        literal(0x7f0b29ab),
+        literal({ resourceId("id", "view_tree_lifecycle_owner") }),
         methodCall(
             definingClass = "Landroidx/compose/ui/platform/ComposeView;",
             name = "setContent",

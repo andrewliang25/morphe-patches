@@ -17,8 +17,8 @@ val hideAttachMenuExtraToolsPatch = bytecodePatch(
 
     dependsOn(lineSettingsExtensionPatch)
 
-    // Every server-driven attach service is rendered by the shared class yi1.d, shown only when its
-    // per-item gate f(...) returns true. yi1.d is the sole renderer of these services, so forcing
+    // Every server-driven attach service is rendered by one shared class, shown only when its
+    // per-item gate f(...) returns true. That class is the sole renderer of these services, so forcing
     // its f() to unconditionally return false drops the entire set — with no dependency on any
     // server channel id (the reason a single-service patch cannot be stable). The switch uses p2:
     // f() writes it before it reads it.

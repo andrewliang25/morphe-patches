@@ -1,40 +1,29 @@
 package app.andrewliang.patches.line.hidenewbadges
 
+import app.andrewliang.patches.shared.resourceId
 import app.morphe.patcher.Fingerprint
+import app.morphe.patcher.InstructionLocation.MatchAfterImmediately
 import app.morphe.patcher.fieldAccess
 import app.morphe.patcher.literal
 import app.morphe.patcher.methodCall
+import com.android.tools.smali.dexlib2.Opcode
 
 private const val HEADER_BUTTON = "Ljp/naver/line/android/common/view/header/HeaderButton;"
 private const val HEADER_STATE_N = "Ljp/naver/line/android/common/view/header/a\$c;"
 
 /**
- * The attach-menu badge enum (`DOT`, `EVENT`, `NEW`). Five unrelated enums in the APK also have a
- * `DOT` constant, so the accessor fingerprint pins this type. The constant names survive R8; the
- * type name does not, so re-confirm it on a version bump.
- */
-private const val ATTACH_BADGE_ENUM = "Lk81/d\$b;"
-
-/**
- * The Chats-tab header icon enum, and the set class its green-dot builder adds to. Both drift
- * between versions. `chatheaderbuttons` and `hidecalendar` carry the same two descriptors.
- */
-private const val HEADER_ICON_ENUM = "Lq11/n;"
-private const val GREEN_DOT_SET = "Lki8/j;"
-
-/**
  * `HeaderButton.c(I, Z)V` — the **only** method in the whole APK that makes a header "new item"
  * dot visible. The `Z` picks which of the two dot views to show, and it is a *theme* predicate
- * (`o96.m.k()` = "custom theme applied || dark"), not a semantic distinction: green under a
- * dark/custom theme, red otherwise. So one edit here removes the dot in both colours.
+ * (`o96.m.k()` in 26.14.0 = "custom theme applied || dark"), not a semantic distinction: green
+ * under a dark/custom theme, red otherwise. So one edit here removes the dot in both colours.
  *
- * Verified exhaustive: the dot view ids `0x7f0b1138` / `0x7f0b1139` are resolved to a view and
+ * Verified exhaustive: the dot views `header_new_badge_img` / `header_new_badge_img_green` are resolved to a view and
  * given a visibility nowhere else. Nine call statements across seven feature areas funnel here —
  * chat room (two buttons plus the hamburger), Home notification, Home settings, Album Note,
  * Official Account list and Nearby (two).
  *
  * The numeric count badge is untouched: it is a different field, written directly by the count
- * branch of `ag1.t1.i` without ever calling this method.
+ * branch of the header badge renderer (`ag1.t1.i` in 26.14.0) without ever calling this method.
  *
  * Non-obfuscated class and method, so this anchor does not drift.
  */
@@ -46,7 +35,7 @@ internal object HeaderDotFingerprint : Fingerprint(
 )
 
 /**
- * The chat-room header badge renderer (obfuscated `ag1.t1.i`), matched on its **"N" badge branch**.
+ * The chat-room header badge renderer (`ag1.t1.i` in 26.14.0), matched on its **"N" badge branch**.
  *
  * The renderer switches over a sealed state with four cases — numeric count, dot, "N", and none —
  * and only the "N" case reads `HeaderButton.g` (the `header_n_badge` view). Pairing the read of the
@@ -92,8 +81,8 @@ internal object SettingsSwitchItemNewMarkFingerprint : Fingerprint(
 
 /**
  * The slide-out chat-menu row view holder, matched on its **constructor** because that is where the
- * badge views are bound by resource id: `new_badge` (green dot, `0x7f0b18e9`) and
- * `new_feature_badge` (the circled "N", `0x7f0b18f0`). Only this holder inflates both.
+ * badge views are bound by resource id: `new_badge` (green dot) and
+ * `new_feature_badge` (the circled "N"). Only this holder inflates both.
  *
  * Matching the constructor rather than the bind method lets the patch read the *field names* the
  * two views are stored into, instead of hardcoding obfuscated field letters. Resource ids drift
@@ -104,14 +93,14 @@ internal object ChatMenuRowHolderFingerprint : Fingerprint(
     returnType = "V",
     parameters = listOf("Landroid/view/View;"),
     filters = listOf(
-        literal(0x7f0b18e9),
-        literal(0x7f0b18f0),
+        literal({ resourceId("id", "new_badge") }),
+        literal({ resourceId("id", "new_feature_badge") }),
     ),
 )
 
 /**
  * The chat-menu **Album row** holder, matched on its constructor's bind of `new_album_badge`
- * (`0x7f0b18e8`) — a green dot on its own layout, so it needs its own site. Same field-name
+ * — a green dot on its own layout, so it needs its own site. Same field-name
  * discovery as [ChatMenuRowHolderFingerprint].
  */
 internal object ChatMenuAlbumRowHolderFingerprint : Fingerprint(
@@ -119,7 +108,7 @@ internal object ChatMenuAlbumRowHolderFingerprint : Fingerprint(
     returnType = "V",
     parameters = listOf("Landroid/view/View;"),
     filters = listOf(
-        literal(0x7f0b18e8),
+        literal({ resourceId("id", "new_album_badge") }),
     ),
 )
 
@@ -159,46 +148,46 @@ internal object FriendRowGreenDotFingerprint : Fingerprint(
 )
 
 /**
- * The chat "+" attach-button dot gate, matched on the R8-stable attach badge constant `DOT`.
- * Returns true when the plus-menu badge type is `DOT`; forcing it false clears the dot on the
- * input bar.
+ * The chat "+" attach-button dot gate. It asks for the badge of the `PLUS_MENU` slot and returns
+ * true when that badge is `DOT`. The patch forces it false, which clears the dot on the input bar.
+ * Many enums have a `DOT` constant, so the `PLUS_MENU` read before it pins this method.
  */
 internal object AttachButtonDotFingerprint : Fingerprint(
     returnType = "Z",
     parameters = emptyList(),
     filters = listOf(
-        fieldAccess(definingClass = ATTACH_BADGE_ENUM, name = "DOT"),
+        fieldAccess(name = "PLUS_MENU", opcode = Opcode.SGET_OBJECT),
+        fieldAccess(name = "DOT", opcode = Opcode.SGET_OBJECT),
     ),
 )
 
 /**
  * The Chats-tab header green-dot set builder. It adds one header-icon enum constant per feature
- * that currently has something new; the renderer then shows a green dot for any icon in the set.
+ * that has something new. The renderer then shows a green dot for each icon in the set.
  * Emptying the set removes every Chats-tab header green dot.
  *
- * The filters pin the enum type and the `add` target, and they alternate constant and `add`. This
- * is what keeps the enum `<clinit>` of the icon enum out of the match. That method writes the same
- * constants with `sput-object`, and a blind two-instruction removal there would erase live code and
- * leave null enum constants. `chatheaderbuttons` and `hidecalendar` pin the same two descriptors
- * for the same reason.
+ * The filters alternate constant and the `add` at once after it, and they take only `sget-object`
+ * reads. This is what keeps the enum `<clinit>` of the icon enum out of the match. That method
+ * writes the same constants with `sput-object`. A blind two-instruction removal there erases live
+ * code and leaves null enum constants.
  *
- * Each matched constant is immediately followed by its `add`, so the patch removes the pairs the
- * same way `chatheaderbuttons` removes header buttons.
+ * The patch removes the pairs the same way `chatheaderbuttons` removes header buttons.
  */
 internal object ChatsTabGreenDotSetFingerprint : Fingerprint(
+    name = "invokeSuspend",
     filters = listOf(
-        fieldAccess(definingClass = HEADER_ICON_ENUM, name = "ALBUM"),
-        methodCall(definingClass = GREEN_DOT_SET, name = "add"),
-        fieldAccess(definingClass = HEADER_ICON_ENUM, name = "OPEN_CHAT"),
-        methodCall(definingClass = GREEN_DOT_SET, name = "add"),
-        fieldAccess(definingClass = HEADER_ICON_ENUM, name = "AI_FRIEND"),
-        methodCall(definingClass = GREEN_DOT_SET, name = "add"),
+        fieldAccess(name = "ALBUM", opcode = Opcode.SGET_OBJECT),
+        methodCall(name = "add", location = MatchAfterImmediately()),
+        fieldAccess(name = "OPEN_CHAT", opcode = Opcode.SGET_OBJECT),
+        methodCall(name = "add", location = MatchAfterImmediately()),
+        fieldAccess(name = "AI_FRIEND", opcode = Opcode.SGET_OBJECT),
+        methodCall(name = "add", location = MatchAfterImmediately()),
     ),
 )
 
 /**
  * The bottom-navigation button view holder, matched on its **constructor's bind of
- * `bnb_button_badge_new`** (`0x7f0b03b5`) — the "new" badge ImageView.
+ * `bnb_button_badge_new`** — the "new" badge ImageView.
  *
  * Matching the binder rather than the observer lambda is deliberate. The five observers that drive
  * this button's badges (two unread counts, the count text, the live badge and the "new" badge) are
@@ -215,6 +204,6 @@ internal object BottomNavBadgeHolderFingerprint : Fingerprint(
     returnType = "V",
     parameters = listOf("Landroid/view/ViewGroup;", "L", "L"),
     filters = listOf(
-        literal(0x7f0b03b5),
+        literal({ resourceId("id", "bnb_button_badge_new") }),
     ),
 )

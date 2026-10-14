@@ -2,6 +2,7 @@ package app.andrewliang.patches.line.hideagenti
 
 import app.andrewliang.patches.line.shared.forceServerFlagFalse
 import app.andrewliang.patches.shared.Constants.COMPATIBILITY_LINE
+import app.andrewliang.patches.shared.resourceIdsPatch
 import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
 import app.morphe.patcher.patch.bytecodePatch
 import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
@@ -13,6 +14,7 @@ val hideAgentIButtonsPatch = bytecodePatch(
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_LINE)
+    dependsOn(resourceIdsPatch)
 
     execute {
         // Home header: replace the read of the Agent i flag with a const 0 into its own

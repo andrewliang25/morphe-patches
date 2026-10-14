@@ -32,9 +32,6 @@ private const val ROW_KEY = "andrew-patch-settings"
 private const val ROWS_METHOD = "andrewRows"
 private const val ROWS_DESC = "(Ljava/util/List;)Ljava/util/List;"
 
-/** The bit of the row constructor's default mask that makes its analytics event null. */
-private const val NO_ANALYTICS = 0x100
-
 /**
  * Adds the row title and the row icon. The extension finds their ids by name, because ids are
  * assigned after the bytecode patches.
@@ -116,44 +113,92 @@ val andrewPatchSettingPatch = bytecodePatch(
         classDefBy(aboutConstant.type).fields.singleOrNull { it.name == "Profile" }
             ?: throw PatchException("No Profile constant in ${aboutConstant.type}")
 
-        // The "About LINE" row constructor: the first 11-argument <init> call after its event.
+        // The "About LINE" row constructor: the first <init> range call after the event that
+        // takes the event type and ends with the default mask (`I`). The number of its arguments
+        // changes between LINE versions, so each argument is found by its role.
+        val event = (instructions[aboutIndex] as ReferenceInstruction).reference as FieldReference
         val ctorIndex = (aboutIndex until instructions.size).first { index ->
             val call = (instructions[index] as? ReferenceInstruction)?.reference as? MethodReference
-            instructions[index].opcode == Opcode.INVOKE_DIRECT_RANGE &&
-                call?.name == "<init>" && call.parameterTypes.size == 11
+            instructions[index].opcode == Opcode.INVOKE_DIRECT_RANGE && call?.name == "<init>" &&
+                call.parameterTypes.any { it.toString() == event.type } &&
+                call.parameterTypes.last().toString() == "I"
         }
         val rowCtor = (instructions[ctorIndex] as ReferenceInstruction).reference as MethodReference
         val rowClass = rowCtor.definingClass
         val types = rowCtor.parameterTypes.map { it.toString() }
-        val function1 = types[6]
-        val destination = types[8]
 
         // The tap destination of "About LINE": a one-argument destination class around a
-        // three-argument function.
+        // three-argument function. The destination argument is the one typed as its base class,
+        // and the click function comes just before it.
         val destinationCtor = (aboutIndex until ctorIndex).firstNotNullOf { index ->
             val call = (instructions[index] as? ReferenceInstruction)?.reference as? MethodReference
             call?.takeIf {
                 instructions[index].opcode == Opcode.INVOKE_DIRECT && it.name == "<init>" &&
-                    it.parameterTypes.size == 1 && classDefBy(it.definingClass).superclass == destination
+                    it.parameterTypes.size == 1 &&
+                    classDefBy(it.definingClass).superclass in types
             }
         }
         val function3 = destinationCtor.parameterTypes.single().toString()
+        val destinationIndex = types.indexOf(classDefBy(destinationCtor.definingClass).superclass)
+        val clickIndex = destinationIndex - 1
+        val function1 = types[clickIndex]
+        val eventIndex = types.indexOf(event.type)
+        val maskIndex = types.lastIndex
 
-        // The default mask of "About LINE": the literal in the last register of the call.
+        // The default mask of "About LINE": the literal in the last register of the call. The new
+        // row passes a null event, which is the value the mask gives a defaulted event.
         val range = instructions[ctorIndex] as RegisterRangeInstruction
         val maskRegister = range.startRegister + range.registerCount - 1
         val mask = (ctorIndex - 1 downTo aboutIndex).firstNotNullOf { index ->
             val instruction = instructions[index]
             (instruction as? NarrowLiteralInstruction)?.narrowLiteral
                 ?.takeIf { (instruction as OneRegisterInstruction).registerA == maskRegister }
-        } or NO_ANALYTICS
+        }
 
-        // The fields where the row keeps its key and the values copied from "About LINE".
+        // The field where the row keeps its key.
         val keyField = fieldOfArgument(rowCtor, 0)
-        val subtitleField = fieldOfArgument(rowCtor, 3)
-        val secondField = fieldOfArgument(rowCtor, 4)
-        val function1Field = fieldOfArgument(rowCtor, 6)
-        val lastField = fieldOfArgument(rowCtor, 9)
+
+        // The new row: v4 = the row, v5 .. are its arguments. Each argument that has no role of
+        // its own (the subtitle, the providers, the analytics function) is copied from the field
+        // where "About LINE" keeps it. v3 holds "About LINE".
+        val argumentSmali = types.indices.joinToString("\n") { index ->
+            val register = 5 + index
+            when (index) {
+                0 -> "const-string v$register, \"$ROW_KEY\""
+                1 -> """
+                    invoke-static {}, $LINE_SETTINGS->iconId()Ljava/lang/Integer;
+                    move-result-object v$register
+                """
+                2 -> "" // v7 already holds the title id.
+                eventIndex -> "const/4 v$register, 0x0"
+                clickIndex -> """
+                    new-instance v$register, $CLICK
+                    invoke-direct {v$register}, $CLICK-><init>()V
+                """
+                destinationIndex -> """
+                    new-instance v$register, ${destinationCtor.definingClass}
+                    invoke-direct {v$register, v${5 + clickIndex}}, ${destinationCtor.definingClass}-><init>($function3)V
+                """
+                maskIndex -> "const v$register, $mask"
+                else -> {
+                    val field = fieldOfArgument(rowCtor, index)
+                    if (register > 15) throw PatchException("Row argument $index needs register v$register")
+                    when (field.type) {
+                        "I", "Z" -> "iget v$register, v3, $field"
+                        "J", "D" -> throw PatchException("Wide row argument $index is not supported")
+                        types[index] -> "iget-object v$register, v3, $field"
+                        // The field has another type than the argument: it holds the default
+                        // that the constructor builds when the mask marks the argument unused.
+                        // "About LINE" leaves such an argument unset, so pass null.
+                        else -> "const/4 v$register, 0x0"
+                    }
+                }
+            }
+        }
+        val lastRegister = 5 + types.lastIndex
+        if (5 + destinationIndex > 15 || 5 + clickIndex > 15) {
+            throw PatchException("The tap destination needs a register above v15")
+        }
 
         // The click handler is an extension class. It gets LINE's two function interfaces here.
         mutableClassDefBy(CLICK).interfaces.apply {
@@ -171,13 +216,13 @@ val andrewPatchSettingPatch = bytecodePatch(
                 AccessFlags.PUBLIC.value or AccessFlags.STATIC.value,
                 null,
                 null,
-                MutableMethodImplementation(17),
+                MutableMethodImplementation(lastRegister + 2),
             ),
         )
         mutableClassDefBy(rowsClass).methods.add(rows)
-        // v0 = rows, v1 = index, v2 = size, v3 = "About LINE", v5 = its key. v4 .. v15 are the
-        // constructor call. Then a second pass finds "Profile" (v3 = row, v5 = its key) and
-        // inserts the new row (v4) below it. Profile is a different row class, so that pass
+        // v0 = rows, v1 = index, v2 = size, v3 = "About LINE", v5 = its key, v7 = the title id.
+        // v4 .. lastRegister are the constructor call. Then a second pass finds "Profile"
+        // (v3 = row, v5 = its key) and inserts the new row (v4) below it. Profile is a different row class, so that pass
         // compares on the base row class.
         rows.addInstructions(
             0,
@@ -208,20 +253,8 @@ val andrewPatchSettingPatch = bytecodePatch(
                 move-result v7
                 if-eqz v7, :done
                 new-instance v4, $rowClass
-                const-string v5, "$ROW_KEY"
-                invoke-static {}, $LINE_SETTINGS->iconId()Ljava/lang/Integer;
-                move-result-object v6
-                iget-object v8, v3, $subtitleField
-                iget-object v9, v3, $secondField
-                const/4 v10, 0x0
-                iget-object v11, v3, $function1Field
-                new-instance v12, $CLICK
-                invoke-direct {v12}, $CLICK-><init>()V
-                new-instance v13, ${destinationCtor.definingClass}
-                invoke-direct {v13, v12}, ${destinationCtor.definingClass}-><init>($function3)V
-                iget-object v14, v3, $lastField
-                const v15, $mask
-                invoke-direct/range {v4 .. v15}, $rowClass-><init>(${types.joinToString("")})V
+            """ + argumentSmali + """
+                invoke-direct/range {v4 .. v$lastRegister}, $rowClass-><init>(${types.joinToString("")})V
                 sget-object v5, $profileConstant
                 invoke-virtual {v5}, $keyAccessor
                 move-result-object v5

@@ -4,6 +4,7 @@ import app.andrewliang.patches.line.shared.hideIfLineSetting
 import app.andrewliang.patches.line.shared.lineSettingsExtensionPatch
 import app.andrewliang.patches.line.shared.markLineSettingIncluded
 import app.andrewliang.patches.shared.Constants.COMPATIBILITY_LINE
+import app.andrewliang.patches.shared.resourceIdsPatch
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.bytecodePatch
@@ -16,6 +17,7 @@ val hideChatTipsPatch = bytecodePatch(
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_LINE)
+    dependsOn(resourceIdsPatch)
 
     dependsOn(lineSettingsExtensionPatch)
 
