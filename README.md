@@ -112,6 +112,9 @@ again:
 - Keep chats unread, and keep unsent messages
 - Open links in external browser, and disable VOOM
 - Hide the LINE TODAY, Shopping, VOOM and Wallet tabs. A tab change shows after LINE restarts.
+- Hide the chat buttons and tips: AI Friends, community, calendar, Events, LINE GIFT, Transfer,
+  the extra tools in the + menu, and the tips under messages. Some of these changes show only
+  after LINE restarts.
 
 A patch that you did not include in the build has no switch. The row also shows the author and the
 license.

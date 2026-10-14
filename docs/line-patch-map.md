@@ -1486,7 +1486,7 @@ do not attempt the native stack.
 ## Settings screen & the "[General] Andrew's Patch Setting" patch
 
 The patch adds a row, "Andrew's Patch Setting", to LINE's main Settings list, right below "Profile".
-The row opens a screen with runtime switches for eight patches, then credits and licenses. Who it
+The row opens a screen with runtime switches for 16 patches, then credits and licenses. Who it
 helps: a user of the prebuilt APK from `patched-apps`, who otherwise cannot turn off one patch
 without patching the APK again. Anchors are 26.14.0.
 
@@ -1624,17 +1624,37 @@ Device findings (Xiaomi, Android 16):
 | Open links in external browser | `externalbrowser` | entry of `OpenUriActivity$b.a`, `v0` |
 | Disable VOOM | `disablevoom` | entry of `bh8/n0.a`, and after `super.onCreate` in `LineVoomActivity`, `v0` at both. A probe showed that the handler gate runs and reads the switch on `line://home/discover`. Stock LINE refuses that link too, so the "off" result was not seen on the screen. |
 | Hide LINE TODAY / Shopping / VOOM / Wallet tab | the four tab patches | each `sget`+`add` pair in `b68/g.a()`, `v2` |
+| Hide AI Friends button | `chatheaderbuttons` | `hideAiFriends(Z)Z` before the `return` of the flag accessor `g45/c.t()` (`.locals 0`, so no free register) |
+| Hide community button | `chatheaderbuttons` | the `OPEN_CHAT` `sget`+`add` pair in `qz1/f.<init>`, the register of the `sget` (`v1`) |
+| Hide calendar buttons | `hidecalendar` | The `CALENDAR` pair in `qz1/f.<init>` (`v1`). Entry of `yi1/b.j` (`p0`). Both `CALENDAR_BUTTON` pairs in `ag1/e0.a` (`p6`). `hideCalendar(Z)Z` on `p1` at entry of `z00/l.<init>`. Entry of `kh1/x0$c.a` (`v0`). Entry of the added `filterCalendarModules` (`v0`). |
+| Hide Events button | `hideevents` | `hideEvents(Z)Z` after the `iget-boolean v6, o4.l` in `ChatHistoryMenuFragment` |
+| Hide LINE GIFT / Transfer button | `hidegift`, `hidetransfer` | entry of `yi1/h.j` and `yi1/j.j`, `p0` |
+| Hide attach menu extra tools | `hideattachmenutools` | entry of `yi1/d.f`, `p2` |
+| Hide tips under messages | `hidechattips` | `hideChatTips(Z)Z` after the `instance-of v3, sm1/g$b` in `rm1/u.invokeSuspend` |
 
-- Every gate is `invoke-static LineSettings-><x>()Z` + `move-result` + a branch to an
-  `ExternalLabel` on an original instruction.
+- A gate is one of two shapes. A branch gate is `invoke-static LineSettings-><x>()Z` +
+  `move-result` + a branch to an `ExternalLabel` on an original instruction
+  (`returnFalseIfLineSetting`, `skipIfLineSetting`). It needs a register that is dead at the gate.
+  A value gate is `invoke-static {vN}, LineSettings-><x>(Z)Z` + `move-result vN` on a "shown"
+  boolean that LINE already holds (`hideIfLineSetting`). It needs no free register and no branch,
+  so it fits `.locals 0` methods, but `vN` must be v0 to v15.
+- An entry gate in a `.locals 0` method uses a parameter register that the original code writes
+  before it reads, such as `p0` of `yi1/h.j`. With the switch off, that register holds the switch
+  value until the original code overwrites it.
+- Device test of the chat switches (26.14.0, Xiaomi, Android 16): all switches off, then on again.
+  The chat toolbar, the + menu, the chat menu, the long-press menu and the tips change when you
+  open a chat again, with no restart. The Chats-tab header (calendar, community) changes only
+  after LINE restarts, because `qz1/f.<init>` builds it once. The test account does not get AI
+  Friends (see "AI entry points"), so that switch was seen only to run with no crash. The Friends
+  sub-tab calendar block does not show on this account, so that lever was not seen either.
 - **Every switch is on by default.** A stored value counts only while the row is in the build:
   `LineSettings.rowIncluded()` is a plain `return false`, and the settings patch rewrites it to return
   true. Without that, a user who turned a switch off and then installed a build without the row
   is stuck with "off".
 - Each patch rewrites its own `LineSettings.<x>Included()` to return true, so the screen lists only
   the switches of patches in the build.
-- Each of the eight patches depends on the nameless `lineSettingsExtensionPatch`, which bundles the
-  extension. Before, only `keepunsent` brought it.
+- Each patch with a switch depends on the nameless `lineSettingsExtensionPatch`, which bundles the
+  extension.
 - The values are read from SharedPreferences `andrew_line_settings` once and then kept in memory,
   because `keepunsent` reads its switch on the database path of each unsent message.
 
@@ -1642,11 +1662,11 @@ Device findings (Xiaomi, Android 16):
 
 1. Add `<feature>()` and `<feature>Included()` to `LineSettings.java`, and a row to
    `LineSettingsScreen.addSwitches`.
-2. In the patch, depend on `lineSettingsExtensionPatch`, put the gate around the edit with
-   `readLineSetting("<feature>", "vN")` and an `ExternalLabel`, and call
-   `markLineSettingIncluded("<feature>")`.
-3. Pick a register that is dead at the gate. Check it in the smali, then check the result with
-   `Dumpx` and `BranchSweep`.
+2. In the patch, depend on `lineSettingsExtensionPatch`, put the gate around the edit with the
+   helpers in `line/shared/LineSettings.kt`, and call `markLineSettingIncluded("<feature>")`. A
+   value gate also needs the `<feature>(boolean)` overload in `LineSettings.java`.
+3. For a branch gate, pick a register that is dead at the gate. Check it in the smali, then check
+   the result with `Dumpx` and `BranchSweep`.
 
 ---
 
