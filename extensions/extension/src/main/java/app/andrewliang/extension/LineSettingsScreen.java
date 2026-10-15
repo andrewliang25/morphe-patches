@@ -121,7 +121,8 @@ final class LineSettingsScreen {
 
     private static void addSwitches(Activity activity, LinearLayout content) {
         boolean chats = LineSettings.keepChatsUnreadIncluded() || LineSettings.keepUnsentMessagesIncluded();
-        boolean general = LineSettings.externalBrowserIncluded() || LineSettings.disableVoomIncluded();
+        boolean general = LineSettings.externalBrowserIncluded() || LineSettings.disableVoomIncluded()
+                || LineSettings.customFontIncluded();
         boolean tabs = LineSettings.hideTodayTabIncluded() || LineSettings.hideShoppingTabIncluded()
                 || LineSettings.hideVoomTabIncluded() || LineSettings.hideWalletTabIncluded();
         boolean buttons = LineSettings.hideAiFriendsIncluded() || LineSettings.hideCommunityButtonIncluded()
@@ -198,6 +199,17 @@ final class LineSettingsScreen {
             if (LineSettings.disableVoomIncluded()) {
                 content.addView(toggle(activity, LineSettings.DISABLE_VOOM, "Disable VOOM",
                         "VOOM links, shares and notifications do nothing.", null));
+            }
+            if (LineSettings.customFontIncluded()) {
+                // Android keeps each loaded font in the process, so this restart ends the process.
+                View restart = row(activity, "Restart LINE", "Applies your font change now.", true);
+                restart.setVisibility(View.GONE);
+                restart.setOnClickListener(v -> activity.startActivity(
+                        new Intent(activity, CustomFontActivity.class).setAction(CustomFontActivity.ACTION_RESTART)));
+                content.addView(toggle(activity, LineSettings.CUSTOM_FONT, "Custom font",
+                        "Uses the font that you upload on LINE's Font page.",
+                        () -> restart.setVisibility(View.VISIBLE)));
+                content.addView(restart);
             }
         }
 
