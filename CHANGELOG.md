@@ -1,3 +1,10 @@
+## [3.7.1-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v3.7.0...v3.7.1-dev.1) (2026-10-16)
+
+### 🐛 Bug Fixes
+
+* **LINE - Custom font:** stop the crash on Root Mount installs ([ce95a3d](https://github.com/andrewliang25/morphe-patches/commit/ce95a3dee38a92f7b5b86d088e65569d0d8d4ad3))
+* **LINE - Disable LINE Premium:** hide the promos on the Font page ([64a231e](https://github.com/andrewliang25/morphe-patches/commit/64a231e0ba3be83d9fd3ce91147a18acad3fec9e))
+
 ## [3.7.0](https://github.com/andrewliang25/morphe-patches/compare/v3.6.0...v3.7.0) (2026-10-16)
 
 ### ✨ New Features
