@@ -143,7 +143,7 @@ final class LineSettingsScreen {
             }
             if (LineSettings.keepUnsentMessagesIncluded()) {
                 content.addView(toggle(activity, LineSettings.KEEP_UNSENT_MESSAGES, "Keep unsent messages",
-                        "Keeps messages that others unsend, with a notice below each one.", null));
+                        "Keeps messages that others unsend, with a red \"Unsent\" label next to the time.", null));
             }
         }
 
