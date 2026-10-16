@@ -115,6 +115,11 @@ for f in failed:
 sys.exit(1 if failed else 0)
 EOF
 
+    if [ ! -f "$dir/patched.apk" ]; then
+        echo "  no patched.apk: the patcher stopped at the failure. Add --continue to see the rest."
+        status=1; continue
+    fi
+
     # Original dex files come from base.apk inside the APKM; the patched ones from the output.
     orig="$OUT/.orig/$label"
     if [ ! -d "$orig" ]; then
