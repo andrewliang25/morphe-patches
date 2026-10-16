@@ -68,16 +68,6 @@ public final class CustomFont {
 
     private static Context appContext;
 
-    /**
-     * Set when this process has served the custom font file. Android then keeps that font loaded,
-     * so another file shows only in a new process.
-     */
-    private static boolean fontLoaded;
-
-    static boolean fontLoaded() {
-        return fontLoaded;
-    }
-
     static File fontFile(Context context) {
         return new File(context.getFilesDir(), FILE_NAME);
     }
@@ -172,9 +162,7 @@ public final class CustomFont {
     public static ParcelFileDescriptor openFile() {
         if (!useFont()) return null;
         try {
-            ParcelFileDescriptor file = ParcelFileDescriptor.open(fontFile(appContext), ParcelFileDescriptor.MODE_READ_ONLY);
-            fontLoaded = true;
-            return file;
+            return ParcelFileDescriptor.open(fontFile(appContext), ParcelFileDescriptor.MODE_READ_ONLY);
         } catch (FileNotFoundException e) {
             return null;
         }
