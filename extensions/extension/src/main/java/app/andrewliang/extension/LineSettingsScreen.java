@@ -143,7 +143,7 @@ final class LineSettingsScreen {
             }
             if (LineSettings.keepUnsentMessagesIncluded()) {
                 content.addView(toggle(activity, LineSettings.KEEP_UNSENT_MESSAGES, "Keep unsent messages",
-                        "Keeps messages that others unsend, with a notice below each one.", null));
+                        "Keeps messages that others unsend, with a red \"Unsent\" label next to the time.", null));
             }
         }
 
@@ -201,15 +201,14 @@ final class LineSettingsScreen {
                         "VOOM links, shares and notifications do nothing.", null));
             }
             if (LineSettings.customFontIncluded()) {
-                // Android keeps each loaded font in the process, so this restart ends the process.
-                View restart = row(activity, "Restart LINE", "Applies your font change now.", true);
-                restart.setVisibility(View.GONE);
-                restart.setOnClickListener(v -> activity.startActivity(
-                        new Intent(activity, CustomFontActivity.class).setAction(CustomFontActivity.ACTION_RESTART)));
+                // A restart in a new task does not change the font of LINE's Compose screens.
+                View close = row(activity, "Close LINE", "Open LINE again to apply your font change.", true);
+                close.setVisibility(View.GONE);
+                close.setOnClickListener(v -> CustomFontPicker.exit(activity));
                 content.addView(toggle(activity, LineSettings.CUSTOM_FONT, "Custom font",
                         "Uses the font that you upload on LINE's Font page.",
-                        () -> restart.setVisibility(View.VISIBLE)));
-                content.addView(restart);
+                        () -> close.setVisibility(View.VISIBLE)));
+                content.addView(close);
             }
         }
 
@@ -520,11 +519,13 @@ final class LineSettingsScreen {
         }
     }
 
-    private static void restart(Activity activity) {
+    /**
+     * Starts LINE's launcher Activity as a new task, which creates each screen again. Do not end
+     * the process here. Android starts the new task in the old process, and the exit removes it.
+     */
+    static void restart(Activity activity) {
         Intent launch = activity.getPackageManager().getLaunchIntentForPackage(activity.getPackageName());
         if (launch == null || launch.getComponent() == null) return;
-        // LINE builds its tab list again when its main screen is created, so a new task is enough.
-        // Ending the process here stopped the new task from starting on some phones.
         activity.startActivity(Intent.makeRestartActivityTask(launch.getComponent()));
     }
 

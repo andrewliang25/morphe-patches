@@ -582,7 +582,7 @@ starting point, so no one needs to sweep the APK again.
 | [Chat] Hide LINE GIFT button | `line.hidegift` | `yi1.h` (`+` LINE GIFT tile) |
 | [Chat] Hide attach menu extra tools | `line.hideattachmenutools` | all server-driven `yi1.d` services |
 | [General] Redirect LINE Pay | `line.disablepay` | `PayLaunchActivity` / `PayLiffActivity` onCreate (see below) |
-| [Chat] Keep unsent messages | `line.keepunsent` | `la8.x.invoke` — the unsend DB write (see below) |
+| [Chat] Keep unsent messages | `line.keepunsent` | `la8.x.invoke` — the unsend DB write, and the "Edited" label slot (see below) |
 | [Tab] Hide Shopping tab | `line.hideshoppingtab` | `COMMERCE` + `COMMERCE_TW` in `b68/g.a()` (see above) |
 | [General] Andrew's Patch Setting | `line.settings` | a row below "Profile" in Settings, via `ka5/o2.a()` (see below) |
 | [Fix] Restore location maps via MicroG-RE | `line.fixlocationmaps` | `fo/p.b` — the maps module context (see below) |
@@ -771,7 +771,10 @@ A third path covers messages unsent while offline: full sync / message-box resto
 `z58.b.c.KEY_UNSENT_MESSAGE` / `KEY_SILENTLY_UNSENT` from `contentMetadata` (`la8.n0`, `la8.x2`) and
 stores the row already stripped — nothing local to keep.
 
-### How the placeholder is rendered
+### How LINE draws its own unsend notice
+
+This is LINE's path for a tombstone row. The patch does not use it any more, but LINE still draws
+it for rows that it stripped while the patch was off.
 
 `chat_history.type` → content model → text, four hops:
 
@@ -791,10 +794,9 @@ comparing `from_mid` against your own mid.
 
 ### What the patch does
 
-Skips the guard, then inserts its **own** `type = UNSENT` row so the notice still appears
-(`app/andrewliang/extension/KeepUnsentMessages.java`). Leaving the original row untouched — rather than
-copying it and letting LINE tombstone the original — preserves its real `server_id`, so reply-jump,
-forwarding and reactions keep working on the kept message.
+Skips the guard, then marks the kept row (`app/andrewliang/extension/KeepUnsentMessages.java`). The
+row itself is not changed otherwise. It keeps its real `server_id`, so reply-jump, forwarding and
+reactions keep working on the kept message.
 
 The guard is located **by instruction shape** (no-arg `Z` call → `move-result` → `if-eqz` → `goto`) and
 the `SQLiteDatabase` field reference is read from the method's own bytecode, because `na8.c`, its `h()`
@@ -805,16 +807,75 @@ register must carry a `check-cast` to the field's own owner before the guard (th
 including a register past `v15`, where `iget`/`invoke` operands stop fitting — throws rather than
 applying a half-patch.
 
-The insert is skipped when the row is **already** a tombstone (`type IN (27, 28, 38)`, what `na8.c.h()`
+The mark is skipped when the row is **already** a tombstone (`type IN (27, 28, 38)`, what `na8.c.h()`
 covers). The injection sits ahead of the branch it flips, so it also runs where LINE's guard would have
 exited early: a redelivered unsend for a row tombstoned before the patch was installed, or one stripped
-by the offline `KEY_UNSENT_MESSAGE` path, which never reaches the guard at all. Both would otherwise
-draw the notice twice.
+by the offline `KEY_UNSENT_MESSAGE` path, which never reaches the guard at all. LINE draws its own
+notice for those rows.
+
+### The "Unsent" label
+
+The patch shows a red "Unsent" in the place of LINE's "Edited" label, next to the time. Device-confirmed
+on 26.15.1 (sent and received rows, Black and light themes).
+
+**The mark** is the key `ANDREW_UNSENT\ttrue` in the row's `parameter` column. That column holds the
+content metadata as tab-separated `key\tvalue` pairs (`ma8.d.a` splits it, `ma8.d.c` joins it). LINE
+keeps its own edit flag there (`EDITED\ttrue`, enum `IS_EDITED_MESSAGE`), so the mark is read with the
+rest of the message and costs no query. The edit merge (`k91.d`) reads the whole map and writes it back,
+so the mark stays when a kept message is edited.
+
+**Where "Edited" comes from.** The layouts `chat_ui_row_layout_receive_horizontal_metadata` and
+`chat_ui_row_send_edited_and_read_count` hold a `TextView` `chat_ui_row_edited_mark_text` ("Edited",
+`chat_messageedit_desc_edited`). On received rows it sits above the time. On sent rows it sits in the
+line above the time, between the mute icon and "Read", with dot dividers. The rich, HTML and Flex
+layouts (`*_vertical`) do not have it, so those messages get no label. They are almost all official
+account and bot messages.
+
+| Hook | 26.15.1 | 26.14.0 | Anchor |
+|---|---|---|---|
+| view data (`ChatMessageCommonViewData`) | `te1.c` | `m91.c` | `toString` string. The patch adds the field `andrewUnsent:Z` |
+| its `equals` | `te1.c.equals` | `m91.c.equals` | returns false when the two marks differ |
+| view data builder | `re1.d.b` | `k91.e.b` | `sget IS_EDITED_MESSAGE` + a constructor call with 25 or more parameters |
+| label controller (`EditedMarkViewController`) | `qr1.e` | `hm1.d` | first constructor parameter of the `applyClickableSpan` coroutine (`qr1.f` / `hm1.e`), found by its Kotlin debug metadata |
+| row binder | `wq1.f.K0` | `nl1.g.K0` | the one method that reads the label, calls `setVisibility`, then `getVisibility` |
+
+The binder reads `isEditedMessage` (field `x`) and sets the label's visibility from it. The patch calls
+the extension after LINE's `getVisibility`, so LINE alone decides whether to start the coroutine that
+makes "Edited" a link (`e71.a.b`). For a message that is edited and also unsent, that coroutine can
+still make "Unsent" a link to LINE's edit info page. For that reason the extension sets the
+color on the whole `TextView`: the coroutine copies the text without its spans.
+
+**Why `equals` is patched.** An unsend that arrives while the chat is open changes only the mark. The
+new view data then compares equal to the old one, and LINE does not bind the row again. With the mark
+in `equals`, the label shows at once.
+
+**The text.** The extension has a short table. Each word is the past form of LINE's own "Unsend" verb
+(`line_chat_button_menuunsend`) in that language: `已收回` (zh-TW), `已撤回` (zh-CN), `送信取消済み`
+(ja), and so on. Hong Kong Chinese and every other language get English "Unsent", the same as LINE's
+"Edited" for Hong Kong (`values-zh-rHK` has no translation of it). The patch does not use LINE's own
+`chat_premiumunsend_toast_messageunsent` ("Message unsent"). In ja, ko, de, fr, it and id that string
+is a full sentence, too long for the column beside a received bubble. The color is LINE's
+`linered600` (`#ff334b`), resolved by name.
+
+**Old notice rows.** Earlier versions inserted a `type = 27` row with `server_id` + `"_unsent"` below
+each kept message. At the first unsend in each process, the extension marks the message of each such
+row and deletes the rows. Device-confirmed: a message kept by the old version showed the label and
+lost its notice row.
+
+**Forwarding.** LINE builds a forwarded message's metadata from scratch for most types, so the mark is
+not sent. The one exception found is a LINE MUSIC share (`na8.g.m`), whose whole map is copied in
+`ig8.l`. A recipient with this patch would then see "Unsent" on that forward.
 
 ### Values that drift on a version bump
 
 | Thing | 26.14.0 |
 |---|---|
+| `chat_history` table (`a68.a`) | only `id` constrained (PK + autoincrement); all other columns nullable; `IDX_SERVER_ID` is **non-unique** |
+| `parameter` | tab-separated `key\tvalue` pairs. An empty column must get the pair with no leading tab. Otherwise every key and value after it shifts by one |
+| `na8.c` db values | `MESSAGE` = 1, `UNSENT` = 27, `UNSENT_NO_MARK` = 28, `SQUARE_UNSENT_MESSAGE` = 35, `UNSENT_SILENT` = 38 — the extension hardcodes 27/28/38 (`na8.c.h()`'s set, the rows it does not mark) and 27 (the type of the old notice rows) |
+| chat-list unread badge | `chat.message_count - chat.read_message_count` (`c23.d` columns, read in `z13.o`) — a stored counter pair, **not** a `count(*)` over `chat_history` |
+
+---|---|
 | `chat_history` table (`a68.a`) | only `id` constrained (PK + autoincrement); all other columns nullable; `IDX_SERVER_ID` is **non-unique** |
 | sort columns | `IDX_CHAT_ID_ID_CREATED_TIME` = `chat_id` (eq) + `created_time`, `id` (sort) → ordering follows `created_time` |
 | `created_time` | `DATE_STRING` → a **TEXT** column of epoch millis, so `+1` needs a `CAST` round-trip |
@@ -1713,7 +1774,7 @@ Device findings (Xiaomi, Android 16):
 | Hide LINE GIFT / Transfer button | `hidegift`, `hidetransfer` | entry of `yi1/h.j` and `yi1/j.j`, `p0` |
 | Hide attach menu extra tools | `hideattachmenutools` | entry of `yi1/d.f`, `p2` |
 | Hide tips under messages | `hidechattips` | `hideChatTips(Z)Z` after the `instance-of v3, sm1/g$b` in `rm1/u.invokeSuspend` |
-| Custom font | `customfont` | `customFont(Z)Z` after the sync `move v4, v12` in the Font list loader. The extension methods read `customFont()` themselves. Its "Restart LINE" row starts `CustomFontActivity`, because a new task does not load a new font. |
+| Custom font | `customfont` | `customFont(Z)Z` after the sync `move v4, v12` in the Font list loader. The extension methods read `customFont()` themselves. Its "Close LINE" row ends the process, because a new task does not change LINE's Compose screens. |
 
 - A gate is one of two shapes. A branch gate is `invoke-static LineSettings-><x>()Z` +
   `move-result` + a branch to an `ExternalLabel` on an original instruction
@@ -1773,6 +1834,7 @@ disassembly confirm it.
   use. The init task `"RegisterPremiumFontThemeApplierTask"` asks
   `ResolvePremiumFontStatusUseCaseImpl` first. With "Default font", nothing requests the font.
 - A change of font restarts the app. Android keeps each loaded font in the process.
+  LINE's own restart (`hr4/c`) ends the process one second after it starts the splash screen.
 
 ### Why LINE's own fonts fail on a re-signed build
 
@@ -1793,24 +1855,39 @@ check passes for Google's emoji font provider.
 | `FontSettingFragment.onCreateView` | class name (settings navigation graph) | wraps LINE's `ComposeView` with our button bar |
 | Font list loader (`er4/f.b`, `qx4/f.b`) | `"Default"` + `System.currentTimeMillis` + the flag shape | after LINE's `move v4, v12` ("sync"), a value gate sets `v4` to "no sync" while the switch is on |
 
-The extension is `CustomFont` (hooks and button bar) and `CustomFontActivity` (file picker and
-restart). The file is in `files/andrewliang_custom_font`, and the shown name is in the
+The extension is `CustomFont` (hooks and button bar) and `CustomFontPicker` (file picker and
+close). `CustomFontPicker` is a hidden framework `Fragment` on LINE's own Activity, so the patch
+adds nothing to the manifest. The file is in `files/andrewliang_custom_font`, and the shown name is in the
 preferences `andrewliang_custom_font`. `android.graphics.fonts.Font.Builder` checks the file
 before it replaces the font in use.
 
 The switch "Custom font" in "[General] Andrew's Patch Setting" controls all of it. While the
 switch is off, each extension method keeps LINE's behavior, the gate keeps LINE's sync, and the
-Font page has no buttons. On the device, off and then on again (each with the "Restart LINE" row)
-changed the font and the buttons, with no new upload. The font file stays on the device. The certificate bypass applies while
+Font page has no buttons. A change of the switch shows a "Close LINE" row, not "Restart LINE".
+See "A font change needs a new process" in "Device traps". The font file stays on the device. The certificate bypass applies while
 the switch is on, with or without a font file. So a LINE Premium user gets LINE's own downloaded
 fonts back on a re-signed build too.
 
 ### Device traps
 
-- **The restart.** LINE's own sequence closes the tasks, starts the splash screen and calls
-  `System.exit(0)` one second later. On the device, LINE started again in the old process, and the
-  exit then killed it. The picker Activity now runs in the process `:customfont`. It kills the
-  main process first, then starts LINE. A visible Activity can start another Activity, so no background-start rule applies.
+- **Root Mount keeps the original manifest.** A Root Mount install mounts the patched
+  `base.apk` over the Play Store install. Android reads the manifest of the Play Store install, so
+  an Activity that a patch adds does not exist there. The first version started its own
+  `CustomFontActivity` and crashed with `ActivityNotFoundException`. Use no new manifest entry.
+- **A restart that ends the process fails.** On the Xiaomi test phones (HyperOS, Android 16), a
+  restart that ends the process does not come back. Two forms were tried: LINE's own sequence
+  (exit one second later), and Morphe's `Utils.restartApp` (exit at once, as on YouTube). Android
+  attaches the new launcher Activity to the old process as a warm start. It then removes it when
+  the process dies: `Force remove immediately ActivityRecord{… SplashActivity}
+  state=INITIALIZING`. A new task in the same process starts, as the other "Restart LINE" rows do,
+  but it does not change the Compose screens (next item). So the picker closes LINE and does not
+  open it again. The style hook is always registered, and it checks for a font on each new Activity.
+- **A font change needs a new process.** LINE's chat tab is Jetpack Compose
+  (`ChatTabComposeFragment`), and it keeps the font of the process. After a restart in a new task,
+  the bottom bar (XML views) showed the change. The chat list kept the old font, after an upload
+  and after a removal. androidx also caches the typeface of `@font/premium_font` in the
+  process. So upload, change and remove all close LINE (`finishAndRemoveTask` on each task, then
+  `System.exit`), and the user opens LINE again.
 - **The bar color.** The window under the bar is black, and LINE's Compose page draws its own
   color. The bar copies one pixel from the bottom edge of the page, so it follows LINE's theme.
   On the device, the bar matched the page with the Black theme in dark mode (`#111111`). It also
@@ -1829,7 +1906,7 @@ fonts back on a re-signed build too.
   (Iansui) drew Chinese chat names, previews and bubbles on the device.
 - A few labels keep the system font, for example the Chats/Friends switch and the search hint.
 - LINE's preview bubbles on the Font page keep their own fonts.
-- The labels of our buttons are in English. The restart dialog uses LINE's own strings.
+- The labels of our buttons are in English. The close dialog is in English too, apart from LINE's own Cancel label.
 
 ### Values that drift on a version bump
 

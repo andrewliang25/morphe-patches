@@ -43,3 +43,38 @@ internal object PremiumFacadeFingerprint : Fingerprint(
 internal object PremiumBackupFacadeFingerprint : Fingerprint(
     filters = listOf(string("InitialBackupRestore")),
 )
+
+/**
+ * `toString` of LINE's premium font configuration (`g45/c2` in 26.14.0, `ta5/f2` in 26.15.1), a
+ * Kotlin data class. Its last field, `isPremiumFontCmsPopupEnabled`, comes from the server setting
+ * `function.premium.common.font.cms_popup.enabled`. The Font page shows a server-made promo sheet
+ * for new fonts ("Change to new fonts…") only while it is true.
+ */
+internal object PremiumFontConfigToStringFingerprint : Fingerprint(
+    name = "toString",
+    returnType = "Ljava/lang/String;",
+    // One filter only: the two versions load the labels in a different order.
+    filters = listOf(string("PremiumFontConfiguration(isPremiumFontAvailable=")),
+)
+
+/**
+ * `toString` of the state of the Font page banner (`dr4/a$b$b` in 26.14.0, `px4/a$b$b` in 26.15.1).
+ * The banners are "A new font is available!" and the premium font banners. A banner shows only
+ * while its first field, `isVisible`, is true.
+ */
+internal object FontBannerStateToStringFingerprint : Fingerprint(
+    name = "toString",
+    returnType = "Ljava/lang/String;",
+    filters = listOf(string("SlimBannerState(isVisible=")),
+)
+
+/**
+ * `toString` of LINE's CMS popup configuration (`g45/u` in 26.14.0, `ta5/a0` in 26.15.1). Its one
+ * field comes from the server setting `function.premium.common.cms_popup`. While it is false, the
+ * CMS popup module (`com.linecorp.line.cms.popup`) fetches and shows no server-made promo popup.
+ */
+internal object CmsPopupConfigToStringFingerprint : Fingerprint(
+    name = "toString",
+    returnType = "Ljava/lang/String;",
+    filters = listOf(string("CmsPopupConfiguration(isCmsPopupEnabled=")),
+)

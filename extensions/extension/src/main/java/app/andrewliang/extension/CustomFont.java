@@ -4,7 +4,7 @@ import android.app.Activity;
 import android.app.Application;
 import android.content.ContentProvider;
 import android.content.Context;
-import android.content.Intent;
+import android.content.ContextWrapper;
 import android.content.SharedPreferences;
 import android.content.pm.ProviderInfo;
 import android.content.res.ColorStateList;
@@ -37,7 +37,8 @@ import java.io.FileNotFoundException;
  *
  * <ol>
  *   <li>LINE puts the style on each Activity only while a premium font is in use, so
- *       {@link #onProviderCreate} does the same while a custom font is set.
+ *       {@link #onProviderCreate} does the same on each Activity that opens while a custom font
+ *       is set.
  *   <li>androidx accepts a font provider only when the provider app is signed with a
  *       certificate in {@code @array/fonts_certs}. A re-signed LINE fails that check, so
  *       {@link #allowOwnProvider} accepts LINE's own provider.
@@ -45,7 +46,7 @@ import java.io.FileNotFoundException;
  * </ol>
  *
  * <p>{@link #wrapSettingsView} adds the buttons below LINE's Font page, and
- * {@link CustomFontActivity} picks or removes the file and restarts LINE.
+ * {@link CustomFontPicker} picks or removes the file and restarts LINE.
  *
  * <p>While the switch "Custom font" of "[General] Andrew's Patch Setting" is off, each method
  * here keeps LINE's own behavior. The font file stays, so the font comes back when the switch is
@@ -103,16 +104,16 @@ public final class CustomFont {
         Context context = provider.getContext();
         if (context == null) return;
         appContext = context.getApplicationContext();
-        if (!useFont()) return;
 
         int style = appContext.getResources().getIdentifier(
                 "premium_font", "style", appContext.getPackageName());
         if (style == 0) return;
-        // When a premium font is also in use, LINE puts the same style on each Activity again.
-        // Applying a style twice has the effect of applying it once.
+        // The check runs on each new Activity. So a font that the user picks or removes shows after
+        // a restart that only opens a new task. When a premium font is also in use, LINE puts the
+        // same style on each Activity again. Applying a style twice is the same as once.
         ((Application) appContext).registerActivityLifecycleCallbacks(new Application.ActivityLifecycleCallbacks() {
             @Override public void onActivityCreated(Activity activity, Bundle state) {
-                activity.setTheme(style);
+                if (useFont()) activity.setTheme(style);
             }
             @Override public void onActivityStarted(Activity activity) {}
             @Override public void onActivityResumed(Activity activity) {}
@@ -241,13 +242,13 @@ public final class CustomFont {
         row.setOrientation(LinearLayout.HORIZONTAL);
         if (hasFont) {
             Button remove = button(context, "Remove", false);
-            remove.setOnClickListener(v -> start(context, CustomFontActivity.ACTION_REMOVE));
+            remove.setOnClickListener(v -> start(context, CustomFontPicker.ACTION_REMOVE));
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(context, 48), 1f);
             params.setMarginEnd(dp(context, 8));
             row.addView(remove, params);
         }
         Button upload = button(context, hasFont ? "Change font" : "Upload font from device", true);
-        upload.setOnClickListener(v -> start(context, CustomFontActivity.ACTION_PICK));
+        upload.setOnClickListener(v -> start(context, CustomFontPicker.ACTION_PICK));
         row.addView(upload, new LinearLayout.LayoutParams(0, dp(context, 48), 1f));
         bar.addView(row);
         return bar;
@@ -270,7 +271,16 @@ public final class CustomFont {
     }
 
     private static void start(Context context, String action) {
-        context.startActivity(new Intent(context, CustomFontActivity.class).setAction(action));
+        Activity activity = activityOf(context);
+        if (activity != null) CustomFontPicker.start(activity, action);
+    }
+
+    private static Activity activityOf(Context context) {
+        while (context instanceof ContextWrapper) {
+            if (context instanceof Activity) return (Activity) context;
+            context = ((ContextWrapper) context).getBaseContext();
+        }
+        return null;
     }
 
     private static int dp(Context context, int value) {
