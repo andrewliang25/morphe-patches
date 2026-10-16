@@ -20,7 +20,7 @@ import com.android.tools.smali.dexlib2.iface.reference.TypeReference
 
 private const val SQLITE_DATABASE = "Landroid/database/sqlite/SQLiteDatabase;"
 private const val EXTENSION = "Lapp/andrewliang/extension/KeepUnsentMessages;"
-private const val INSERT_PLACEHOLDER = "insertPlaceholder(${SQLITE_DATABASE}J)V"
+private const val MARK_UNSENT = "markUnsent(${SQLITE_DATABASE}J)V"
 
 /** Highest register addressable by the 4-bit operands of `invoke-*` (35c) and `iget-*` (22c). */
 private const val MAX_NIBBLE_REGISTER = 15
@@ -28,8 +28,8 @@ private const val MAX_NIBBLE_REGISTER = 15
 @Suppress("unused")
 val keepUnsentMessagesPatch = bytecodePatch(
     name = "[Chat] Keep unsent messages",
-    description = "Keeps messages that others unsend in 1:1 and group chats, with a notice " +
-        "below each one. OpenChat is not covered.",
+    description = "Keeps messages that others unsend in 1:1 and group chats, with a red " +
+        "\"Unsent\" label next to the time. OpenChat is not covered.",
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_LINE)
@@ -47,10 +47,9 @@ val keepUnsentMessagesPatch = bytecodePatch(
     //     goto/16 :goto_c                      # yes -> skip it all, return the row unchanged
     //
     // Forcing the guard register non-zero always takes the "skip" branch, so the message survives
-    // intact — text, media, reactions, search-index entry. LINE never learns it was recalled, so we
-    // insert our own na8.c.UNSENT (dbValue 27) row just below it, which the stock renderer draws as
-    // "<name> unsent a message." with correct sender naming and localisation (INSERT in the
-    // extension).
+    // intact — text, media, reactions, search-index entry. LINE never learns it was recalled, so the
+    // extension marks the row, and addUnsentLabel shows a red "Unsent" label in the place of LINE's
+    // "Edited" label.
     //
     // The guard is located by instruction shape, not by name — na8.c and its g() drift — and the
     // SQLiteDatabase field read (la8.b3.b) likewise comes from the method's own bytecode.
@@ -136,7 +135,7 @@ val keepUnsentMessagesPatch = bytecodePatch(
         // v0-v15 only for iget-object (22c) and invoke-static (35c). Referencing v16+ there is
         // silently mis-assembled. On 26.11.0 these are v1/v6/v7, but the method is `.locals 29`,
         // so a future version could spill them. Fail loudly rather than keeping messages with no
-        // notice: an unmarked kept message is indistinguishable from one that was never unsent.
+        // label: an unmarked kept message is indistinguishable from one that was never unsent.
         val highestRegister = maxOf(
             guardRegister,
             databaseHolderRegister,
@@ -163,11 +162,13 @@ val keepUnsentMessagesPatch = bytecodePatch(
             """ + readLineSetting("keepUnsentMessages", "v$guardRegister") + """
                 if-eqz v$guardRegister, :stock
                 iget-object v$guardRegister, v$databaseHolderRegister, ${databaseField.definingClass}->${databaseField.name}:${databaseField.type}
-                invoke-static {v$guardRegister, v$messageIdRegister, v${messageIdRegister + 1}}, $EXTENSION->$INSERT_PLACEHOLDER
+                invoke-static {v$guardRegister, v$messageIdRegister, v${messageIdRegister + 1}}, $EXTENSION->$MARK_UNSENT
                 const/16 v$guardRegister, 0x1
             """,
             ExternalLabel("stock", method.getInstruction(guardIndex + 2)),
         )
         markLineSettingIncluded("keepUnsentMessages")
+
+        addUnsentLabel()
     }
 }
