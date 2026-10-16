@@ -10,7 +10,6 @@ import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
 import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.bytecodePatch
-import app.morphe.patcher.patch.resourcePatch
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
 import app.morphe.patcher.util.smali.ExternalLabel
 import com.android.tools.smali.dexlib2.Opcode
@@ -18,31 +17,8 @@ import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
-import org.w3c.dom.Element
 
 private const val EXTENSION_CLASS = "Lapp/andrewliang/extension/CustomFont;"
-private const val ACTIVITY_CLASS = "app.andrewliang.extension.CustomFontActivity"
-
-/**
- * Manifest half: declares the Activity that picks the font file. It runs in its own process, so
- * that it can end LINE's main process and start LINE again with the new font.
- */
-private val customFontManifestPatch = resourcePatch {
-    execute {
-        document("AndroidManifest.xml").use { document ->
-            val application = document.getElementsByTagName("application").item(0) as Element
-            application.appendChild(
-                document.createElement("activity").apply {
-                    setAttribute("android:name", ACTIVITY_CLASS)
-                    setAttribute("android:exported", "false")
-                    setAttribute("android:process", ":customfont")
-                    setAttribute("android:theme", "@android:style/Theme.Translucent.NoTitleBar")
-                    setAttribute("android:configChanges", "orientation|screenSize|screenLayout|keyboardHidden")
-                },
-            )
-        }
-    }
-}
 
 @Suppress("unused")
 val customFontPatch = bytecodePatch(
@@ -53,7 +29,7 @@ val customFontPatch = bytecodePatch(
 ) {
     compatibleWith(COMPATIBILITY_LINE)
 
-    dependsOn(customFontManifestPatch, lineSettingsExtensionPatch)
+    dependsOn(lineSettingsExtensionPatch)
 
     extendWith("extensions/extension.mpe")
 

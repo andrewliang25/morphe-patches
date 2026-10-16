@@ -9,6 +9,7 @@ import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
+import com.android.tools.smali.dexlib2.iface.reference.StringReference
 
 private const val LYP_MODULE_TYPE = "HomeTabLypRecommendation"
 
@@ -36,7 +37,7 @@ val hidePremiumPatch = bytecodePatch(
     // `D().d()` — the market-availability gate. Its 2nd invoke-virtual is that <config>.d() call,
     // giving the class + method to neuter with no drifting name hardcoded.
     //
-    // This patch has three levers. It resolves every fingerprint and every lookup BEFORE the first
+    // This patch has six levers. It resolves every fingerprint and every lookup BEFORE the first
     // addInstructions, because the patcher does not undo a partial execute. If a later lookup
     // throws, the Manager reports the patch as failed but the earlier lever still ships. The user
     // then gets a half-disabled premium. Nothing in the Manager shows this state, and nothing
@@ -124,6 +125,42 @@ val hidePremiumPatch = bytecodePatch(
         // last runs first, and the result is the same in every order.
         val homeState = resolveHomeState()
 
+        // Fourth lever: the promo sheet for new fonts on the Font page. Its text and image come
+        // from the server. The Font page view model shows it only while the configuration flag
+        // `isPremiumFontCmsPopupEnabled` is true. The flag is the last field of the data class, so
+        // it is the last `iget-boolean` of `toString`. 26.14.0 has one more field before it. The
+        // getter of the flag is the `()Z` method that reads that field.
+        val fontConfigToString = PremiumFontConfigToStringFingerprint.method
+        val hasCmsPopupLabel = fontConfigToString.implementation!!.instructions.any { instruction ->
+            ((instruction as? ReferenceInstruction)?.reference as? StringReference)?.string ==
+                ", isPremiumFontCmsPopupEnabled="
+        }
+        if (!hasCmsPopupLabel) throw PatchException("premium: the font configuration has no CMS popup flag")
+        val cmsPopupField = (fontConfigToString.implementation!!.instructions
+            .lastOrNull { it.opcode == Opcode.IGET_BOOLEAN }
+            ?.let { (it as ReferenceInstruction).reference as FieldReference }
+            ?: throw PatchException("premium: no boolean field in the font configuration toString"))
+        val cmsPopupGetter = mutableClassDefBy(fontConfigToString.definingClass).methods.single { method ->
+            method.returnType == "Z" && method.parameterTypes.isEmpty() &&
+                method.implementation?.instructions?.any { instruction ->
+                    instruction.opcode == Opcode.IGET_BOOLEAN &&
+                        ((instruction as ReferenceInstruction).reference as FieldReference).name == cmsPopupField.name
+                } == true
+        }
+
+        // Fifth lever: the Font page banners ("A new font is available!", premium fonts). Each
+        // one is a state object whose first constructor argument is `isVisible`.
+        val bannerConstructor = mutableClassDefBy(FontBannerStateToStringFingerprint.method.definingClass)
+            .methods.single { method ->
+                method.name == "<init>" && method.parameterTypes.firstOrNull() == "Z"
+            }
+
+        // Sixth lever: every server-made promo popup. The CMS popup module reads one flag before it
+        // fetches popups. The class has that one field, so its one `()Z` method is the getter. Today
+        // only the Font page shows CMS popups, and the fourth lever already stops that one.
+        val cmsPopupModuleGetter = mutableClassDefBy(CmsPopupConfigToStringFingerprint.method.definingClass)
+            .methods.single { method -> method.returnType == "Z" && method.parameterTypes.isEmpty() }
+
         // Every lookup is resolved. The patch mutates from this point.
         marketGate.addInstructions(
             0,
@@ -135,6 +172,26 @@ val hidePremiumPatch = bytecodePatch(
 
         // `.locals 0`, so p0 is the only register — and it is dead after the immediate return.
         backupGate.addInstructions(
+            0,
+            """
+                const/4 p0, 0x0
+                return p0
+            """,
+        )
+
+        // `.locals 0`: p0 is dead after the immediate return.
+        cmsPopupGetter.addInstructions(
+            0,
+            """
+                const/4 p0, 0x0
+                return p0
+            """,
+        )
+
+        // p1 is `isVisible`. The constructor stores it, and the other constructors call this one.
+        bannerConstructor.addInstructions(0, "const/4 p1, 0x0")
+
+        cmsPopupModuleGetter.addInstructions(
             0,
             """
                 const/4 p0, 0x0

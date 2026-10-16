@@ -10,7 +10,7 @@ and 26.15.1 (see `app/andrewliang/patches/shared/Constants.kt`). Companion to
 
 ## 26.15.1
 
-The three levers and the unsend patch work on both versions with the same anchors. The changes for
+The levers and the unsend patch work on both versions with the same anchors. The changes for
 26.15.1:
 
 - **Backup gate.** R8 renames `kotlin.Unit` in 26.15.1, so the `Lkotlin/Unit;` anchor is gone. The
@@ -304,6 +304,34 @@ The full Home module inventory (45 types) is in `line-patch-map.md`, section "Ho
 **Not confirmed on device.** This is a static finding: the type never appeared in the on-device Home
 module capture from a Taiwan account (8 modules, no `HomeTabLypRecommendation`). The module list is
 region-driven and server-driven, so this needs a tester whose account gets the upsell.
+
+### Fourth to sixth levers: the Font page promos
+
+The master lever does not reach the promos on the Font page (Settings ▸ Fonts). Two server-driven
+surfaces remain, and the patch removes both:
+
+- **The CMS promo sheet.** A bottom sheet, "Change to new fonts and…" with a "Go to Settings"
+  button. Its text and image come from LINE's server, so no code references the
+  `line_newfontsheet_*` strings. LINE's CMS popup module (`com.linecorp.line.cms.popup`,
+  `CmsPopupRepository`) fetches it, and the Font page view model shows it only while
+  `PremiumFontConfiguration.isPremiumFontCmsPopupEnabled` is true (server setting
+  `function.premium.common.font.cms_popup.enabled`). Today the Font page is the only screen that
+  shows CMS popups.
+  - **Fourth lever:** the getter of that flag returns false. The flag is the last field of the data
+    class, so it is the last `iget-boolean` of its `toString`. 26.14.0 has one more field, so
+    `g45/c2.c()` reads field `d` there, and `ta5/f2.c()` reads field `c` in 26.15.1.
+  - **Sixth lever:** `CmsPopupConfiguration.isCmsPopupEnabled` (server setting
+    `function.premium.common.cms_popup`, `g45/u` / `ta5/a0`) returns false. The CMS module reads it
+    before it fetches popups, so this also covers a screen that LINE adds later.
+- **The slim banners.** "A new font is available!" and the LINE Premium font banners are one state
+  class, `SlimBannerState` (`dr4/a$b$b` / `px4/a$b$b`). **Fifth lever:** its main constructor
+  stores `isVisible` as false (`const/4 p1, 0x0` at the start). So no banner of the Font page
+  shows. The Compose function of the banner (`nx4/o0` in 26.15.1) is the only reader of that field.
+
+Anchors are the `toString` texts `"PremiumFontConfiguration(isPremiumFontAvailable="`,
+`"CmsPopupConfiguration(isCmsPopupEnabled="` and `"SlimBannerState(isVisible="`. The two versions
+load the labels of `PremiumFontConfiguration` in a different order, so its fingerprint has one
+string filter, and the patch checks the CMS label in the method.
 
 ### Known survivors: premium unsend upsells (patch `[Premium] Hide premium unsend upsells`)
 
