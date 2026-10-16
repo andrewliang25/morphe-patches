@@ -1,3 +1,15 @@
+## [3.8.0](https://github.com/andrewliang25/morphe-patches/compare/v3.7.0...v3.8.0) (2026-10-16)
+
+### 🐛 Bug Fixes
+
+* **LINE - Custom font:** close LINE after each font change ([fb2d9b6](https://github.com/andrewliang25/morphe-patches/commit/fb2d9b6ba90cc9787f9b3b3932d72f746ac02110))
+* **LINE - Custom font:** stop the crash on Root Mount installs ([ce95a3d](https://github.com/andrewliang25/morphe-patches/commit/ce95a3dee38a92f7b5b86d088e65569d0d8d4ad3))
+* **LINE - Disable LINE Premium:** hide the promos on the Font page ([64a231e](https://github.com/andrewliang25/morphe-patches/commit/64a231e0ba3be83d9fd3ce91147a18acad3fec9e))
+
+### ✨ New Features
+
+* **LINE - Keep unsent messages:** show a red "Unsent" label next to the time ([60a877d](https://github.com/andrewliang25/morphe-patches/commit/60a877d52729d0bafeb8f7c87a7c61ace26a318e))
+
 ## [3.8.0-dev.2](https://github.com/andrewliang25/morphe-patches/compare/v3.8.0-dev.1...v3.8.0-dev.2) (2026-10-16)
 
 ### 🐛 Bug Fixes
