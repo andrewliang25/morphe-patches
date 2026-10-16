@@ -1,3 +1,9 @@
+## [3.8.0-dev.2](https://github.com/andrewliang25/morphe-patches/compare/v3.8.0-dev.1...v3.8.0-dev.2) (2026-10-16)
+
+### 🐛 Bug Fixes
+
+* **LINE - Custom font:** close LINE after each font change ([fb2d9b6](https://github.com/andrewliang25/morphe-patches/commit/fb2d9b6ba90cc9787f9b3b3932d72f746ac02110))
+
 ## [3.8.0-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v3.7.1-dev.1...v3.8.0-dev.1) (2026-10-16)
 
 ### ✨ New Features
