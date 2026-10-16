@@ -21,15 +21,15 @@ import java.io.InputStream;
 import java.io.OutputStream;
 
 /**
- * Picks or removes the custom font, then restarts LINE.
+ * Picks or removes the custom font, then closes LINE.
  *
  * <p>It is a hidden framework Fragment on LINE's own Activity, so it needs no entry in the
  * manifest. A Root Mount install keeps the manifest of the original app, so an Activity of the
  * patch does not exist there.
  *
- * <p>The restart is the one of the other "Restart LINE" rows: a new task in the same process. It
- * shows a new font while the process has not loaded a custom font yet. After that, Android keeps
- * the loaded font in the process, so a different file shows only after LINE closes and opens again.
+ * <p>A restart in a new task is not sufficient. LINE's Compose screens, for example the chat list,
+ * keep the font of the process, and Android keeps a loaded font file in the process. So a change
+ * shows on all screens only after LINE closes and the user opens it again.
  */
 @SuppressWarnings("deprecation")
 public final class CustomFontPicker extends Fragment {
@@ -66,7 +66,7 @@ public final class CustomFontPicker extends Fragment {
             //noinspection ResultOfMethodCallIgnored
             CustomFont.fontFile(activity).delete();
             CustomFont.setFontName(activity, null);
-            askRestart(activity);
+            askClose(activity);
             return;
         }
 
@@ -91,15 +91,12 @@ public final class CustomFontPicker extends Fragment {
             close();
             return;
         }
-        // Read before the save: whether this process already loaded a custom font file.
-        boolean loaded = CustomFont.fontLoaded();
         if (!save(activity, uri)) {
             Toast.makeText(activity, "LINE cannot use this file as a font.", Toast.LENGTH_LONG).show();
             close();
             return;
         }
-        if (loaded) askClose(activity);
-        else askRestart(activity);
+        askClose(activity);
     }
 
     private void close() {
@@ -151,22 +148,10 @@ public final class CustomFontPicker extends Fragment {
         return null;
     }
 
-    /** Asks with LINE's own words, so that the dialog is in the language of LINE. */
-    private void askRestart(Activity activity) {
-        dialog(activity)
-                .setMessage(lineString(activity, "line_fontsetting_popuptitle_restarttochange",
-                        "The app will restart when you apply a new font. Apply now?"))
-                .setNegativeButton(lineString(activity, "line_fontsetting_button_cancel", "Cancel"), null)
-                .setPositiveButton(lineString(activity, "line_fontsetting_button_restart", "Apply"),
-                        (d, which) -> LineSettingsScreen.restart(activity))
-                .setOnDismissListener(d -> close())
-                .show();
-    }
-
-    /** LINE has a custom font loaded, so the new file shows only after LINE opens again. */
+    /** A font change shows only after LINE opens again. See the class comment. */
     private void askClose(Activity activity) {
         dialog(activity)
-                .setMessage("LINE closes to use the new font. Open LINE again after it closes.")
+                .setMessage("LINE closes to apply the font change. Open LINE again after it closes.")
                 .setNegativeButton(lineString(activity, "line_fontsetting_button_cancel", "Cancel"), null)
                 .setPositiveButton("Close LINE", (d, which) -> exit(activity))
                 .setOnDismissListener(d -> close())
@@ -187,7 +172,7 @@ public final class CustomFontPicker extends Fragment {
     }
 
     /** Closes every task of LINE and ends the process. The user opens LINE again. */
-    private static void exit(Context context) {
+    static void exit(Context context) {
         ActivityManager manager = context.getSystemService(ActivityManager.class);
         if (manager != null) {
             for (ActivityManager.AppTask task : manager.getAppTasks()) task.finishAndRemoveTask();

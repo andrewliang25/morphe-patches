@@ -1774,7 +1774,7 @@ Device findings (Xiaomi, Android 16):
 | Hide LINE GIFT / Transfer button | `hidegift`, `hidetransfer` | entry of `yi1/h.j` and `yi1/j.j`, `p0` |
 | Hide attach menu extra tools | `hideattachmenutools` | entry of `yi1/d.f`, `p2` |
 | Hide tips under messages | `hidechattips` | `hideChatTips(Z)Z` after the `instance-of v3, sm1/g$b` in `rm1/u.invokeSuspend` |
-| Custom font | `customfont` | `customFont(Z)Z` after the sync `move v4, v12` in the Font list loader. The extension methods read `customFont()` themselves. Its "Restart LINE" row opens a new task, as the other rows do. |
+| Custom font | `customfont` | `customFont(Z)Z` after the sync `move v4, v12` in the Font list loader. The extension methods read `customFont()` themselves. Its "Close LINE" row ends the process, because a new task does not change LINE's Compose screens. |
 
 - A gate is one of two shapes. A branch gate is `invoke-static LineSettings-><x>()Z` +
   `move-result` + a branch to an `ExternalLabel` on an original instruction
@@ -1856,15 +1856,15 @@ check passes for Google's emoji font provider.
 | Font list loader (`er4/f.b`, `qx4/f.b`) | `"Default"` + `System.currentTimeMillis` + the flag shape | after LINE's `move v4, v12` ("sync"), a value gate sets `v4` to "no sync" while the switch is on |
 
 The extension is `CustomFont` (hooks and button bar) and `CustomFontPicker` (file picker and
-restart). `CustomFontPicker` is a hidden framework `Fragment` on LINE's own Activity, so the patch
+close). `CustomFontPicker` is a hidden framework `Fragment` on LINE's own Activity, so the patch
 adds nothing to the manifest. The file is in `files/andrewliang_custom_font`, and the shown name is in the
 preferences `andrewliang_custom_font`. `android.graphics.fonts.Font.Builder` checks the file
 before it replaces the font in use.
 
 The switch "Custom font" in "[General] Andrew's Patch Setting" controls all of it. While the
 switch is off, each extension method keeps LINE's behavior, the gate keeps LINE's sync, and the
-Font page has no buttons. On the device, off and then on again (each with the "Restart LINE" row)
-changed the font and the buttons, with no new upload. The font file stays on the device. The certificate bypass applies while
+Font page has no buttons. A change of the switch shows a "Close LINE" row, not "Restart LINE".
+See "A font change needs a new process" in "Device traps". The font file stays on the device. The certificate bypass applies while
 the switch is on, with or without a font file. So a LINE Premium user gets LINE's own downloaded
 fonts back on a re-signed build too.
 
@@ -1874,16 +1874,19 @@ fonts back on a re-signed build too.
   `base.apk` over the Play Store install. Android reads the manifest of the Play Store install, so
   an Activity that a patch adds does not exist there. The first version started its own
   `CustomFontActivity` and crashed with `ActivityNotFoundException`. Use no new manifest entry.
-- **The restart is a new task, with no exit.** On the Xiaomi test phones (HyperOS, Android 16), a
+- **A restart that ends the process fails.** On the Xiaomi test phones (HyperOS, Android 16), a
   restart that ends the process does not come back. Two forms were tried: LINE's own sequence
   (exit one second later), and Morphe's `Utils.restartApp` (exit at once, as on YouTube). Android
   attaches the new launcher Activity to the old process as a warm start. It then removes it when
   the process dies: `Force remove immediately ActivityRecord{… SplashActivity}
-  state=INITIALIZING`. A new task in the same process works, as the other "Restart LINE" rows do.
-  So the style hook is always registered, and it checks for a font on each new Activity.
-- **A loaded font stays loaded.** androidx caches the typeface of `@font/premium_font` in the
-  process. A first upload or a removal shows after a new task. To replace a font that the process
-  already served, the picker closes LINE (`finishAndRemoveTask` on each task, then
+  state=INITIALIZING`. A new task in the same process starts, as the other "Restart LINE" rows do,
+  but it does not change the Compose screens (next item). So the picker closes LINE and does not
+  open it again. The style hook is always registered, and it checks for a font on each new Activity.
+- **A font change needs a new process.** LINE's chat tab is Jetpack Compose
+  (`ChatTabComposeFragment`), and it keeps the font of the process. After a restart in a new task,
+  the bottom bar (XML views) showed the change. The chat list kept the old font, after an upload
+  and after a removal. androidx also caches the typeface of `@font/premium_font` in the
+  process. So upload, change and remove all close LINE (`finishAndRemoveTask` on each task, then
   `System.exit`), and the user opens LINE again.
 - **The bar color.** The window under the bar is black, and LINE's Compose page draws its own
   color. The bar copies one pixel from the bottom edge of the page, so it follows LINE's theme.
@@ -1903,7 +1906,7 @@ fonts back on a re-signed build too.
   (Iansui) drew Chinese chat names, previews and bubbles on the device.
 - A few labels keep the system font, for example the Chats/Friends switch and the search hint.
 - LINE's preview bubbles on the Font page keep their own fonts.
-- The labels of our buttons are in English. The restart dialog uses LINE's own strings.
+- The labels of our buttons are in English. The close dialog is in English too, apart from LINE's own Cancel label.
 
 ### Values that drift on a version bump
 

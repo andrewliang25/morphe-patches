@@ -201,13 +201,14 @@ final class LineSettingsScreen {
                         "VOOM links, shares and notifications do nothing.", null));
             }
             if (LineSettings.customFontIncluded()) {
-                View restart = row(activity, "Restart LINE", "Applies your font change now.", true);
-                restart.setVisibility(View.GONE);
-                restart.setOnClickListener(v -> restart(activity));
+                // A restart in a new task does not change the font of LINE's Compose screens.
+                View close = row(activity, "Close LINE", "Open LINE again to apply your font change.", true);
+                close.setVisibility(View.GONE);
+                close.setOnClickListener(v -> CustomFontPicker.exit(activity));
                 content.addView(toggle(activity, LineSettings.CUSTOM_FONT, "Custom font",
                         "Uses the font that you upload on LINE's Font page.",
-                        () -> restart.setVisibility(View.VISIBLE)));
-                content.addView(restart);
+                        () -> close.setVisibility(View.VISIBLE)));
+                content.addView(close);
             }
         }
 
