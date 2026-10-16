@@ -1,3 +1,9 @@
+## [3.8.0-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v3.7.1-dev.1...v3.8.0-dev.1) (2026-10-16)
+
+### ✨ New Features
+
+* **LINE - Keep unsent messages:** show a red "Unsent" label next to the time ([60a877d](https://github.com/andrewliang25/morphe-patches/commit/60a877d52729d0bafeb8f7c87a7c61ace26a318e))
+
 ## [3.7.1-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v3.7.0...v3.7.1-dev.1) (2026-10-16)
 
 ### 🐛 Bug Fixes

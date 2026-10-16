@@ -1,7 +1,7 @@
 {
-  "created_at": "2026-10-16T13:23:49",
-  "description": "## [3.7.1-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v3.7.0...v3.7.1-dev.1) (2026-10-16)\n\n### 🐛 Bug Fixes\n\n* **LINE - Custom font:** stop the crash on Root Mount installs ([ce95a3d](https://github.com/andrewliang25/morphe-patches/commit/ce95a3dee38a92f7b5b86d088e65569d0d8d4ad3))\n* **LINE - Disable LINE Premium:** hide the promos on the Font page ([64a231e](https://github.com/andrewliang25/morphe-patches/commit/64a231e0ba3be83d9fd3ce91147a18acad3fec9e))",
-  "download_url": "https://github.com/andrewliang25/morphe-patches/releases/download/v3.7.1-dev.1/patches-3.7.1-dev.1.mpp",
+  "created_at": "2026-10-16T14:31:28",
+  "description": "## [3.8.0-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v3.7.1-dev.1...v3.8.0-dev.1) (2026-10-16)\n\n### ✨ New Features\n\n* **LINE - Keep unsent messages:** show a red \"Unsent\" label next to the time ([60a877d](https://github.com/andrewliang25/morphe-patches/commit/60a877d52729d0bafeb8f7c87a7c61ace26a318e))",
+  "download_url": "https://github.com/andrewliang25/morphe-patches/releases/download/v3.8.0-dev.1/patches-3.8.0-dev.1.mpp",
   "signature_download_url": "",
-  "version": "3.7.1-dev.1"
+  "version": "3.8.0-dev.1"
 }
