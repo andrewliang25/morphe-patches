@@ -43,6 +43,7 @@ public final class LineSettings {
     static final String HIDE_TRANSFER = "hide_transfer";
     static final String HIDE_ATTACH_TOOLS = "hide_attach_tools";
     static final String HIDE_CHAT_TIPS = "hide_chat_tips";
+    static final String CUSTOM_FONT = "custom_font";
 
     /** The resource name of the row title. The settings patch adds it to strings.xml. */
     private static final String TITLE_RESOURCE = "andrew_patch_settings";
@@ -118,6 +119,10 @@ public final class LineSettings {
         return isOn(HIDE_CHAT_TIPS);
     }
 
+    public static boolean customFont() {
+        return isOn(CUSTOM_FONT);
+    }
+
     // The patches that clear a "shown" boolean in place call these: they give false while the
     // switch is on, and the value LINE computed while it is off.
 
@@ -135,6 +140,11 @@ public final class LineSettings {
 
     public static boolean hideChatTips(boolean shown) {
         return shown && !hideChatTips();
+    }
+
+    /** The Font page list syncs from LINE's server only while the custom font switch is off. */
+    public static boolean customFont(boolean sync) {
+        return sync && !customFont();
     }
 
     // The patches rewrite these methods to return true. Keep each one a plain "return false".
@@ -204,6 +214,10 @@ public final class LineSettings {
     }
 
     static boolean hideChatTipsIncluded() {
+        return false;
+    }
+
+    static boolean customFontIncluded() {
         return false;
     }
 

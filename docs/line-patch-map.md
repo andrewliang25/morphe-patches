@@ -589,6 +589,7 @@ starting point, so no one needs to sweep the APK again.
 | [Chat] Hide tips under messages | `line.hidechattips` | `rm1.u.invokeSuspend` — the "CHECK" tip under a bubble (see below) |
 | [General] Hide Agent i buttons | `line.hideagenti` | `wm2.j` Home header icon + `function.search.line_ai_entry.enabled` (see below) |
 | [Chat] Hide AI Friends button | `line.chatheaderbuttons` | `function.ai.character.display_button` (see below) |
+| [General] Custom font | `line.customfont` | LINE's premium font path: `PremiumFontProvider`, the androidx certificate check, the Font page (see below) |
 
 Each is an independent, `default = true`, user-facing `bytecodePatch` — one feature (or one
 feature's full set of entry points) per patch. Most are instruction-level edits. *Redirect LINE
@@ -1712,6 +1713,7 @@ Device findings (Xiaomi, Android 16):
 | Hide LINE GIFT / Transfer button | `hidegift`, `hidetransfer` | entry of `yi1/h.j` and `yi1/j.j`, `p0` |
 | Hide attach menu extra tools | `hideattachmenutools` | entry of `yi1/d.f`, `p2` |
 | Hide tips under messages | `hidechattips` | `hideChatTips(Z)Z` after the `instance-of v3, sm1/g$b` in `rm1/u.invokeSuspend` |
+| Custom font | `customfont` | `customFont(Z)Z` after the sync `move v4, v12` in the Font list loader. The extension methods read `customFont()` themselves. Its "Restart LINE" row starts `CustomFontActivity`, because a new task does not load a new font. |
 
 - A gate is one of two shapes. A branch gate is `invoke-static LineSettings-><x>()Z` +
   `move-result` + a branch to an `ExternalLabel` on an original instruction
@@ -1750,6 +1752,90 @@ Device findings (Xiaomi, Android 16):
    the result with `Dumpx` and `BranchSweep`.
 
 ---
+
+## Custom fonts & the "[General] Custom font" patch
+
+Issue #186 asked for fonts from the device. The patch adds buttons to LINE's own Font page
+(Settings ▸ Fonts) and serves the picked file through LINE's premium font path. It is
+`default = true`. Device-confirmed on a re-signed LINE 26.15.1. On 26.14.0, only apply and
+disassembly confirm it.
+
+### How LINE applies a premium font
+
+- The style `premium_font` sets `fontFamily` to `@font/premium_font`. That font is a downloadable
+  font: authority `jp.naver.line.android.premiumfont`, query `-1`, certificates
+  `@array/fonts_certs` (LINE's debug, 2011 and 2022 certificates).
+- `com.linecorp.line.premiumfont.provider.PremiumFontProvider` serves it. `query` gives one row
+  for weight 400 and one for weight 700. `openFile` gives the file of the selected font. If the
+  user selected no font, it throws `FileNotFoundException`.
+- An `ActivityLifecycleCallbacks` (`mq4.t` in 26.14.0, `yw4.s` in 26.15.1) calls
+  `setTheme(premium_font)` on each Activity. LINE registers it only while a premium font is in
+  use. The init task `"RegisterPremiumFontThemeApplierTask"` asks
+  `ResolvePremiumFontStatusUseCaseImpl` first. With "Default font", nothing requests the font.
+- A change of font restarts the app. Android keeps each loaded font in the process.
+
+### Why LINE's own fonts fail on a re-signed build
+
+androidx `FontProvider.getProvider` (`f7/e.b` in 26.14.0, `j7/e.b` in 26.15.1) compares the
+signing certificates of the provider app with the certificates of the request. A re-signed LINE
+matches none of `fonts_certs`, so `getProvider` returns `null`, and `query` and `openFile` never
+run. A device probe showed `getProvider -> null` on each request for the premium font. The same
+check passes for Google's emoji font provider.
+
+### What the patch does
+
+| Site | Anchor | Change |
+|---|---|---|
+| `PremiumFontProvider.onCreate` | class and method name (manifest, `ContentProvider`) | registers our own `setTheme(premium_font)` callback while a custom font is set |
+| androidx `FontProvider.getProvider` | string `"No package found for authority: "` | at the failed check, accepts a provider of LINE's own package. A provider of another package still fails |
+| `PremiumFontProvider.query` | class and method name | with a custom font, one row for weight 400, so Android makes the bold style from the font |
+| `PremiumFontProvider.openFile` | class and method name | with a custom font, returns that file before LINE's body runs |
+| `FontSettingFragment.onCreateView` | class name (settings navigation graph) | wraps LINE's `ComposeView` with our button bar |
+| Font list loader (`er4/f.b`, `qx4/f.b`) | `"Default"` + `System.currentTimeMillis` + the flag shape | after LINE's `move v4, v12` ("sync"), a value gate sets `v4` to "no sync" while the switch is on |
+
+The extension is `CustomFont` (hooks and button bar) and `CustomFontActivity` (file picker and
+restart). The file is in `files/andrewliang_custom_font`, and the shown name is in the
+preferences `andrewliang_custom_font`. `android.graphics.fonts.Font.Builder` checks the file
+before it replaces the font in use.
+
+The switch "Custom font" in "[General] Andrew's Patch Setting" controls all of it. While the
+switch is off, each extension method keeps LINE's behavior, the gate keeps LINE's sync, and the
+Font page has no buttons. On the device, off and then on again (each with the "Restart LINE" row)
+changed the font and the buttons, with no new upload. The font file stays on the device. The certificate bypass applies while
+the switch is on, with or without a font file. So a LINE Premium user gets LINE's own downloaded
+fonts back on a re-signed build too.
+
+### Device traps
+
+- **The restart.** LINE's own sequence closes the tasks, starts the splash screen and calls
+  `System.exit(0)` one second later. On the device, LINE started again in the old process, and the
+  exit then killed it. The picker Activity now runs in the process `:customfont`. It kills the
+  main process first, then starts LINE. A visible Activity can start another Activity, so no background-start rule applies.
+- **The bar color.** The window under the bar is black, and LINE's Compose page draws its own
+  color. The bar copies one pixel from the bottom edge of the page, so it follows LINE's theme.
+  On the device, the bar matched the page with the Black theme in dark mode (`#111111`). It also
+  matched with Black chosen by hand in light mode. There, LINE paints only its header black, and
+  the Compose page stays white (`#ffffff`).
+- **The Font page error.** On the test phone, the list sync failed for some hours with "A
+  temporary error occurred". Later the same day, with the switch off, it worked again. The loader (`er4/f.a`) turns each exception into the result `Network`. It and
+  the page loader (`ar4/u`) discard the exception, so the cause is not known. The sync is the
+  Thrift service `/EXT/talk/asset-meta-server/thrift/fontService` (`getAccessToken`,
+  `getFontMetas`). The patch skips the sync. The list then comes from the local database:
+  "Default font" on a new install, plus the fonts that an earlier sync stored.
+
+### Limits
+
+- Text in a script that the font does not have falls back to the system font. A CJK font
+  (Iansui) drew Chinese chat names, previews and bubbles on the device.
+- A few labels keep the system font, for example the Chats/Friends switch and the search hint.
+- LINE's preview bubbles on the Font page keep their own fonts.
+- The labels of our buttons are in English. The restart dialog uses LINE's own strings.
+
+### Values that drift on a version bump
+
+`mq4.t`/`yw4.s` (the callback that LINE registers), `f7/e`/`j7/e` (androidx `FontProvider`),
+`er4/f`/`qx4/f` (the list loader) and its registers `v4`, `v10`, `v12`. The patch finds each one
+by shape or by string, not by name.
 
 ## Watch list — surfaced in 26.14.0, not yet actionable
 
