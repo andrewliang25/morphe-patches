@@ -1,3 +1,9 @@
+## [3.7.0](https://github.com/andrewliang25/morphe-patches/compare/v3.6.0...v3.7.0) (2026-10-16)
+
+### ✨ New Features
+
+* **LINE:** add custom font upload to the Font page ([597701e](https://github.com/andrewliang25/morphe-patches/commit/597701e8619877c6cce40a232905a592738dad09)), closes [#186](https://github.com/andrewliang25/morphe-patches/issues/186)
+
 ## [3.7.0-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v3.6.0...v3.7.0-dev.1) (2026-10-15)
 
 ### ✨ New Features
