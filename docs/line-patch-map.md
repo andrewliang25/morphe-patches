@@ -716,6 +716,86 @@ LINE also has Pay web screens that the patch does not hook: `PayWebActivity` and
 
 ---
 
+## App-signature reads & the re-signing family (full inventory)
+
+A re-signed (Standard) install breaks any feature where LINE **reports its own signing certificate
+to a server that pinned LINE's official certificate**. This section inventories every place LINE
+26.15.1 reads its signer, so the full blast radius is visible in one pass. It records the
+biometric-link finding (issue #195) and the payment analysis (issues #96, #161).
+
+Scan: `getApkContentsSigners`, `PackageInfo.signatures`, `SigningInfo`, and the `android:apk-key-hash`
+literal across all `smali*` trees. Twenty sites read the signer. Four self-report it to a pinning
+server; the rest check Google, a third-party SDK, or a caller, or are Pay-native.
+
+### Sites that break on re-sign (self-report to a pinning server)
+
+| Site | Mechanism | Hash format | Status |
+|---|---|---|---|
+| `ct/c` → Firebase Installations (FIS) | `X-Android-Cert` header → FCM token | SHA-1 hex | **Fixed** — `fixpushnotifications` |
+| `pr/a` → Firebase Remote Config (`ConfigFetchHttpClient`, `fz/c`) | same `X-Android-Cert` header, shared Firebase helper | SHA-1 hex | Degrades quietly; non-critical; left intact |
+| `com/linecorp/ltsm/fido2/v.b` | WebAuthn `clientDataJSON` origin `android:apk-key-hash-sha256:…` → LINE FIDO server | SHA-256 base64 | **Issue #195** — biometric link; patch candidate, not shipped |
+| `com/linecorp/webauthn/util/Fido2Util` | a second WebAuthn stack (`com.linecorp.webauthn`; callers `PublicKeyCredential`, `Authenticator`), same origin | SHA-256 base64 | Same break; not yet reported; any FIDO fix must cover both stacks |
+
+### Sites that do NOT break on re-sign
+
+| Site | What it is | Why re-sign does not break it |
+|---|---|---|
+| `er/j`, `er/k` | GMS / Play availability bootstrap | reads Google's cert, not LINE's |
+| `zs/e` (`PhoneskyVerificationUtils`), `qv/a` (Google signature verifier), `cu/f5` (wearable) | bundled Google SDK verifiers | verify Google / Play certs, local |
+| `j7/e` | androidx `FontProvider` cert check | checks the font provider, not LINE |
+| `wv/f` | AndroidManifest / `versionCode` reader | not a certificate report |
+| `qy5/f0` | Samsung Smart Switch migration provider | verifies the caller's cert, local |
+| `u48/c` | LY shared-storage ContentProvider allowlist (`lysharedstorage_release`) | verifies calling apps, local |
+| `VosWrapperBase`, `com/vkey/android/cg` | VKey V-OS / V-Guard (LINE Pay) | native; Pay only; out of scope |
+| `fsecurity/model/Jws.signatures` | a JWS / JWT signature list | not the APK signing cert |
+
+### Issue #195 — biometric link fails with "server error"
+
+Settings ▸ Account ▸ Biometrics ▸ Link (生体情報 → 連携する) registers the device as a FIDO2 / WebAuthn
+authenticator for passwordless login. This is account security, not LINE Pay.
+`v.b(Context, type, challenge)` reads `getApkContentsSigners()[0]`, takes its SHA-256, and writes the
+origin `android:apk-key-hash-sha256:<base64>` into the WebAuthn `clientDataJSON`. On a re-signed build
+the hash is the user's certificate. The origin then matches no facet registered for the account, so the
+server refuses the registration — the "server error" in the report.
+
+- Same class as the FCM break: the origin is built inside LINE's own process, so a patch could
+  overwrite the signer hash with LINE's official certificate. Re-derive it as SHA-256 base64 — a
+  different encoding from the SHA-1 hex that `fixpushnotifications` injects.
+- Two risks before any patch. (1) Registration also runs through the native `nativeMakeCredential`;
+  a device probe must show that the server rejects on the origin, not on a native attestation.
+  (2) A FIDO credential can be reused by LINE Pay as step-up authentication, so this sits next to the
+  Pay line, not clearly on the safe side of it.
+- A Root Mount install keeps the original signature, so biometric link works there with no patch.
+  Chosen stance: treat it as another member of the re-signing family and point users to Root Mount,
+  the same as Google sign-in Path 1. Do not rush a patch.
+
+### Can a payment run inside a modified LINE app? (issues #96, #161)
+
+No, and the bundle does not try. Three layers:
+
+1. LINE's in-app Pay screen runs the native VKey V-OS / V-Guard check at Pay-flow start
+   (`getAppSignerHash()` in `libvosWrapperEx.so`, server policy BLOCK / WARN). A re-signed build
+   fails it — the root / jailbreak warning in issue #96. Native; not patchable in Java; out of scope.
+2. `[General] Redirect LINE Pay` (`line.disablepay`) does not try to pass the check. It closes LINE's
+   Pay screens and forwards to the standalone LINE Pay app, which keeps its original signature (see the
+   section above).
+3. A merchant checkout that must finish inside LINE (issue #161) therefore fails: the redirect closes
+   the screen, and the standalone app cannot always resume the web hand-off.
+
+So in-app payment on a re-signed build would need to defeat the native VKey engine. That is out of
+scope, and it is the regulated layer where a flagged account carries money.
+
+**Root Mount and the unmount route.** A Root Mount install overlays the patched APK over the genuine
+Play Store `base.apk`; the original is still on disk. A user can unmount the module, force-stop LINE
+(or reboot, per the mount), and launch the genuine app to pay. VKey checks the running process's signer
+at Pay-flow start, so the genuine process passes with nothing tampered. This is mechanically clean
+because the payment runs in the unmodified app, not in the mod. The residual unknown is at the account
+level: whether LINE's servers keep a device-risk signal from earlier tampered Pay attempts. This is
+untested by us. So it stays a thing a user can choose on their own device — not a README
+recommendation, and we still do not recommend Root Mount for Pay.
+
+---
+
 ## Message unsend (receive side) & the "[Chat] Keep unsent messages" patch
 
 ### How an incoming unsend reaches the database
