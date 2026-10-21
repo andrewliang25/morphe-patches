@@ -5,7 +5,7 @@ description: Drive the connected Android phone through adb to test a patch build
 
 # Device test
 
-Test a patch on the real phone yourself. The user connects and unlocks the phone; you do the rest.
+Test a patch on the real phone yourself, including opening the screens. The user connects and unlocks the phone; ask them only for what adb cannot do (login, biometric prompts, judging a look that a screenshot does not settle).
 `scripts/ui.py` drives the screen and `scripts/line-settings.sh` opens a LINE Settings row. Run
 `python3 -I scripts/ui.py` with no argument for its command list.
 
@@ -13,12 +13,12 @@ Test a patch on the real phone yourself. The user connects and unlocks the phone
 
 1. **Preflight.** Run `ui.py device`. Done when it exits 0. If it prints "No device" or "locked",
    ask the user to connect or unlock the phone, and wait for their reply.
-2. **Build the test APK** through `../patched-apps`, as in step 3 of the procedure in `CLAUDE.md`.
+2. **Build the test APK** through `../patched-apps`, as in step 3 of the procedure in `AGENTS.md`.
    - Wipe `patches/build/libs`, build, then copy the bundle to
      `../patched-apps/temp/andrewliang25-rv/patches-<version>-<tag>.mpp`.
    - Copy the newest `../patched-apps/*-test.toml`, and set `patches-version = "v<version>-<tag>"`,
      `version` (the LINE version on the phone, see step 3) and `included-patches`.
-   - Run the Docker build with `run_in_background`: it takes about 10 minutes.
+   - Run the Docker build in the background: it takes about 10 minutes.
    - Rename `build/line-andrew-v<ver>-arm64-v8a.apk` to a name for this test, so the next build
      does not overwrite it.
    Done when the build log shows `Applied: <patch>` for each patch under test.
@@ -27,7 +27,7 @@ Test a patch on the real phone yourself. The user connects and unlocks the phone
    older version fails with `INSTALL_FAILED_VERSION_DOWNGRADE`: build for the phone's version
    rather than uninstall, because an uninstall logs the user out. Done when adb prints `Success`.
 4. **Drive and observe.** Clear logcat (`adb logcat -c`), open the surface, act, and take
-   evidence: `ui.py shot <scratchpad>/<name>.png`, then Read the `-small` copy. Done when the
+   evidence: `ui.py shot <tmp dir>/<name>.png`, then view the `-small` copy. Done when the
    screen shows the expected change and `adb logcat -d | grep -E "FATAL|VerifyError"` is empty.
 5. **Restore the phone.** Put back each setting you changed (theme, dark mode, a patch switch),
    and tell the user which test files you left on the phone. Done when the phone is as the user
@@ -53,7 +53,7 @@ Test a patch on the real phone yourself. The user connects and unlocks the phone
 - A command that starts while the phone is away waits (`- waiting for device -`) and runs later,
   on whatever build is installed then. After a reconnect, run `ui.py device` and install again
   before you trust a result.
-- macOS has no `timeout` command. Give the Bash tool a timeout instead.
+- macOS has no `timeout` command. Set a timeout on the shell call instead.
 - A locked phone needs the user: `wm dismiss-keyguard` and swipes do not pass a PIN or an
   always-on display.
 

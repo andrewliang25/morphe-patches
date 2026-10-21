@@ -5,19 +5,19 @@ description: Build the bundle, apply patches to every pinned version of their ap
 
 # Verify a patch
 
-`scripts/verify.sh "<patch name>"` does the whole check that CLAUDE.md asks for after an edit
+`scripts/verify.sh "<patch name>"` does the whole check that AGENTS.md asks for after an edit
 ("Always verify by APPLYING", the BranchSweep note). It takes 1 to 3 minutes per app version.
 `--app NAME` selects `COMPATIBILITY_<NAME>` in `Constants.kt` (default `LINE`). `--help` lists
 every option.
 
 ```bash
-.claude/skills/verify-patch/scripts/verify.sh "[General] Custom font"            # build + both LINE versions
-.claude/skills/verify-patch/scripts/verify.sh --no-build -v 26.15.1 "<a>" "<b>"  # one version, two patches
-.claude/skills/verify-patch/scripts/verify.sh --all --no-diff                     # every LINE patch, fast
-.claude/skills/verify-patch/scripts/verify.sh --app facebook "[Reels] Picture-in-picture"
+.agents/skills/verify-patch/scripts/verify.sh "[General] Custom font"            # build + both LINE versions
+.agents/skills/verify-patch/scripts/verify.sh --no-build -v 26.15.1 "<a>" "<b>"  # one version, two patches
+.agents/skills/verify-patch/scripts/verify.sh --all --no-diff                     # every LINE patch, fast
+.agents/skills/verify-patch/scripts/verify.sh --app facebook "[Reels] Picture-in-picture"
 ```
 
-Run it with `run_in_background` when it covers both versions or `--all`.
+Run it in the background when it covers both versions or `--all`.
 
 ## Steps
 
@@ -33,7 +33,7 @@ Run it with `run_in_background` when it covers both versions or `--all`.
      a `methodOrNull` site that skipped with no error.
 3. **Read the diff** in `work/verify/<version>/diff.txt` for each changed method. Done when each
    `+` and `-` line is an edit that you meant, on both versions, and the registers in it are free
-   at that point.
+   at that point. For an injected block, read the whole block in order, not a grep for the lines you expect. Look for a non-void `invoke-*` with no `move-result*` after it. The sweep cannot see register types.
 
 ## Reference
 
