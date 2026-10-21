@@ -20,8 +20,8 @@ notes for your app at the end of this file before step 1.
    when the file is there and you know its minSdk.
 2. **Decompile.** Unzip `base.apk` to `work/apkm-extract-<app>-<new>/`, then `apktool d` to
    `work/decompiled-<app>-<new>/apktool` and `jadx -q --no-res -j 8` to
-   `work/decompiled-<app>-<new>/jadx` (jadx takes about 10 minutes, so run it with
-   `run_in_background`). LINE keeps its older name, `work/decompiled-line-<v>/`. Done when both
+   `work/decompiled-<app>-<new>/jadx` (jadx takes about 10 minutes, so run it in
+   the background). LINE keeps its older name, `work/decompiled-line-<v>/`. Done when both
    folders exist.
 3. **First apply.** On a `bump/<app>-<new>` branch off `dev`:
    `verify.sh --app <APP> --all --force --continue --no-diff -v <new>`. Done when you have the list
@@ -29,7 +29,7 @@ notes for your app at the end of this file before step 1.
 4. **Re-anchor each failure,** one family of patches at a time, with a `verify.sh` run per family.
    Map each old anchor to the new class through a name that R8 keeps: a string literal, an enum
    constant name, a resource name, a Kotlin `toString` text, or the method shape. Read the
-   CLAUDE.md notes "When obfuscation eats your anchor" and "Never blind find/replace a descriptor
+   AGENTS.md notes "When obfuscation eats your anchor" and "Never blind find/replace a descriptor
    map" first. A peer project that already supports the version (see the app notes) can name the
    drifted sites, but check each one in the decompile. Done when
    `verify.sh --app <APP> --all --force` applies every patch on every version, with 0 failed.
@@ -56,7 +56,7 @@ notes for your app at the end of this file before step 1.
 9. **Update the docs** of the app (see the app notes): a "What changed in <new>" section with the
    new names, the traps and the method count, and the new descriptor names in the sections of the
    patches that moved. Done when no doc names a class that does not exist in a supported version.
-10. **Commit, push, PR** as in step 6 of the procedure in CLAUDE.md, with these differences: put
+10. **Commit, push, PR** as in step 6 of the procedure in AGENTS.md, with these differences: put
    the code in one `bump(<App>): add support for <App> <new>` commit (`bump:` files under
    "Updated App Support"), and the docs in separate `docs:` commits. If a version is dropped, that
    is a breaking change: ask the user first. Merge the PR as a plain merge, not a squash.
@@ -81,7 +81,7 @@ notes for your app at the end of this file before step 1.
 - Shared helpers already absorb drift: `shared/ResourceIds.kt`, `line/shared/HomeState.kt`,
   `line/shared/AttachTile.kt`. Prefer them to a new anchor.
 - Step 6 finds the two signer SHA-1s of "[Fix] Restore push notifications". `base.apk` uses
-  key rotation: CLAUDE.md ("Which cert") says which of the two certificates the patch uses.
+  key rotation: AGENTS.md ("Which cert") says which of the two certificates the patch uses.
 - Docs: `docs/line-patch-map.md` and `docs/line-premium-map.md`. Past bumps: 26.14.0 (16 patches
   broke), 26.15.1 (18 of 30).
 
