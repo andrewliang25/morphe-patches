@@ -54,7 +54,8 @@ Run it in the background when it covers both versions or `--all`.
 - That the code runs. Only a device run shows that (the `device-test` skill), and a probe shows
   which path runs (the `probe` skill).
 - That the register types are right at run time. A `check-cast` or a `(Z)Z` call on an `int`
-  register passes the verifier here and can still fail on the device. Read each injected block
+  register passes the verifier here and can still fail on the device (`ClassCastException` when a
+  Kotlin default-argument constructor stores a different type in the field). Read each injected block
   whole, with its neighbours.
 
 ### Files and inputs
@@ -66,3 +67,8 @@ Run it in the background when it covers both versions or `--all`.
   `sweep.txt`. The original dex files are cached in `work/verify/.orig/`.
 - The patch CLI is `work/morphe-desktop-*-all.jar` (the `-all.jar` of MorpheApp/morphe-desktop).
   The build runs on JBR 21, and the Java tools run on the default `java` (17 or newer).
+- **A verification tool that ignores an argument will verify the wrong file.** `work/Fb.java` takes
+  its dex directory from the **`FBDEX` environment variable**. It accepts `--dex <dir>` and ignores
+  it, falling back to the unpatched `work/fb-extract/dex`. Export `FBDEX` before every post-apply
+  dump and make sure that the dump names the expected dex. `Fb dump` also omits `invoke` operand
+  registers, so check separately that an injected call takes the register that `return` reads.
