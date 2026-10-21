@@ -10,7 +10,7 @@ private const val MEDIA_DOWNLOAD = "Lapp/andrewliang/extension/MediaDownload;"
 /** The option "Save as H.264". The story patch and the reel patch each declare their own. */
 internal fun PatchBuilder<*>.saveAsH264Option() = booleanOption(
     key = "saveAsH264",
-    default = false,
+    default = true,
     title = "Save as H.264",
     description = "Saves videos as H.264 with AAC sound, so that apps such as WhatsApp can send " +
         "them. The device converts a video in another format. This makes the save slower " +
