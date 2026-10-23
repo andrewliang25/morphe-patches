@@ -86,11 +86,11 @@ A re-signed (Standard) APK breaks wherever LINE or Google checks the signing cer
 
 | Surface | Who reads the cert | Status |
 |---|---|---|
-| Closed-app push notifications (FCM `BAD CONFIG`) | LINE's own process (`X-Android-Cert` header in `ct/c`) | **Fixed**: `fixpushnotifications` writes LINE's official SHA-1 |
+| Closed-app push notifications (FCM `BAD CONFIG`) & Remote Config | LINE's own process (`X-Android-Cert` header in `ct/c`, `ConfigFetchHttpClient`, `remoteconfig.internal.d.i`) | **Fixed**: `fixpushnotifications` writes LINE's official SHA-1 |
 | Location maps (8 layouts draw as empty grids) | Play Services process (`ApiTokenService`) | **Worked around**: `restorelocationmaps` redirects `fo/p.b` to MicroG-RE 7.0.0+ (real Play Services must stay installed) |
 | Google account sign-in / link (Path 1: `CredentialManager`) | System `CredentialManager` → Play Services `GoogleIdService` | **Not patchable**: Root Mount only (also in `README.md` "Known limitation"; update both together) |
 | Google Drive chat backup (Path 2: `GoogleAuthUtil`) | LINE's hardcoded `setPackage` / `ComponentName` binds | **Fixed**: `gmscoreauth` redirects 5 auth sites to MicroG-RE |
-| Biometric FIDO2 link (issue #195) | LINE's WebAuthn `android:apk-key-hash-sha256` origin | Unpatched: use Root Mount |
+| Biometric FIDO2 link (issue #195) | LINE's WebAuthn `android:apk-key-hash-sha256` origin (`fido2.v.b`, `Fido2Util`) | **Fixed** (off by default): `fixbiometriclogin` writes LINE's official SHA-256 |
 
 Read "App-signature reads & the re-signing family", "Google account access" and "Location maps" in `docs/line-patch-map.md` before touching any of these. Do not re-derive them.
 
