@@ -1,3 +1,14 @@
+## [3.9.0](https://github.com/andrewliang25/morphe-patches/compare/v3.8.0...v3.9.0) (2026-10-23)
+
+### ✨ New Features
+
+* **Facebook:** enable the "Save as H.264" download option by default ([7cfef68](https://github.com/andrewliang25/morphe-patches/commit/7cfef68fa9b058a00a74be5d8a1769814ffb7762))
+* **LINE:** add Restore biometric login patch and cover Remote Config in Restore push notifications ([02b1485](https://github.com/andrewliang25/morphe-patches/commit/02b1485db65c0baf04595c76044dafeac38d79b5))
+
+### 🚀 Updated App Support
+
+* **LINE:** add support for LINE 26.16.0 ([b2e3597](https://github.com/andrewliang25/morphe-patches/commit/b2e359785d05c8331fc1974e522b63708bb8b2b0))
+
 ## [3.9.0-dev.2](https://github.com/andrewliang25/morphe-patches/compare/v3.9.0-dev.1...v3.9.0-dev.2) (2026-10-23)
 
 ### 🚀 Updated App Support
