@@ -1031,7 +1031,7 @@ WhatsApp refuses a saved reel ("Can't send this video"). Each such file was 1080
 xHE-AAC sound (`mp4a.40.42`). The single files that WhatsApp accepts are H.264 with HE-AAC. So
 both tracks differ, and the option converts both.
 
-Both download patches have the option `saveAsH264` (off by default). Each patch makes its own
+Both download patches have the option `saveAsH264` (on by default). Each patch makes its own
 flag in `MediaDownload` return true (`storiesAsH264`, `reelsAsH264`). When the flag is on:
 
 - Each video track that is not H.264 is encoded again as H.264.
