@@ -200,10 +200,37 @@ val andrewPatchSettingPatch = bytecodePatch(
             throw PatchException("The tap destination needs a register above v15")
         }
 
-        // The click handler is an extension class. It gets LINE's two function interfaces here.
-        mutableClassDefBy(CLICK).interfaces.apply {
+        // The click handler is an extension class. Add the two function interfaces of LINE and a
+        // forwarding method for the three-argument interface, because R8 renames that method.
+        val function3Method = classDefBy(function3).methods.single().name
+        val clickClass = mutableClassDefBy(CLICK)
+        clickClass.interfaces.apply {
             add(function1)
             add(function3)
+        }
+        if (clickClass.methods.none { it.name == function3Method && it.parameterTypes.size == 3 }) {
+            val objectParam = ImmutableMethodParameter("Ljava/lang/Object;", null, null)
+            val bridge = MutableMethod(
+                ImmutableMethod(
+                    CLICK,
+                    function3Method,
+                    listOf(objectParam, objectParam, objectParam),
+                    "Ljava/lang/Object;",
+                    AccessFlags.PUBLIC.value,
+                    null,
+                    null,
+                    MutableMethodImplementation(4),
+                ),
+            )
+            bridge.addInstructions(
+                0,
+                """
+                    invoke-virtual {p0, p1, p2, p3}, $CLICK->invoke(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
+                    move-result-object p0
+                    return-object p0
+                """,
+            )
+            clickClass.methods.add(bridge)
         }
 
         val rowsClass = builder.definingClass

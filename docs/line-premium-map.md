@@ -1,37 +1,38 @@
 # LINE premium (LYP) gating map & findings
 
 Reference notes on how **LINE Yahoo Premium (LYP)** feature-gating works in LINE
-(`jp.naver.line.android`), distilled from decompiling **LINE 26.14.0**. The bundle supports 26.14.0
-and 26.15.1 (see `app/andrewliang/patches/shared/Constants.kt`). Companion to
+(`jp.naver.line.android`), distilled from decompiling **LINE 26.14.0**. The bundle supports 26.14.0,
+26.15.1 and 26.16.0 (see `app/andrewliang/patches/shared/Constants.kt`). Companion to
 `docs/line-patch-map.md`.
 
 > The obfuscated descriptors in this file are from 26.14.0, unless a note gives another version.
 > Device-confirmation notes record the version each behaviour was *tested* on.
 
-## 26.15.1
+## 26.15.1 and 26.16.0
 
-The levers and the unsend patch work on both versions with the same anchors. The changes for
-26.15.1:
+The levers and the unsend patch work on all three versions with the same anchors. The changes for
+26.15.1 and 26.16.0:
 
 - **Backup gate.** R8 renames `kotlin.Unit` in 26.15.1, so the `Lkotlin/Unit;` anchor is gone. The
   patch finds the backup facade by the string `"InitialBackupRestore"`, which only one method holds.
   It selects the gate by shape: the one `()Z` method that opens with `iget-object` and then calls
-  `invoke()Ljava/lang/Object;` with `invoke-virtual`. In 26.15.1 the gate is `gq4.g0.u0()`.
+  `invoke()Ljava/lang/Object;` with `invoke-virtual`. The gate is `gq4.g0.u0()` in 26.15.1 and
+  `iq4.g0.k()` in 26.16.0.
 - **The crash site still exists.** The view holder without a null guard moved from `r55/c3` to
   `ec5/r3`. Thus the backup gate must still flip together with the market gate.
 - **Home lever.** The Home state class is found from its `PageData(modules=` text
-  (`line/shared/HomeState.kt`). It is `kh2.h$a` in 26.15.1.
+  (`line/shared/HomeState.kt`). It is `kh2.h$a` in 26.15.1 and `eh2.g$a` in 26.16.0.
 - **Unsend age gate.** The patch finds the gate by shape: an `iget`, a `goto`, a second `iget`, then
   the `PREMIUM_UNSEND_MESSAGE` constant. It replaces the first read with the second one, the free
-  window. In the patched 26.15.1 dex, both reads are `jd1.a.o`.
+  window. Both reads are `jd1.a.o` in 26.15.1 and `xc1.a.o` in 26.16.0.
 - **Promo link.** The patch finds the gate call as the `invoke-static` whose return type has a
   `SUPPORTED_CHAT` field.
 - **Scroll preview** (`function.premium.common.scroll_preview`, evaluator `d52.f`) is live in
   26.15.1. It is not known whether the market gate hides its upsell. See the 26.15.1 watch list in
   `docs/line-patch-map.md`.
 
-Device test on 26.15.1 (2026-10-14): Settings ▸ Chats opens, and the unsend dialog shows no Premium
-promo.
+Device tests on 26.15.1 (2026-10-14) and 26.16.0 (2026-10-23): Settings ▸ Chats opens, and the
+unsend dialog shows no Premium promo.
 
 > ⚠️ **Obfuscation drift.** Names like `z73.k`, `x73.b`, `q83.i/k/n/b/q` are R8-obfuscated and
 > **change between LINE versions**. Re-confirm every descriptor on a version bump. Prefer anchors
