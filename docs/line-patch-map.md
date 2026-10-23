@@ -1,8 +1,8 @@
 # LINE patch map & findings
 
 Reference notes for authoring LINE (`jp.naver.line.android`) patches, distilled from decompiling
-**LINE 26.14.0**. The bundle supports **26.14.0 and 26.15.1** (see
-`app/andrewliang/patches/shared/Constants.kt` and "Two supported versions" below).
+**LINE 26.14.0**. The bundle supports **26.14.0, 26.15.1 and 26.16.0** (see
+`app/andrewliang/patches/shared/Constants.kt` and "Supported versions" below).
 
 > The obfuscated descriptors in this file are from 26.14.0, unless a note gives another version.
 > Device-confirmation notes record the version each behaviour was *tested* on.
@@ -15,11 +15,11 @@ Reference notes for authoring LINE (`jp.naver.line.android`) patches, distilled 
 
 ---
 
-## Two supported versions (26.14.0 and 26.15.1)
+## Supported versions (26.14.0, 26.15.1 and 26.16.0)
 
-26.15.1 needs Android 12L (API 32). 26.14.0 needs Android 11 (API 30). Thus the bundle keeps
-26.14.0 for devices on Android 11 and 12. Each fingerprint must match both versions, so no patch
-has a table of names per version. Each anchor is a name that R8 keeps:
+26.15.1 needs Android 12L (API 32). 26.14.0 and 26.16.0 need Android 11 (API 30). The bundle keeps
+all three versions. Each fingerprint must match every version, so no patch has a table of names per
+version. Each anchor is a name that R8 keeps:
 
 - String literals, Kotlin `toString` text and Thrift operation names.
 - Kotlin enum-constant names, read with `sget-object`.
@@ -48,6 +48,15 @@ All 18 failures were R8 drift:
 - **Code moved.** In 26.15.1 the two banner lambdas of *[Ad] Remove banner ads* are cases of one
   `packed-switch`. A `return` at the start of the method would also break the other cases. The patch
   returns right after each operation-name string instead.
+
+### What changed in 26.16.0
+
+All 32 patches applied on the first run. Each version changes 80 LINE methods across 71 classes.
+R8 renamed packages again, for example `go1` to `un1` (attach menu), `kh2.h$a` to `eh2.g$a` (Home
+state), `ad8.g` to `mg8.d` (bottom tabs), and `xg5.h2` to `eh5.t2` (Settings rows). R8 also renamed
+the 3-argument `Function3` method on `nt8.q` to `k`. The settings patch now reads the `Function3`
+method name from the interface class at patch time and adds a forwarding method to
+`LineSettingsClick`. The 13 bottom-tab constants and 48 Home module types did not change.
 
 ### Shared helpers
 
@@ -144,6 +153,12 @@ true:
 type is in the item's allowed set **AND** `j(Lxk1/b;)Z` (per-type availability) **AND** `k(...)`
 **AND** `l(...)` all pass. So **forcing `j()` false hides a static tile**. Forcing `f()` false hides
 whatever class owns that `f()`.
+
+**General rule for hiding a LINE UI list item:** LINE lists (attach-menu tiles, chat-menu rows,
+context-menu actions) render each entry through a per-item availability predicate — force *that*
+false rather than editing the often-shared list builder. For a whole server-driven category, neuter
+the shared renderer's gate (`hideattachmenutools` → `yi1.d.f()`); hiding **one** server item
+requires an id that drifts server-side, so avoid it.
 
 ### Static tiles (LINE 26.14.0)
 
@@ -731,10 +746,10 @@ server; the rest check Google, a third-party SDK, or a caller, or are Pay-native
 
 | Site | Mechanism | Hash format | Status |
 |---|---|---|---|
-| `ct/c` → Firebase Installations (FIS) | `X-Android-Cert` header → FCM token | SHA-1 hex | **Fixed** — `fixpushnotifications` |
-| `pr/a` → Firebase Remote Config (`ConfigFetchHttpClient`, `fz/c`) | same `X-Android-Cert` header, shared Firebase helper | SHA-1 hex | Degrades quietly; non-critical; left intact |
-| `com/linecorp/ltsm/fido2/v.b` | WebAuthn `clientDataJSON` origin `android:apk-key-hash-sha256:…` → LINE FIDO server | SHA-256 base64 | **Issue #195** — biometric link; patch candidate, not shipped |
-| `com/linecorp/webauthn/util/Fido2Util` | a second WebAuthn stack (`com.linecorp.webauthn`; callers `PublicKeyCredential`, `Authenticator`), same origin | SHA-256 base64 | Same break; not yet reported; any FIDO fix must cover both stacks |
+| `ct/c` → Firebase Installations (FIS) | `X-Android-Cert` header → FCM token | SHA-1 hex | Fixed (`fixpushnotifications`) |
+| `pr/a` → Firebase Remote Config (`ConfigFetchHttpClient.fetch`, `remoteconfig.internal.d.i`) | same `X-Android-Cert` header, shared Firebase helper | SHA-1 hex | Fixed (`fixpushnotifications`) |
+| `com/linecorp/ltsm/fido2/v.b` | WebAuthn `clientDataJSON` origin `android:apk-key-hash-sha256:…` → LINE FIDO server | SHA-256 base64 | Fixed (`fixbiometriclogin`, off by default, issue #195) |
+| `com/linecorp/webauthn/util/Fido2Util` | a second WebAuthn stack (`com.linecorp.webauthn`, callers `PublicKeyCredential`, `Authenticator`), same origin | SHA-256 base64 | Fixed (`fixbiometriclogin`, off by default) |
 
 ### Sites that do NOT break on re-sign
 
@@ -749,25 +764,50 @@ server; the rest check Google, a third-party SDK, or a caller, or are Pay-native
 | `VosWrapperBase`, `com/vkey/android/cg` | VKey V-OS / V-Guard (LINE Pay) | native; Pay only; out of scope |
 | `fsecurity/model/Jws.signatures` | a JWS / JWT signature list | not the APK signing cert |
 
-### Issue #195 — biometric link fails with "server error"
+### LINE's integrity checks — what enforces and what is telemetry
 
-Settings ▸ Account ▸ Biometrics ▸ Link (生体情報 → 連携する) registers the device as a FIDO2 / WebAuthn
-authenticator for passwordless login. This is account security, not LINE Pay.
-`v.b(Context, type, challenge)` reads `getApkContentsSigners()[0]`, takes its SHA-256, and writes the
-origin `android:apk-key-hash-sha256:<base64>` into the WebAuthn `clientDataJSON`. On a re-signed build
-the hash is the user's certificate. The origin then matches no facet registered for the account, so the
-server refuses the registration — the "server error" in the report.
+From decompiling LINE 26.14.0 (detail in `work/decompiled-line-<ver>/NOTES-integrity-checks.md`, gitignored):
 
-- Same class as the FCM break: the origin is built inside LINE's own process, so a patch could
-  overwrite the signer hash with LINE's official certificate. Re-derive it as SHA-256 base64 — a
-  different encoding from the SHA-1 hex that `fixpushnotifications` injects.
-- Two risks before any patch. (1) Registration also runs through the native `nativeMakeCredential`;
-  a device probe must show that the server rejects on the origin, not on a native attestation.
-  (2) A FIDO credential can be reused by LINE Pay as step-up authentication, so this sits next to the
-  Pay line, not clearly on the safe side of it.
-- A Root Mount install keeps the original signature, so biometric link works there with no patch.
-  Chosen stance: treat it as another member of the re-signing family and point users to Root Mount,
-  the same as Google sign-in Path 1. Do not rush a patch.
+- The **core messenger has no enforcing** signature/integrity check — a re-signed patched APK runs fine for login, chat and general features.
+- Every root/debugger/emulator/signature check in the general app is **telemetry only** (Firebase Crashlytics, obfuscated `es` package; Sentry `io.sentry.android.core`) — no `exit`/`finish`/`throw`.
+- **No Play Integrity / SafetyNet** is bundled. The `attest` code is LINE's own *server-side* WebAuthn/FIDO2 plus a fire-and-forget "DeviceAttestation" WorkManager job that always returns success.
+- **Enforcement is confined to LINE Pay**, via the bundled native **VKey V-OS / V-Guard** engine (`libvosWrapperEx.so`; `VosWrapperBase.getAppSignerHash()` → native SHA-256 signer compare), which initializes only on entering Pay flows. Block/Warn/Bypass per threat is **server-driven** (`TamperSettingsGetResDto`); on block, `VGuardDetectionActivity` ends the Pay flow without killing the app.
+- **Implication:** messaging patches are safe on a re-signed build. Defeating LINE Pay would mean neutralizing the VKey native library (out of scope). LINE obfuscates class and method names *including* `org.apache.thrift`'s, so a seemingly-stable framework type is not a safe anchor.
+
+### Push notifications while closed & the "[Fix] Restore push notifications" patch
+
+Re-signing (Standard install) breaks push while the app is *fully closed*. Unlike Google sign-in Path 1, this **is** fixable in-APK — `patches/line/fixpushnotifications/`, device-confirmed on a re-signed LINE 26.11.0, descriptors re-anchored for 26.14.0.
+
+- **Symptom:** notifies while open or backgrounded (LINE's persistent **LEGY** socket) but not when swiped from Recents; reopening flushes the queue. Closed, LINE's only wakeup path is **FCM**.
+- **Root cause:** LINE's bundled Firebase Installations (FIS) SDK self-reports the signing-cert SHA-1 in the `X-Android-Cert` header (`ct.c.c(URL,String)` → `rl.a.a` = `getPackageInfo(pkg, GET_SIGNATURES)` → SHA-1 of `signatures[0]` → uppercase hex in `rl.h.b`). LINE's embedded Firebase API key is restricted to LINE's official cert SHA-1, so a re-signed APK is rejected. Evidence: `/data/data/jp.naver.line.android/no_backup/PersistedInstallation.*.json` = `"Status":4` (REGISTER_ERROR) + `"FisError":"BAD CONFIG"` + `"TokenCreationEpochInSecs":0` → no FCM token, so LINE's servers have nothing to push to. Battery/App-Standby ruled out (bucket `5` EXEMPTED + deviceidle-whitelisted still fails).
+- Why the patch works: the cert is a self-reported header that LINE builds in its own process, so a patch can overwrite it. The patch anchors the FIS request builder (`ct.c.c(URL, String)`), the Remote Config fetch (`ConfigFetchHttpClient.fetch`), and the Remote Config realtime stream (`remoteconfig.internal.d.i`) on the `X-Android-Cert` string and its `addRequestProperty` or `setRequestProperty` call. It overwrites the value register (`registerE`) with the original LINE SHA-1. Only those three call sites change. The shared `rl.a` and `rl.h` helpers stay intact.
+- Which cert: `base.apk` uses APK Signature Scheme v3.1 key rotation (two certs), and `GET_SIGNATURES` returns the root one. The patch writes the SDK 24 to 32 signer `89396DC419292473972813922867E6973D6F5C50`. If `BAD CONFIG` stays, use the rotated SDK 33+ signer `6A2927D945AEA6571E1DA5566802F25045D367BD`. Read both with `apksigner verify --print-certs base.apk` on a version bump. LINE 26.14.0 and 26.15.1 carry the same v3.1 lineage, so both hashes are unchanged.
+- Disassembly and device proof: in `ct/c`, `ConfigFetchHttpClient`, and `remoteconfig.internal.d`, `const-string v$reg, "<sha1>"` must land in `registerE` right before each `X-Android-Cert` send. On the device, `PersistedInstallation*.json` `Status` changes from `4` to `3` (REGISTERED).
+
+### Biometric login link and the "[Fix] Restore biometric login" patch (issue #195)
+
+Settings ▸ Account ▸ Device unlock method ▸ Link registers the device as a FIDO2 / WebAuthn
+authenticator for passwordless login (`PrimaryFidoRegistrationActivity`). This is account security,
+not LINE Pay. Both `com.linecorp.ltsm.fido2.v.b(Context, String, byte[])` and
+`com.linecorp.webauthn.util.Fido2Util$Companion.getPackageFacetID(Context)` read
+`SigningInfo.getApkContentsSigners()[0]`. Each method takes the SHA-256 digest, encodes it with
+`Base64.encodeToString` (no padding), and writes `android:apk-key-hash-sha256:<base64>` into the
+WebAuthn `clientDataJSON` origin. On a re-signed build the hash is the certificate of the user. The
+origin matches no facet of the account, so the FIDO server refuses the registration.
+
+- Patch (`patches/line/fixbiometriclogin/`, off by default): in both methods, right after the
+  `move-result-object v$hashReg` of `Base64.encodeToString`, the patch calls
+  `LineSignature.apkKeyHash()` and writes the genuine signer hash into `v$hashReg`.
+- Which cert: `SigningInfo.getApkContentsSigners()` returns the rotated v3.1 signer on Android 13
+  (SDK 33) and later (`5ugDbgEjTpGfvpz56l0hBDXPwFQjKGQapwoBj1L2PPg`). It returns the original
+  signer on SDK 32 and earlier (`5oL+C81gkH3+1RXguKTeA6ocKB0RGgeDOYZgK2CYr9I`).
+  `LineSignature.apkKeyHash()` selects the hash with `Build.VERSION.SDK_INT >= 33`.
+- Device test (LINE 26.15.1, SDK 35): opening Settings ▸ Account ▸ Device unlock method ▸ Link ▸
+  Enable and touching the fingerprint sensor ran `com.linecorp.ltsm.fido2.v.b` through
+  `Fido2Authenticator.c`. It replaced `d2LuJD0RV+89beiEaQ/3CjhfwlH+j0ketscfao45Liw` with
+  `5ugDbgEjTpGfvpz56l0hBDXPwFQjKGQapwoBj1L2PPg`. The FIDO server accepted the registration, and the
+  button changed from Link to Unlink. Native `nativeMakeCredential` signs the `clientDataJSON` from
+  Java and does not read the APK certificate on its own.
 
 ### Can a payment run inside a modified LINE app? (issues #96, #161)
 
@@ -1163,7 +1203,33 @@ sideways relative to the standard variant whenever the caller supplied a rotatio
 
 Sites 2 and 3 resolved `u13.c1`, its `Context` field and the lambda's captures (`c1`, `Uri`,
 `Integer` rotation) **from the matched method's own bytecode**; only the two literals and framework
-types were hardcoded.
+types were hardcoded. Within the matched method, the only `iget-object` whose `FieldReference.type`
+is a **framework** type (`Landroid/content/Context;`) yields both the obfuscated owner's descriptor
+(`u13.c1`) and the field name for free; feeding that descriptor back in finds the enclosing lambda's
+synthetic captures (`definingClass == method.definingClass`).
+
+---
+
+## Feature limits — client-side vs server-enforced (LINE)
+
+Before patching any LINE "limit", establish **who decides**. A constraint LINE computes or self-reports **inside its own process** is patchable; one decided by a remote server or another process is not, and removing the client check just moves the failure later. **Descriptors in the table below are 26.11.0-era** for the surfaces that ship no patch (outbound photo, ringtone, video limits) — they were not re-derived for 26.14.0. Note `c81` there is the *old* video/file-size package and is unrelated to 26.14.0's `c81` (the context-menu action enum, formerly `j51`).
+
+| Limit | Who decides | Verdict |
+|---|---|---|
+| Outbound photo compression | **client** — `u13.c1` resamples and JPEG-encodes locally; the server never sees the original | patchable, but **dropped**: one gate per entry point and only the chatroom flow was coverable |
+| Unsend time window | **server** — `unsendMessage` carries only `(seq, messageId)`; `MESSAGE_NOT_DESTRUCTIBLE(71)` comes back | not patchable |
+| Scheduled-message edit / reschedule (new in 26.14.0) | **server** — `fq1.a` is a server error-code enum: `MESSAGE_NOT_MODIFIABLE`, `MESSAGE_RESCHEDULE_UNAVAILABLE`, `INVALID_PREMIUM_STATUS`, plus three `MAX_*_EXCEEDED` quota codes | not patchable |
+| Video length / file size | **server** — client checks in `c81.b.c()` mirror an OBS ceiling (`EXCEED_FILE_MAX_SIZE`) | not usefully patchable |
+| LYP premium entitlements | **server** — account state; `hidepremium` only hides the upsells | not patchable |
+| Call ringtone selection | **client** — `be7.c.a` can return an arbitrary `Uri`, played by LINE's own `MediaPlayer` in-process (`xx.c`) | **patchable** — investigated, deliberately not shipped |
+| Ringback tone friends hear | **server** — the callee's tone reaches the *caller's* client in their connect info | not patchable |
+
+- **Client-side config is not server enforcement.** Unsend windows and photo tiers are both pushed from server settings (`function.chatroom.message.unsend.timelimit`, `function.media.image_high`), but the photo tier is only consumed locally to decide how hard to compress whereas the unsend window pre-filters a decision the server re-makes. A server-supplied *value* is patchable; a server-made *decision* is not.
+- **Look for the error code.** A dedicated Thrift/HTTP error for the exact condition (`MESSAGE_NOT_DESTRUCTIBLE`, `EXCEED_FILE_MAX_SIZE`, `EXCEED_DAILY_QUOTA`) proves the server enforces it independently; the client check just fails fast.
+- **A client check with no server counterpart is the opportunity.** Nothing validates the *encoded* output of LINE's image pipeline: `c1.o()` is a single-shot `Bitmap.compress`, and the picker's gates test the **source** file.
+- **Ask which process opens the resource, not just which decides.** The call ringtone is patchable because LINE's own `MediaPlayer` opens the URI in-process; Google sign-in is not, because GmsCore reads the real signature in another process.
+- **"Patchable" is not "worth patching."** The ringtone came out patchable and shipped nothing: following the device ringtone is a feature nobody asked for, and an in-app picker needs a new Activity plus a settings row injected into obfuscated declarative Kotlin. Record the finding here and stop.
+- **Lead a patch proposal with the value case:** who is blocked today and what they get. Then give the mechanism. If a design needs new UI or a new Activity in obfuscated code, say so first. That alone can sink it. Bank a "patchable but marginal" result in the map doc, with its anchors and why nothing shipped.
 
 ### Values that drift on a version bump
 
@@ -1374,6 +1440,13 @@ colz: [8] Unknown error [status=UNREGISTERED_ON_API_CONSOLE].
 
 Reviving this needs a credential provider added to MicroG-RE plus per-user setup — a feature in
 someone else's project, not a patch.
+
+Path 1's only workaround is install-side: a **Root Mount** install keeps the original signature, so
+both paths work; **Standard** re-signs. This limitation is also documented user-facing as a "Known
+limitation" in `README.md` — update both together. On a version bump, re-check by watching
+`logcat | grep -iE "START u0|CredentialManager|Auth\.Api|SpoofUtils|UNREGISTERED_ON_API_CONSOLE"` at
+the account-selection tap — the obfuscated names (`ix4.a0`, `aq.a`, `kl0.i`, `u7.*`, `l18/d`,
+`hx4/i`) drift.
 
 ### Path 2 is patchable — what `gmscoreauth` does
 
@@ -1764,10 +1837,10 @@ without patching the APK again. Anchors are 26.14.0.
 **The tap handler must be a real `Serializable` class.** `m55/u0$b` is `Parcelable`, and its
 `writeToParcel` casts its `aj8.q` to `java.io.Serializable`. A `java.lang.reflect.Proxy` is
 fragile there. So the extension class `LineSettingsClick` implements `Serializable` and declares
-`invoke(Object)` and the `Function3` method. That method is `j(Object, Object, Object)` in 26.14.0
-and `g(Object, Object, Object)` in 26.15.1, so the class declares both. At patch time, the patch
-adds the resolved `aj8.l` and `aj8.q` to its `interfaces` list (`MutableClass.getInterfaces()` is
-mutable).
+`invoke(Object)` and `invoke(Object, Object, Object)`. That `Function3` method is `j` in 26.14.0,
+`g` in 26.15.1 and `k` in 26.16.0. At patch time, the patch adds the resolved `aj8.l` and `aj8.q`
+to its `interfaces` list and adds a method with the resolved `Function3` name that forwards to
+`invoke(Object, Object, Object)`.
 
 **The tap handler gets a Fragment, not a Context.** LINE renames the androidx classes
 (`androidx/fragment/app/v` is `Fragment`) but keeps their method names, so

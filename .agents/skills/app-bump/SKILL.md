@@ -28,10 +28,9 @@ notes for your app at the end of this file before step 1.
    of failed patches. A patch that applies can still have skipped a site: step 5 finds those.
 4. **Re-anchor each failure,** one family of patches at a time, with a `verify.sh` run per family.
    Map each old anchor to the new class through a name that R8 keeps: a string literal, an enum
-   constant name, a resource name, a Kotlin `toString` text, or the method shape. Read the
-   AGENTS.md notes "When obfuscation eats your anchor" and "Never blind find/replace a descriptor
-   map" first. A peer project that already supports the version (see the app notes) can name the
-   drifted sites, but check each one in the decompile. Done when
+   constant name, a resource name, a Kotlin `toString` text, or the method shape. Read "Traps from
+   earlier bumps" below first. A peer project that already supports the version (see the app notes)
+   can name the drifted sites, but check each one in the decompile. Done when
    `verify.sh --app <APP> --all --force` applies every patch on every version, with 0 failed.
 5. **Prove each site:**
    - Run `verify.sh --app <APP> --all --force` (with diffs) on every version to support.
@@ -65,13 +64,36 @@ notes for your app at the end of this file before step 1.
 
 ### Traps from earlier bumps
 
-- A hardcoded resource id points at another view after a bump. Get ids by name
-  (`shared/ResourceIds.kt`).
-- R8 moves code, not only names: a field read or a lambda can move into another method or into
-  one `packed-switch`. A method can gain a parameter, which breaks a hand-built register range.
-- A string can move into a shared lookup list, so a fingerprint on it hits another method.
-- A `methodOrNull` site that drifts applies with no error. Only the method diff of step 5 shows it.
-- A `check-cast` that passes the verifier can still throw on the phone.
+- **When obfuscation eats your anchor, look for what R8 must keep:** Kotlin enum-constant names,
+  string literals, resource names (get ids by name through `res/values/public.xml`, because ids
+  change), Kotlin `@Metadata` module names (`"square-ad-impl"` located the whole AdManager wrapper
+  package), inflated layout resource names, and classes kept by name for reflection (such as a
+  WorkManager `ListenableWorker` subclass). Find an obfuscated class by searching for one of those
+  and comparing the constant set or method shape with the old tree.
+- **A hardcoded resource id** points at another view after a bump (on LINE it hid the bottom-bar
+  LIVE badge). Get ids by name (`shared/ResourceIds.kt`).
+- **A string literal is durable only while it stays in a method whose signature you also pin.**
+  `hidepremium` anchored on `"LITE_ENJOY"` inside a `()Z` accessor. In 26.14.0 R8 deleted the
+  accessor and moved the predicate into a suspend evaluator, so the fingerprint matched zero methods
+  while the string still existed in the APK. Shape-based lookups worked better (`keepunsent`
+  absorbed `h()` → `g()` with no edit). Prefer instruction shape over method name, and expect a
+  pinned signature to be the part that breaks.
+- **R8 moves code, not only names:** a field read or a lambda can move into another method, a method
+  prologue, or one `packed-switch`. That move can empty a patch's "search after the guard" window
+  while every descriptor in it stays valid. A method can also gain a parameter, which breaks a
+  hand-built register range. When a patch fails while its fingerprint still resolves, diff the
+  instruction order of the matched method across versions, not only its names.
+- **A string can move into a shared lookup list,** so a fingerprint on it hits another method.
+- **Never blind find/replace a descriptor map across versions.** Prefix renames chain (`fg1`→`wi1`
+  and `wi1`→`nl1` in the same release, so a two-pass replace produced a class that did not exist).
+  Member letters do not always survive (`hg1.r`→`yi1.p`, `hg1.k`→`yi1.j`). Also, `\b` does not match
+  between `L` and the prefix of a JVM descriptor, so `\bfg1/` skips every `Lfg1/…;`. Map each
+  `(prefix, member)` pair in a single pass through a lookup table.
+- **A `methodOrNull` site that drifts** applies with no error. Only the method diff of step 5 shows
+  it.
+- **A `check-cast` satisfies the verifier, not the run time.** BranchSweep and a dump both pass, and
+  the cast throws `ClassCastException` on the phone. A Kotlin default-argument constructor can store
+  its own default in the field with another type than the argument.
 
 ### LINE (`--app LINE`)
 
@@ -81,7 +103,8 @@ notes for your app at the end of this file before step 1.
 - Shared helpers already absorb drift: `shared/ResourceIds.kt`, `line/shared/HomeState.kt`,
   `line/shared/AttachTile.kt`. Prefer them to a new anchor.
 - Step 6 finds the two signer SHA-1s of "[Fix] Restore push notifications". `base.apk` uses
-  key rotation: AGENTS.md ("Which cert") says which of the two certificates the patch uses.
+  key rotation: `docs/line-patch-map.md` ("Which cert") says which of the two certificates the patch
+  uses.
 - Docs: `docs/line-patch-map.md` and `docs/line-premium-map.md`. Past bumps: 26.14.0 (16 patches
   broke), 26.15.1 (18 of 30).
 

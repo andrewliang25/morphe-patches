@@ -13,8 +13,8 @@ object Constants {
      * Pin the exact version the patches were developed and confirmed against.
      * Add a new version to this list after you verify it.
      *
-     * 26.15.1 needs Android 12L (API 32). 26.14.0 stays in the list for devices on Android 11
-     * and 12. Every fingerprint must match both, so anchor only on names R8 keeps.
+     * 26.16.0 and 26.14.0 need Android 11 (API 30). 26.15.1 needs Android 12L (API 32). Every
+     * fingerprint must match all supported versions, so anchor only on names R8 keeps.
      */
     val COMPATIBILITY_LINE = Compatibility(
         name = "LINE",
@@ -22,6 +22,10 @@ object Constants {
         apkFileType = ApkFileType.APKM,
         appIconColor = 0x06C755, // LINE brand green.
         targets = listOf(
+            AppTarget(
+                version = "26.16.0",
+                minSdk = 30,
+            ),
             AppTarget(
                 version = "26.15.1",
                 minSdk = 32,

@@ -31,3 +31,40 @@ internal object FisRequestBuilderFingerprint : Fingerprint(
         methodCall(definingClass = "Ljava/net/URLConnection;", name = "addRequestProperty"),
     ),
 )
+
+/**
+ * The Firebase Remote Config fetch request (`ConfigFetchHttpClient.fetch(…)`).
+ *
+ * It sends the same `X-Android-Cert` header as the FIS builder, from the same `GET_SIGNATURES`
+ * SHA-1 helper. Google compares it against the same API-key restriction. On a re-signed build the
+ * fetch fails and LINE keeps its default configuration values.
+ *
+ * The Google class and method names stay un-obfuscated in LINE. [instructionMatches] are, in
+ * order: the `X-Android-Cert` const-string, then its `setRequestProperty(key, value)` invoke.
+ */
+internal object RemoteConfigFetchFingerprint : Fingerprint(
+    definingClass = "Lcom/google/firebase/remoteconfig/internal/ConfigFetchHttpClient;",
+    name = "fetch",
+    filters = listOf(
+        string("X-Android-Cert"),
+        methodCall(definingClass = "Ljava/net/URLConnection;", name = "setRequestProperty"),
+    ),
+)
+
+/**
+ * The Firebase Remote Config realtime request (`remoteconfig.internal.d.i(…)`).
+ *
+ * The realtime stream sets the same `X-Android-Cert` header as the fetch. The class name drifts, so
+ * the fingerprint anchors on the header strings: `X-Accept-Response-Streaming` occurs only in this
+ * request. [instructionMatches] are, in order: the `X-Android-Cert` const-string, its
+ * `setRequestProperty(key, value)` invoke, then the streaming header.
+ */
+internal object RemoteConfigRealtimeFingerprint : Fingerprint(
+    returnType = "V",
+    parameters = listOf("Ljava/net/HttpURLConnection;", "Ljava/lang/String;", "Ljava/lang/String;"),
+    filters = listOf(
+        string("X-Android-Cert"),
+        methodCall(definingClass = "Ljava/net/URLConnection;", name = "setRequestProperty"),
+        string("X-Accept-Response-Streaming"),
+    ),
+)
