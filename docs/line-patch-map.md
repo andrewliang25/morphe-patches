@@ -1,8 +1,8 @@
 # LINE patch map & findings
 
 Reference notes for authoring LINE (`jp.naver.line.android`) patches, distilled from decompiling
-**LINE 26.14.0**. The bundle supports **26.14.0 and 26.15.1** (see
-`app/andrewliang/patches/shared/Constants.kt` and "Two supported versions" below).
+**LINE 26.14.0**. The bundle supports **26.14.0, 26.15.1 and 26.16.0** (see
+`app/andrewliang/patches/shared/Constants.kt` and "Supported versions" below).
 
 > The obfuscated descriptors in this file are from 26.14.0, unless a note gives another version.
 > Device-confirmation notes record the version each behaviour was *tested* on.
@@ -15,11 +15,11 @@ Reference notes for authoring LINE (`jp.naver.line.android`) patches, distilled 
 
 ---
 
-## Two supported versions (26.14.0 and 26.15.1)
+## Supported versions (26.14.0, 26.15.1 and 26.16.0)
 
-26.15.1 needs Android 12L (API 32). 26.14.0 needs Android 11 (API 30). Thus the bundle keeps
-26.14.0 for devices on Android 11 and 12. Each fingerprint must match both versions, so no patch
-has a table of names per version. Each anchor is a name that R8 keeps:
+26.15.1 needs Android 12L (API 32). 26.14.0 and 26.16.0 need Android 11 (API 30). The bundle keeps
+all three versions. Each fingerprint must match every version, so no patch has a table of names per
+version. Each anchor is a name that R8 keeps:
 
 - String literals, Kotlin `toString` text and Thrift operation names.
 - Kotlin enum-constant names, read with `sget-object`.
@@ -48,6 +48,15 @@ All 18 failures were R8 drift:
 - **Code moved.** In 26.15.1 the two banner lambdas of *[Ad] Remove banner ads* are cases of one
   `packed-switch`. A `return` at the start of the method would also break the other cases. The patch
   returns right after each operation-name string instead.
+
+### What changed in 26.16.0
+
+All 32 patches applied on the first run. Each version changes 80 LINE methods across 71 classes.
+R8 renamed packages again, for example `go1` to `un1` (attach menu), `kh2.h$a` to `eh2.g$a` (Home
+state), `ad8.g` to `mg8.d` (bottom tabs), and `xg5.h2` to `eh5.t2` (Settings rows). R8 also renamed
+the 3-argument `Function3` method on `nt8.q` to `k`. The settings patch now reads the `Function3`
+method name from the interface class at patch time and adds a forwarding method to
+`LineSettingsClick`. The 13 bottom-tab constants and 48 Home module types did not change.
 
 ### Shared helpers
 
@@ -1828,10 +1837,10 @@ without patching the APK again. Anchors are 26.14.0.
 **The tap handler must be a real `Serializable` class.** `m55/u0$b` is `Parcelable`, and its
 `writeToParcel` casts its `aj8.q` to `java.io.Serializable`. A `java.lang.reflect.Proxy` is
 fragile there. So the extension class `LineSettingsClick` implements `Serializable` and declares
-`invoke(Object)` and the `Function3` method. That method is `j(Object, Object, Object)` in 26.14.0
-and `g(Object, Object, Object)` in 26.15.1, so the class declares both. At patch time, the patch
-adds the resolved `aj8.l` and `aj8.q` to its `interfaces` list (`MutableClass.getInterfaces()` is
-mutable).
+`invoke(Object)` and `invoke(Object, Object, Object)`. That `Function3` method is `j` in 26.14.0,
+`g` in 26.15.1 and `k` in 26.16.0. At patch time, the patch adds the resolved `aj8.l` and `aj8.q`
+to its `interfaces` list and adds a method with the resolved `Function3` name that forwards to
+`invoke(Object, Object, Object)`.
 
 **The tap handler gets a Fragment, not a Context.** LINE renames the androidx classes
 (`androidx/fragment/app/v` is `Fragment`) but keeps their method names, so

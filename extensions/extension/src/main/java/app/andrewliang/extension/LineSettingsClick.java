@@ -14,10 +14,9 @@ import java.io.Serializable;
  * <ul>
  *   <li>{@link #invoke(Object)} is the one-argument function. The main Settings list calls it with
  *       the list fragment when the row is tapped.</li>
- *   <li>{@link #j(Object, Object, Object)} is the three-argument function, (Context, List, settings
- *       navigation fragment). Settings search calls it. R8 names its method {@code j} in LINE
- *       26.14.0 and {@code g} in 26.15.1, so {@link #g(Object, Object, Object)} is the same
- *       method under the other name.</li>
+ *   <li>{@link #invoke(Object, Object, Object)} is the three-argument function, (Context, List,
+ *       settings navigation fragment). Settings search calls it. The patch adds a forwarding
+ *       method with the obfuscated method name of the interface, because R8 renames that method.</li>
  * </ul>
  * LINE writes the three-argument handler into a Parcel as a {@link Serializable}, so this class must
  * stay serializable.
@@ -39,16 +38,12 @@ public final class LineSettingsClick implements Serializable {
         return null;
     }
 
-    public Object j(Object context, Object rows, Object navigation) {
+    public Object invoke(Object context, Object rows, Object navigation) {
         try {
             LineSettingsScreen.show((Context) context);
         } catch (Throwable t) {
             Log.w(TAG, "Could not open the settings screen", t);
         }
         return null;
-    }
-
-    public Object g(Object context, Object rows, Object navigation) {
-        return j(context, rows, navigation);
     }
 }
