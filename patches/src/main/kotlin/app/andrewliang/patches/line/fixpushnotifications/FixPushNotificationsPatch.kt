@@ -26,26 +26,33 @@ private const val LINE_ORIGINAL_CERT_SHA1 = "89396DC419292473972813922867E6973D6
 val fixPushNotificationsPatch = bytecodePatch(
     name = "[Fix] Restore push notifications",
     description = "When LINE is fully closed, push notifications work again on a re-signed " +
-        "build. A Root Mount install does not need this patch.",
+        "build. LINE also gets its Firebase Remote Config again. A Root Mount install does not " +
+        "need this patch.",
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_LINE)
 
-    // The FIS request builder loads `const-string "X-Android-Cert"` then calls
-    // `addRequestProperty(key, value)` where `value` holds the runtime-computed cert hash.
-    // Overwrite that value register with LINE's original cert hash right before the call, so a
-    // re-signed build reports the allow-listed SHA-1. This patch touches only this FIS call
-    // site. The shared `rl.a`/`rl.h` helpers (also used by Remote Config) stay intact.
+    // Each site loads `const-string "X-Android-Cert"` then calls `addRequestProperty` or
+    // `setRequestProperty(key, value)`, where `value` holds the cert hash computed at run time.
+    // Overwrite that value register with the original LINE cert hash right before the call, so a
+    // re-signed build reports the allow-listed SHA-1. Only these call sites change. The shared
+    // `rl.a`/`rl.h` helpers stay intact.
     execute {
-        // instructionMatches[1] is the `addRequestProperty` invoke for X-Android-Cert. Its
-        // value argument is registerE ({connection, key, value}). Reading it avoids hardcoding
-        // the register, which can drift between versions.
-        val addRequestProperty = FisRequestBuilderFingerprint.instructionMatches[1]
-        val valueReg = (addRequestProperty.instruction as FiveRegisterInstruction).registerE
+        listOf(
+            FisRequestBuilderFingerprint,
+            RemoteConfigFetchFingerprint,
+            RemoteConfigRealtimeFingerprint,
+        ).forEach { fingerprint ->
+            // instructionMatches[1] is the invoke that sends X-Android-Cert. Its value argument
+            // is registerE ({connection, key, value}). Reading it avoids hardcoding the register,
+            // which can drift between versions.
+            val sendCert = fingerprint.instructionMatches[1]
+            val valueReg = (sendCert.instruction as FiveRegisterInstruction).registerE
 
-        FisRequestBuilderFingerprint.method.addInstructions(
-            addRequestProperty.index,
-            "const-string v$valueReg, \"$LINE_ORIGINAL_CERT_SHA1\"",
-        )
+            fingerprint.method.addInstructions(
+                sendCert.index,
+                "const-string v$valueReg, \"$LINE_ORIGINAL_CERT_SHA1\"",
+            )
+        }
     }
 }
