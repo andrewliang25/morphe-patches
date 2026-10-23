@@ -1,6 +1,6 @@
 {
   "NOTE": "Do NOT manually edit this file. This file is automatically updated when semantic release (release.yml) runs. Manually editing this file can break your releases and break third party tools that use this file.",
-  "version": "3.9.0-dev.1",
+  "version": "3.9.0-dev.2",
   "patches": [
     {
       "name": "[Ad] Block ad telemetry",
@@ -103,6 +103,13 @@
           "signatures": null,
           "targets": [
             {
+              "version": "26.16.0",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 30,
+              "description": null
+            },
+            {
               "version": "26.15.1",
               "versionCodes": null,
               "isExperimental": false,
@@ -135,6 +142,13 @@
           "appIconColor": "#06C755",
           "signatures": null,
           "targets": [
+            {
+              "version": "26.16.0",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 30,
+              "description": null
+            },
             {
               "version": "26.15.1",
               "versionCodes": null,
@@ -170,6 +184,13 @@
           "appIconColor": "#06C755",
           "signatures": null,
           "targets": [
+            {
+              "version": "26.16.0",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 30,
+              "description": null
+            },
             {
               "version": "26.15.1",
               "versionCodes": null,
@@ -207,6 +228,13 @@
           "signatures": null,
           "targets": [
             {
+              "version": "26.16.0",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 30,
+              "description": null
+            },
+            {
               "version": "26.15.1",
               "versionCodes": null,
               "isExperimental": false,
@@ -242,6 +270,13 @@
           "appIconColor": "#06C755",
           "signatures": null,
           "targets": [
+            {
+              "version": "26.16.0",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 30,
+              "description": null
+            },
             {
               "version": "26.15.1",
               "versionCodes": null,
@@ -279,6 +314,13 @@
           "signatures": null,
           "targets": [
             {
+              "version": "26.16.0",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 30,
+              "description": null
+            },
+            {
               "version": "26.15.1",
               "versionCodes": null,
               "isExperimental": false,
@@ -313,6 +355,13 @@
           "appIconColor": "#06C755",
           "signatures": null,
           "targets": [
+            {
+              "version": "26.16.0",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 30,
+              "description": null
+            },
             {
               "version": "26.15.1",
               "versionCodes": null,
@@ -350,6 +399,13 @@
           "signatures": null,
           "targets": [
             {
+              "version": "26.16.0",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 30,
+              "description": null
+            },
+            {
               "version": "26.15.1",
               "versionCodes": null,
               "isExperimental": false,
@@ -384,6 +440,13 @@
           "appIconColor": "#06C755",
           "signatures": null,
           "targets": [
+            {
+              "version": "26.16.0",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 30,
+              "description": null
+            },
             {
               "version": "26.15.1",
               "versionCodes": null,
@@ -421,6 +484,13 @@
           "signatures": null,
           "targets": [
             {
+              "version": "26.16.0",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 30,
+              "description": null
+            },
+            {
               "version": "26.15.1",
               "versionCodes": null,
               "isExperimental": false,
@@ -456,6 +526,13 @@
           "signatures": null,
           "targets": [
             {
+              "version": "26.16.0",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 30,
+              "description": null
+            },
+            {
               "version": "26.15.1",
               "versionCodes": null,
               "isExperimental": false,
@@ -490,6 +567,13 @@
           "appIconColor": "#06C755",
           "signatures": null,
           "targets": [
+            {
+              "version": "26.16.0",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 30,
+              "description": null
+            },
             {
               "version": "26.15.1",
               "versionCodes": null,
@@ -636,6 +720,13 @@
           "signatures": null,
           "targets": [
             {
+              "version": "26.16.0",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 30,
+              "description": null
+            },
+            {
               "version": "26.15.1",
               "versionCodes": null,
               "isExperimental": false,
@@ -670,6 +761,13 @@
           "appIconColor": "#06C755",
           "signatures": null,
           "targets": [
+            {
+              "version": "26.16.0",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 30,
+              "description": null
+            },
             {
               "version": "26.15.1",
               "versionCodes": null,
@@ -706,6 +804,13 @@
           "signatures": null,
           "targets": [
             {
+              "version": "26.16.0",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 30,
+              "description": null
+            },
+            {
               "version": "26.15.1",
               "versionCodes": null,
               "isExperimental": false,
@@ -738,6 +843,13 @@
           "appIconColor": "#06C755",
           "signatures": null,
           "targets": [
+            {
+              "version": "26.16.0",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 30,
+              "description": null
+            },
             {
               "version": "26.15.1",
               "versionCodes": null,
@@ -833,6 +945,13 @@
           "signatures": null,
           "targets": [
             {
+              "version": "26.16.0",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 30,
+              "description": null
+            },
+            {
               "version": "26.15.1",
               "versionCodes": null,
               "isExperimental": false,
@@ -867,6 +986,13 @@
           "appIconColor": "#06C755",
           "signatures": null,
           "targets": [
+            {
+              "version": "26.16.0",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 30,
+              "description": null
+            },
             {
               "version": "26.15.1",
               "versionCodes": null,
@@ -903,6 +1029,13 @@
           "signatures": null,
           "targets": [
             {
+              "version": "26.16.0",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 30,
+              "description": null
+            },
+            {
               "version": "26.15.1",
               "versionCodes": null,
               "isExperimental": false,
@@ -937,6 +1070,13 @@
           "appIconColor": "#06C755",
           "signatures": null,
           "targets": [
+            {
+              "version": "26.16.0",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 30,
+              "description": null
+            },
             {
               "version": "26.15.1",
               "versionCodes": null,
@@ -1001,6 +1141,13 @@
           "signatures": null,
           "targets": [
             {
+              "version": "26.16.0",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 30,
+              "description": null
+            },
+            {
               "version": "26.15.1",
               "versionCodes": null,
               "isExperimental": false,
@@ -1064,6 +1211,13 @@
           "signatures": null,
           "targets": [
             {
+              "version": "26.16.0",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 30,
+              "description": null
+            },
+            {
               "version": "26.15.1",
               "versionCodes": null,
               "isExperimental": false,
@@ -1096,6 +1250,13 @@
           "appIconColor": "#06C755",
           "signatures": null,
           "targets": [
+            {
+              "version": "26.16.0",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 30,
+              "description": null
+            },
             {
               "version": "26.15.1",
               "versionCodes": null,
@@ -1130,6 +1291,13 @@
           "signatures": null,
           "targets": [
             {
+              "version": "26.16.0",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 30,
+              "description": null
+            },
+            {
               "version": "26.15.1",
               "versionCodes": null,
               "isExperimental": false,
@@ -1162,6 +1330,13 @@
           "appIconColor": "#06C755",
           "signatures": null,
           "targets": [
+            {
+              "version": "26.16.0",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 30,
+              "description": null
+            },
             {
               "version": "26.15.1",
               "versionCodes": null,
@@ -1196,6 +1371,13 @@
           "signatures": null,
           "targets": [
             {
+              "version": "26.16.0",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 30,
+              "description": null
+            },
+            {
               "version": "26.15.1",
               "versionCodes": null,
               "isExperimental": false,
@@ -1228,6 +1410,13 @@
           "appIconColor": "#06C755",
           "signatures": null,
           "targets": [
+            {
+              "version": "26.16.0",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 30,
+              "description": null
+            },
             {
               "version": "26.15.1",
               "versionCodes": null,
@@ -1263,6 +1452,13 @@
           "appIconColor": "#06C755",
           "signatures": null,
           "targets": [
+            {
+              "version": "26.16.0",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 30,
+              "description": null
+            },
             {
               "version": "26.15.1",
               "versionCodes": null,
@@ -1543,6 +1739,13 @@
           "signatures": null,
           "targets": [
             {
+              "version": "26.16.0",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 30,
+              "description": null
+            },
+            {
               "version": "26.15.1",
               "versionCodes": null,
               "isExperimental": false,
@@ -1577,6 +1780,13 @@
           "appIconColor": "#06C755",
           "signatures": null,
           "targets": [
+            {
+              "version": "26.16.0",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 30,
+              "description": null
+            },
             {
               "version": "26.15.1",
               "versionCodes": null,
@@ -1613,6 +1823,13 @@
           "signatures": null,
           "targets": [
             {
+              "version": "26.16.0",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 30,
+              "description": null
+            },
+            {
               "version": "26.15.1",
               "versionCodes": null,
               "isExperimental": false,
@@ -1647,6 +1864,13 @@
           "appIconColor": "#06C755",
           "signatures": null,
           "targets": [
+            {
+              "version": "26.16.0",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 30,
+              "description": null
+            },
             {
               "version": "26.15.1",
               "versionCodes": null,

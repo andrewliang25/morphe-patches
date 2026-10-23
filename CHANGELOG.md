@@ -1,3 +1,9 @@
+## [3.9.0-dev.2](https://github.com/andrewliang25/morphe-patches/compare/v3.9.0-dev.1...v3.9.0-dev.2) (2026-10-23)
+
+### 🚀 Updated App Support
+
+* **LINE:** add support for LINE 26.16.0 ([b2e3597](https://github.com/andrewliang25/morphe-patches/commit/b2e359785d05c8331fc1974e522b63708bb8b2b0))
+
 ## [3.9.0-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v3.8.0...v3.9.0-dev.1) (2026-10-23)
 
 ### ✨ New Features
