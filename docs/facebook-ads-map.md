@@ -53,6 +53,31 @@ To get the same bytecode, select the variant by its title. Do not search for the
 >   builder. Left as follow-up work — the fix needs to either resolve the mode/label/icon types from
 >   `A01`'s own parameter list (if they map through), or inject the new button via a call from `A0l`
 >   into a helper that replays `A01`'s own call to the factory.
+>
+> **A seventh bug, found only by logging into the app on-device, not by "applies cleanly":**
+> `[Feed] Hide sponsored posts` crashed Facebook with a `java.lang.VerifyError` in `FeedDataInitImpl`
+> right after login, on every 584 build that included it — even though the patcher reported it
+> applied with no structural error, and `BranchSweep` (which only checks branch offsets, not
+> register types) reported clean. `AddNewEdgeToCollectionFingerprint`'s target
+> (`LX/1rA;->addNewEdgeToCollection`, the shared chokepoint `[Feed] Hide sponsored posts` and
+> `[Feed] Hide page suggestions and promo cards` both prepend a guard to) shrank on 584 to an
+> instance method with only 5 registers total: `this` in `v1`, its three declared parameters in
+> `v2`–`v4`, and exactly one free local, `v0`. The sponsored-posts guard used `v1` as a second
+> scratch register (for `sget-object v1, GraphQLFeedStoryCategory->SPONSORED`), clobbering `this`
+> before the method's own tail (`LX/1rA;->A04(LX/1rA;)Ljava/lang/Long;`, called with `this` in `v1`)
+> ever ran — the verifier correctly rejected the resulting type mismatch at runtime. Comments in the
+> old code describing "a 25-register method" were from 577/580's shape and were never re-checked
+> against 584. Fixed by moving the `SPONSORED` comparison into a new static helper method with its
+> own register space (mirroring how `[Feed] Hide page suggestions and promo cards` already avoided
+> this by delegating to `isSuggestedOrPromotedFeedUnit`), so the chokepoint itself only ever touches
+> its one genuinely free register, `v0`. Confirmed correct by manually tracing every register through
+> all three patches' stacked prologues plus the original tail — not by a passing `BranchSweep` or a
+> passing `dex2oat --compiler-filter=verify` (device-tested: both passed on the *unfixed*, crashing
+> build too, since ART defers this class of check to first real invocation). **Lesson for future
+> bumps: "applies cleanly" and a clean `BranchSweep` are necessary, not sufficient — any patch that
+> hardcodes a scratch register by a comment's claim about register count, instead of deriving it from
+> the method's actual current shape, needs a fresh device login test on every bump, not just a dry
+> patch run.**
 
 Each variant is a separate build with different DEX, not an ABI split of one bundle. Thus
 `COMPATIBILITY_FACEBOOK` pins the versionCode and the minSdk of the tested variant.
