@@ -5,90 +5,229 @@ import app.andrewliang.patches.facebook.shared.reportedFieldNames
 import app.andrewliang.patches.facebook.shared.saveAsH264Option
 import app.andrewliang.patches.shared.Constants.COMPATIBILITY_FACEBOOK
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.patch.BytecodePatchContext
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod.Companion.toMutable
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
+import com.android.tools.smali.dexlib2.iface.ClassDef
+import com.android.tools.smali.dexlib2.iface.Method
 import com.android.tools.smali.dexlib2.iface.instruction.Instruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
-import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
-import com.android.tools.smali.dexlib2.iface.instruction.RegisterRangeInstruction
-import com.android.tools.smali.dexlib2.iface.instruction.ThreeRegisterInstruction
-import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
-import com.android.tools.smali.dexlib2.iface.instruction.VariableRegisterInstruction
-import com.android.tools.smali.dexlib2.iface.instruction.formats.Instruction35c
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.android.tools.smali.dexlib2.iface.reference.StringReference
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter
 
-private const val HANDLER = "Lapp/andrewliang/extension/ReelDownload;"
+private const val HANDLER = "Lapp/andrewliang/extension/ReelMenuDownload;"
 
 private const val VIDEO_DATA_SOURCE = "Lcom/facebook/video/engine/api/VideoDataSource;"
-private const val VIDEO_PLAYER_PARAMS = "Lcom/facebook/video/engine/api/VideoPlayerParams;"
-private const val FB_USER_SESSION = "Lcom/facebook/auth/usersession/FbUserSession;"
+private const val PLAYER_ORIGIN = "Lcom/facebook/video/common/playerorigin/PlayerOrigin;"
 private const val CONTEXT = "Landroid/content/Context;"
-private const val FUNCTION1 = "Lkotlin/jvm/functions/Function1;"
+private const val STRING = "Ljava/lang/String;"
+private const val CHAR_SEQUENCE = "Ljava/lang/CharSequence;"
 private const val LIST = "Ljava/util/List;"
-private const val ARRAY_LIST = "Ljava/util/ArrayList;"
+private const val OBJECT = "Ljava/lang/Object;"
 
-/** The name the sidebar component reports for itself, inside the method that builds it. */
-private const val SIDEBAR = "UDDSideBarComponent"
+/** The id of the More sheet's Clear mode row, in the one method that builds every row. */
+private const val CLEAR_MODE_ROW = "fds_control_clear_mode"
 
-/** The row Facebook shows on your own video. Its icon is the one this button borrows. */
-private const val DOWNLOAD_ROW = "fds_control_download_video"
+/** The id of Facebook's own download row, offered only on a video you posted. Its icon is borrowed. */
+private const val OWN_DOWNLOAD_ROW = "fds_control_download_video"
 
-/** What this button is called in the slot the sidebar fills with `share_button`. */
-private const val TEST_ID = "download_button"
+/** The id the added row carries, where Facebook's own rows carry theirs. */
+private const val ROW_ID = "download_reel"
 
-/** The label. The factory takes it as a plain string, so no resource is needed. */
 private const val LABEL = "Download"
 
+/** The helper this patch adds to the row builder's own class. */
+private const val HELPER = "andrewDownloadRow"
+
 /**
- * What is written under the icon.
+ * The More sheet's row builder, as this patch finds it.
  *
- * The other buttons of the strip put a count here, so it is sized for three or four characters and
- * a word wraps across two lines. The icon already says what the button does.
+ * Every row of the sheet (Clear mode, Captions, Audio description) is added by one static method,
+ * handed the sheet's row list. That one method also looks up the reel's player state by its player
+ * origin and video id, and builds its own row as `new Row(click, icon, Boolean, title, subtitle,
+ * id, Integer)`. Every name the Download row needs comes from that one method; nothing obfuscated
+ * is written down.
  */
-private const val CAPTION = ""
+private class MoreSheet(
+    val builder: MutableMethod,
+    val lookup: MethodReference,
+    val lookupInvoke: Opcode,
+    val row: MethodReference,
+    val click: ClassDef,
+    val clickMethod: String,
+    val iconWrap: MethodReference,
+    val downloadIcon: FieldReference,
+)
+
+private fun BytecodePatchContext.moreSheet(): MoreSheet {
+    val hits = mutableListOf<Pair<String, String>>()
+
+    classDefForEach { classDef ->
+        classDef.methods.forEach { method ->
+            if (holds(method, CLEAR_MODE_ROW)) hits += classDef.type to method.name
+        }
+    }
+
+    check(hits.size == 1) {
+        "Expected 1 More sheet row builder, found ${hits.size}: " +
+            hits.joinToString { "${it.first}->${it.second}" }
+    }
+
+    val (builderClass, builderName) = hits.single()
+    val builderDef = mutableClassDefBy(builderClass)
+    val builder = builderDef.methods.single { it.name == builderName }
+
+    check(AccessFlags.STATIC.isSet(builder.accessFlags) && builder.returnType == "V") {
+        "$builderClass->$builderName isn't a static method adding a row"
+    }
+
+    val instructions = builder.instructions()
+    val parameters = builder.parameterTypes.map(CharSequence::toString)
+
+    // The player state: looked up on one of the builder's own parameters by origin and video id.
+    val lookupCall = instructions.firstNotNullOfOrNull { instruction ->
+        val reference = instruction.methodReference() ?: return@firstNotNullOfOrNull null
+        val types = reference.parameterTypes.map(CharSequence::toString)
+        instruction.takeIf {
+            types == listOf(PLAYER_ORIGIN, STRING) && reference.definingClass in parameters
+        }
+    }
+
+    check(lookupCall != null) {
+        "$builderClass->$builderName: no (PlayerOrigin, String) lookup on one of its own parameters"
+    }
+
+    val lookup = lookupCall.methodReference()!!
+    val lookupInvoke = lookupCall.opcode
+
+    // The row: the constructor called right after the Clear mode row's id, taking a CharSequence
+    // (its title).
+    val idAt = instructions.indexOfFirst { it.stringReference() == CLEAR_MODE_ROW }
+
+    check(idAt >= 0) { "$builderClass->$builderName no longer holds \"$CLEAR_MODE_ROW\"" }
+
+    val row = instructions.drop(idAt).firstNotNullOfOrNull { instruction ->
+        instruction.methodReference()?.takeIf {
+            it.name == "<init>" && it.parameterTypes.any { type -> type.toString() == CHAR_SEQUENCE }
+        }
+    }
+
+    check(row != null) { "$builderClass->$builderName: no row is built after \"$CLEAR_MODE_ROW\"" }
+
+    val rowParameters = row.parameterTypes.map(CharSequence::toString)
+
+    // The click: the row's one parameter that is a public interface with a single no-arg void
+    // method. The handler is added from outside Facebook's package, so a package-private interface
+    // would fail to load with it.
+    val click = rowParameters.firstNotNullOfOrNull { type ->
+        mutableClassDefByOrNull(type)?.takeIf(::isClickInterface)
+    }
+
+    check(click != null) { "The row ${row.definingClass} takes no public click interface" }
+
+    // The icon: a static method wrapping an enum constant into one of the row's own parameter types.
+    val iconWrap = instructions.firstNotNullOfOrNull { instruction ->
+        instruction.methodReference()?.takeIf { reference ->
+            reference.returnType.toString() in rowParameters &&
+                reference.parameterTypes.size == 1 &&
+                mutableClassDefByOrNull(reference.parameterTypes.single().toString())?.superclass == "Ljava/lang/Enum;"
+        }
+    }
+
+    check(iconWrap != null) { "No icon wrapper is built for the More sheet's rows" }
+
+    val iconEnumType = iconWrap.parameterTypes.single().toString()
+
+    // Facebook's own per-video download row names the icon to borrow.
+    var downloadIcon: FieldReference? = null
+
+    classDefForEach { classDef ->
+        classDef.methods.forEach { method ->
+            if (!holds(method, OWN_DOWNLOAD_ROW)) return@forEach
+            method.instructions().forEach { instruction ->
+                val field = instruction.fieldReference() ?: return@forEach
+                if (instruction.opcode == Opcode.SGET_OBJECT && field.type.toString() == iconEnumType) {
+                    if (downloadIcon == null) downloadIcon = field
+                }
+            }
+        }
+    }
+
+    check(downloadIcon != null) { "Facebook's \"$OWN_DOWNLOAD_ROW\" row draws no icon of $iconEnumType" }
+
+    return MoreSheet(
+        builder = builder,
+        lookup = lookup,
+        lookupInvoke = lookupInvoke,
+        row = row,
+        click = click,
+        clickMethod = click.methods.single().name,
+        iconWrap = iconWrap,
+        downloadIcon = downloadIcon!!,
+    )
+}
+
+private fun isClickInterface(classDef: ClassDef) =
+    AccessFlags.INTERFACE.isSet(classDef.accessFlags) &&
+        AccessFlags.PUBLIC.isSet(classDef.accessFlags) &&
+        classDef.methods.count() == 1 &&
+        classDef.methods.single().let { it.parameterTypes.isEmpty() && it.returnType == "V" }
 
 /**
- * Which of the factory's handlers is the tap.
- *
- * Measured, not guessed. Every slot got a handler that reported the event it received. The touch
- * slot fires twice per press with a `MotionEvent`. A visibility slot fires by itself. This one
- * fires once per press with an event holding only the `View`, which is a click.
+ * Makes [handlerType] implement [sheet]'s click interface, its one method calling the handler's
+ * own `run()`. The interface itself is obfuscated and only known at patch time, so this adds it to
+ * an already-compiled extension class with dexlib2 rather than writing it at compile time.
  */
-private const val TAP_SLOT = 1
+private fun BytecodePatchContext.implementClick(sheet: MoreSheet, handlerType: String) {
+    val handler = mutableClassDefBy(handlerType)
 
-/** The helper this patch adds to the component. */
-private const val HELPER = "andrewDownloadButton"
+    if (sheet.click.type !in handler.interfaces) handler.interfaces.add(sheet.click.type)
+
+    if (handler.methods.none { it.name == sheet.clickMethod && it.parameterTypes.isEmpty() }) {
+        handler.methods.add(
+            ImmutableMethod(
+                handlerType,
+                sheet.clickMethod,
+                emptyList(),
+                "V",
+                AccessFlags.PUBLIC.value,
+                null,
+                null,
+                MutableMethodImplementation(1),
+            ).toMutable().apply {
+                addInstructions(0, "invoke-virtual { p0 }, $handlerType->run()V\nreturn-void")
+            },
+        )
+    }
+}
 
 /**
- * Adds a download button beside every reel.
+ * Adds a Download row to every reel's More sheet.
  *
  * Facebook has a download row and builds it only for a video that you posted. Ownership chooses
- * the whole viewer rather than a flag inside one. So for anybody else's reel the sheet that holds
- * that row is never asked for, and there is nothing to force. `docs/facebook-ads-map.md` records
- * the four device rounds that established this, and the two readings of it that were wrong.
+ * the whole viewer rather than a flag inside one, so for anybody else's reel the row is never
+ * built and there is nothing to force. `docs/facebook-ads-map.md` records the rounds that
+ * established this, and why the sidebar (every reel's action strip) was tried first and abandoned:
+ * its builder method is register-starved on 584 and has no spare register left to carry a value
+ * from the lookup through to the click handler's construction. The More sheet's row builder is a
+ * much smaller method with no such constraint, and already looks up the reel's player state for
+ * its own rows (Clear mode, Captions), which this patch reuses rather than re-deriving.
  *
- * So this adds a button to the sidebar beside the reel, which every reel has. Nothing is invented.
- * The sidebar builds all of its own buttons through one factory. That factory takes the label as a
- * plain string and the icon as an enum constant, so no resource and no downloaded string pack is
- * involved. This calls the same factory, with the icon Facebook's own download row draws.
- *
- * The handler holds the player of that one item, read off a field of the component, so the file
- * saved is the reel on the screen. The app prepares the reels that come next, so a handler that
- * reads a shared place saves the wrong one.
+ * The handler holds the player state the lookup answered for this one reel, so the file saved is
+ * the reel on screen, never a shared or stale value.
  */
 @Suppress("unused")
 val downloadReelPatch = bytecodePatch(
     name = "[Reels] Download any reel",
-    description = "Adds a Download button beside every reel. Videos save at the best quality " +
-        "the player streams.",
+    description = "Adds a Download option to a reel's \"More\" menu. Videos save at the best " +
+        "quality the player streams.",
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_FACEBOOK)
@@ -100,11 +239,6 @@ val downloadReelPatch = bytecodePatch(
         if (saveAsH264.value == true) enableSaveAsH264("reelsAsH264")
 
         // ---- the real names of the address fields ---------------------------------------------
-        //
-        // The source keeps a debug dump that pairs each field with the name it reports for it.
-        // So the patch reads those names out of the app, rather than writing down letters that
-        // change every release. It matters: the third address on that object is the subtitles, so
-        // "the first Uri" saves the wrong thing without a word.
         val names = reportedFieldNames(VIDEO_DATA_SOURCE, marker = "videoHdUri")
         val hdField = names["videoHdUri"]
         val sdField = names["videoUri"]
@@ -114,134 +248,61 @@ val downloadReelPatch = bytecodePatch(
             "Expected videoHdUri, videoUri and abrManifestContent on the source, found ${names.keys}"
         }
 
-        // ---- the sidebar ------------------------------------------------------------------------
-        val sidebars = mutableListOf<Pair<String, String>>()
+        // ---- the More sheet ---------------------------------------------------------------------
+        val sheet = moreSheet()
+        val builder = sheet.builder
+        val parameters = builder.parameterTypes.map(CharSequence::toString)
 
-        classDefForEach { classDef ->
-            classDef.methods.forEach { method ->
-                val list = method.instructions()
-
-                // The name alone is in a dozen places: state helpers, lambdas, update calls. The
-                // one wanted is the method that both names the sidebar and builds a button, which
-                // is the call taking four handlers.
-                val namesSidebar = list.any { it.stringReference() == SIDEBAR }
-                val buildsButton = list.any { instruction ->
-                    instruction.methodReference()?.parameterTypes
-                        ?.count { it.toString() == FUNCTION1 } == 4
-                }
-
-                if (namesSidebar && buildsButton) sidebars += classDef.type to method.name
+        fun parameter(type: String, what: String): Int {
+            val matches = parameters.indices.filter { parameters[it] == type }
+            check(matches.size == 1) {
+                "Expected 1 $what parameter of ${builder.definingClass}->${builder.name}, found ${matches.size}"
             }
+            return matches.single()
         }
 
-        check(sidebars.size == 1) {
-            "Expected 1 sidebar builder, found ${sidebars.size}: " +
-                sidebars.joinToString { "${it.first}->${it.second}" }
+        val store = parameter(sheet.lookup.definingClass, "player state store")
+        val origin = parameter(PLAYER_ORIGIN, "PlayerOrigin")
+        val id = parameter(STRING, "video id")
+        val list = parameter(LIST, "row list")
+
+        // The scoped context: the one parameter of the builder whose class declares exactly one
+        // field of type Context. Found by shape, not by an obfuscated name that changes release to
+        // release.
+        val scopedCandidates = parameters.indices.filter { index ->
+            mutableClassDefByOrNull(parameters[index])?.fields
+                ?.count { it.type.toString() == CONTEXT } == 1
         }
 
-        val (sidebarClass, sidebarName) = sidebars.single()
-        val component = mutableClassDefBy(sidebarClass)
-        val sidebar = component.methods.single { it.name == sidebarName }
-        val instructions = sidebar.instructions()
-
-        val scopedType = sidebar.parameterTypes.single().toString()
-
-        // ---- the button factory -----------------------------------------------------------------
-        //
-        // One call here takes four handlers. That is the factory, and its own parameter list then
-        // names every wrapper the button needs, so none of them has to be searched for separately.
-        val factories = instructions.mapNotNull { it.methodReference() }
-            .filter { reference ->
-                reference.parameterTypes.count { it.toString() == FUNCTION1 } == 4 &&
-                    reference.parameterTypes.firstOrNull()?.toString() == FB_USER_SESSION
-            }
-            .distinctBy { "${it.definingClass}->${it.name}" }
-
-        check(factories.size == 1) {
-            "Expected 1 button factory in $sidebarClass->$sidebarName, found ${factories.size}"
+        check(scopedCandidates.size == 1) {
+            "Expected 1 parameter of ${builder.definingClass}->${builder.name} with exactly one " +
+                "Context field, found ${scopedCandidates.size}"
         }
 
-        val factory = factories.single()
-        val parameters = factory.parameterTypes.map(CharSequence::toString)
+        val scoped = scopedCandidates.single()
+        val scopedType = parameters[scoped]
+        val contextField = mutableClassDefBy(scopedType).fields.single { it.type.toString() == CONTEXT }
 
-        check(parameters.size == 19) {
-            "The button factory takes ${parameters.size} parameters, expected 19"
-        }
-
-        val modeType = parameters[1]
-        val primaryType = parameters[2]
-        val labelType = parameters[3]
-        val iconType = parameters[5]
-
-        // The mode constant this method already uses for its own buttons.
-        val mode = instructions.firstNotNullOfOrNull { instruction ->
-            instruction.fieldReference()?.takeIf {
-                instruction.opcode == Opcode.SGET_OBJECT && it.type == modeType
-            }
-        }
-
-        check(mode != null) { "No constant of $modeType is used in $sidebarName" }
-
-        // The icon is wrapped by a class that extends the icon parameter and takes the enum.
-        val iconWrapper = instructions.firstNotNullOfOrNull { instruction ->
-            instruction.methodReference()?.takeIf {
-                it.name == "<init>" &&
-                    it.parameterTypes.size == 1 &&
-                    mutableClassDefByOrNull(it.definingClass)?.superclass == iconType
-            }
-        }
-
-        check(iconWrapper != null) { "No wrapper of $iconType is built in $sidebarName" }
-
-        val iconEnumType = iconWrapper.parameterTypes.single().toString()
-
-        // The icon itself is whichever constant Facebook's own download row draws, so the button
-        // looks like the one Facebook draws itself.
-        var icon: FieldReference? = null
-
-        classDefForEach { classDef ->
-            classDef.methods.forEach { method ->
-                val list = method.instructions()
-                if (list.none { it.stringReference() == DOWNLOAD_ROW }) return@forEach
-
-                list.forEach { instruction ->
-                    val field = instruction.fieldReference() ?: return@forEach
-                    if (instruction.opcode == Opcode.SGET_OBJECT && field.type == iconEnumType) {
-                        if (icon == null) icon = field
-                    }
-                }
-            }
-        }
-
-        check(icon != null) { "The download row of Facebook draws no icon of $iconEnumType" }
-
-        // ---- what the component holds --------------------------------------------------------
-        //
-        // Both by type. The player params are the field whose own type holds the player, and the
-        // session is the only field of its kind.
-        val playerField = component.fields.single { field ->
-            mutableClassDefByOrNull(field.type.toString())?.fields?.any {
-                it.type.toString() == VIDEO_PLAYER_PARAMS
-            } == true
-        }
-
-        val sessionField = component.fields.single { it.type.toString() == FB_USER_SESSION }
-        val contextField = mutableClassDefBy(scopedType).fields
-            .single { it.type.toString() == CONTEXT }
+        implementClick(sheet, HANDLER)
 
         // ---- the helper -------------------------------------------------------------------------
         //
-        // Its own method, so it has a fresh set of registers. The sidebar runs with more than
-        // ninety and every one of them is live somewhere.
+        // Its own method, with its own fresh registers, so nothing it does can collide with a
+        // register the builder's own code still needs.
+        val rowParameters = sheet.row.parameterTypes.map(CharSequence::toString)
+        val helperParameters = listOf(sheet.lookup.definingClass, PLAYER_ORIGIN, STRING, scopedType, LIST)
+
+        val lookupInvokeMnemonic = when (sheet.lookupInvoke) {
+            Opcode.INVOKE_VIRTUAL, Opcode.INVOKE_VIRTUAL_RANGE -> "invoke-virtual"
+            Opcode.INVOKE_INTERFACE, Opcode.INVOKE_INTERFACE_RANGE -> "invoke-interface"
+            else -> throw IllegalStateException("The player state lookup is called with ${sheet.lookupInvoke.name}")
+        }
+
         val helper = ImmutableMethod(
-            sidebarClass,
+            builder.definingClass,
             HELPER,
-            listOf(
-                ImmutableMethodParameter(FB_USER_SESSION, null, null),
-                ImmutableMethodParameter(scopedType, null, null),
-                ImmutableMethodParameter(playerField.type.toString(), null, null),
-            ),
-            factory.returnType.toString(),
+            helperParameters.map { ImmutableMethodParameter(it, null, null) },
+            "V",
             AccessFlags.PUBLIC.value or AccessFlags.STATIC.value,
             null,
             null,
@@ -249,15 +310,10 @@ val downloadReelPatch = bytecodePatch(
         ).toMutable().apply {
             addInstructions(
                 0,
-                buildButton(
-                    factory = factory,
-                    parameters = parameters,
-                    mode = mode,
-                    icon = icon!!,
-                    iconWrapperClass = iconWrapper.definingClass,
-                    iconEnumType = iconEnumType,
-                    primaryType = primaryType,
-                    labelType = labelType,
+                buildRow(
+                    sheet = sheet,
+                    lookupInvoke = lookupInvokeMnemonic,
+                    rowParameters = rowParameters,
                     scopedType = scopedType,
                     contextField = contextField.name,
                     hdField = hdField,
@@ -267,286 +323,110 @@ val downloadReelPatch = bytecodePatch(
             )
         }
 
-        component.methods.add(helper)
+        mutableClassDefBy(builder.definingClass).methods.add(helper)
 
         // ---- the injection ----------------------------------------------------------------------
         //
-        // The sidebar hands three lists to the call that assembles it: one of buttons, one of a
-        // marker for each, one of a name for each. The injection goes before that call. There the
-        // low registers have been copied into the argument block and are free again, and the list
-        // is still the same object that the call receives.
-        val assemblyIndex = instructions.indexOfFirst { instruction ->
-            instruction.methodReference()?.parameterTypes?.count { it.toString() == ARRAY_LIST } == 2
-        }
-
-        check(assemblyIndex > 0) { "$sidebarName does not assemble a sidebar" }
-
-        val assembly = instructions[assemblyIndex]
-        val assemblyReference = assembly.methodReference()!!
-        val start = (assembly as RegisterRangeInstruction).startRegister
-
-        // The buttons are the list, not either of the two marker arrays.
-        val listParameter = assemblyReference.parameterTypes
-            .indexOfFirst { it.toString() == LIST }
-
-        check(listParameter >= 0) { "The sidebar assembly takes no list of buttons" }
-
-        val listRegister = start + listParameter
-
-        // That argument register is filled from a local a few instructions earlier. Adding to the
-        // local adds to the same object, so the search is for where it was copied from.
-        val sourceRegister = traceSource(instructions, assemblyIndex, listRegister)
-
-        check(sourceRegister != null) { "Could not trace the button list of $sidebarName" }
-
-        // The session and the scoped context are two of the arguments this very call receives.
-        // So their registers come from its own parameter list, and it states their types.
-        //
-        // The parameter registers of the method itself cannot be used. This method reuses them as
-        // locals long before the end. So a read of `p0` here answers with whatever was last put
-        // there, which is how the first attempt earned a VerifyError.
-        fun argumentRegister(type: String): Int {
-            val at = assemblyReference.parameterTypes.indexOfFirst { it.toString() == type }
-            check(at >= 0) { "The sidebar assembly takes no $type" }
-            return start + at
-        }
-
-        // The player of this item is read once in the prologue and parked, because the register
-        // holding the component is overwritten soon after. Follow it to where it was parked.
-        val playerRegister = instructions.withIndex().firstNotNullOfOrNull { (index, instruction) ->
-            val field = instruction.fieldReference() ?: return@firstNotNullOfOrNull null
-
-            if (field.definingClass != sidebarClass || field.name != playerField.name) {
-                return@firstNotNullOfOrNull null
-            }
-
-            val read = instruction as? TwoRegisterInstruction ?: return@firstNotNullOfOrNull null
-            val next = instructions.getOrNull(index + 1) as? TwoRegisterInstruction
-
-            next?.takeIf {
-                instructions[index + 1].opcode == Opcode.MOVE_OBJECT_FROM16 &&
-                    it.registerB == read.registerA
-            }?.registerA
-        }
-
-        check(playerRegister != null) { "The player of the item is not parked in $sidebarName" }
-
-        // It has to survive the whole method, because the button is built at the end of it.
-        val parkedOnce = instructions.count { instruction ->
-            (instruction as? TwoRegisterInstruction)?.registerA == playerRegister &&
-                instruction.opcode == Opcode.MOVE_OBJECT_FROM16
-        }
-
-        check(parkedOnce == 1) {
-            "v$playerRegister is written $parkedOnce times, so it does not hold the player throughout"
-        }
-
-        // Each button of the strip is registered twice: the component in one list, and a marker
-        // for what kind of button it is in another. A component added without its marker draws
-        // but does not answer a tap.
-        val markers = instructions.mapNotNull { it.methodReference() }
-            .filter {
-                it.parameterTypes.size == 1 &&
-                    it.parameterTypes.single().toString() == iconEnumType &&
-                    it.returnType != "V"
-            }
-            .distinctBy { "${it.definingClass}->${it.name}" }
-
-        check(markers.size == 1) {
-            "Expected 1 marker for an icon, found ${markers.size}"
-        }
-
-        val marker = markers.single()
-        val markerRegister = traceSource(instructions, assemblyIndex, argumentRegister(ARRAY_LIST))
-
-        check(markerRegister != null) { "Could not trace the marker list of $sidebarName" }
-
-        // Three instructions before the call the object moves are done, so v0 to v2 hold nothing
-        // that is still wanted. That was true when this was written and it is not self-evident,
-        // so it is checked rather than trusted: an earlier version of this patch read `p0` here,
-        // which is live nowhere near the end of this method, and the app died with a VerifyError
-        // on every reel. A build that fails with the message below is the same fault found early.
-        //
-        // The window is from the injection to the call. Any touch of one of these registers in it
-        // counts, whether it reads or writes, because that is the cheap and safe way round.
-        val scratch = setOf(0, 1, 2)
-        val busy = (assemblyIndex - 3..assemblyIndex)
-            .filter { it in instructions.indices }
-            .filter { registersTouched(instructions[it]).any(scratch::contains) }
-
-        check(busy.isEmpty()) {
-            "$sidebarName still uses " + scratch.joinToString { "v$it" } +
-                " at instruction(s) ${busy.joinToString()}, so the injection cannot borrow them"
-        }
-
-        sidebar.addInstructions(
-            assemblyIndex - 3,
+        // First thing in the builder, before its own checks. Dalvik locals are unwritten before a
+        // method's first instruction runs, so v0 to v4 are free here whatever the builder does
+        // later with those same register numbers as locals of its own. The five parameters are not
+        // consecutive in the builder's own parameter list, so each is copied down individually
+        // rather than passed as one range.
+        builder.addInstructions(
+            0,
             """
-                move-object/from16 v0, v${argumentRegister(FB_USER_SESSION)}
-                move-object/from16 v1, v${argumentRegister(scopedType)}
-                move-object/from16 v2, v$playerRegister
-                invoke-static { v0, v1, v2 }, $sidebarClass->$HELPER($FB_USER_SESSION$scopedType${playerField.type})${factory.returnType}
-                move-result-object v1
-                move-object/from16 v0, v$sourceRegister
-                invoke-virtual { v0, v1 }, Ljava/util/AbstractCollection;->add(Ljava/lang/Object;)Z
-                sget-object v2, ${icon!!.definingClass}->${icon!!.name}:$iconEnumType
-                invoke-static { v2 }, ${marker.definingClass}->${marker.name}($iconEnumType)${marker.returnType}
-                move-result-object v2
-                move-object/from16 v0, v$markerRegister
-                invoke-virtual { v0, v2 }, Ljava/util/AbstractCollection;->add(Ljava/lang/Object;)Z
+                move-object/from16 v0, p$store
+                move-object/from16 v1, p$origin
+                move-object/from16 v2, p$id
+                move-object/from16 v3, p$scoped
+                move-object/from16 v4, p$list
+                invoke-static/range { v0 .. v4 }, ${builder.definingClass}->$HELPER(${helperParameters.joinToString("")})V
             """,
         )
-
-        println("REEL sidebar=$sidebarClass->$sidebarName assembly@$assemblyIndex list=v$sourceRegister player=v$playerRegister")
-        println("REEL factory=${factory.definingClass}->${factory.name}${factory.returnType}")
-        println("REEL icon=${icon!!.definingClass}->${icon!!.name}")
-        println("REEL fields hd=$hdField sd=$sdField manifest=$manifestField player=${playerField.name} session=${sessionField.name}")
     }
 }
 
 /**
- * The body of the helper that builds one button.
+ * The body of the helper that builds and adds one row.
  *
- * Register use here is dictated by the instruction formats, not by taste. An `invoke-direct` with
- * arguments and an `iget` both take **4-bit** registers, so everything they touch has to sit in
- * `v0` to `v15`. The factory takes nineteen arguments, and thus needs nineteen **consecutive**
- * registers, so its block sits high at `v40` and each value is moved up once it is built.
- * `new-instance` and `const-string` take 8-bit registers, so those can write high directly.
+ * `new-instance` and `const-string` take 8-bit registers, so the row's own constructor arguments
+ * can sit high, from v30 up, clear of everything this method does before it.
  */
-private fun buildButton(
-    factory: MethodReference,
-    parameters: List<String>,
-    mode: FieldReference,
-    icon: FieldReference,
-    iconWrapperClass: String,
-    iconEnumType: String,
-    primaryType: String,
-    labelType: String,
+private fun buildRow(
+    sheet: MoreSheet,
+    lookupInvoke: String,
+    rowParameters: List<String>,
     scopedType: String,
     contextField: String,
     hdField: String,
     sdField: String,
     manifestField: String,
 ): String {
-    val signature = "${factory.definingClass}->${factory.name}" +
-        parameters.joinToString("", "(", ")") + factory.returnType
+    val iconEnumType = sheet.iconWrap.parameterTypes.single().toString()
+    val signature = "${sheet.row.definingClass}-><init>" +
+        rowParameters.joinToString("", "(", ")") + "V"
 
+    // This method's own parameters sit at the top of a large register file (the row's constructor
+    // needs a wide, clear block from v30 up), so any parameter past v15 cannot be named directly in
+    // a non-range invoke — only `/range` forms and `move-object/from16` (whose source register is
+    // 16-bit) can reach it. Every call below is written to respect that.
     return """
-        move-object/from16 v0, p1
-        iget-object v0, v0, $scopedType->$contextField:$CONTEXT
-        move-object/from16 v5, v0
-        move-object/from16 v4, p2
-        move-object/from16 v6, p0
+        if-eqz p1, :done
+        $lookupInvoke/range { p0 .. p2 }, ${sheet.lookup.definingClass}->${sheet.lookup.name}($PLAYER_ORIGIN$STRING)${sheet.lookup.returnType}
+        move-result-object v7
+        if-eqz v7, :done
 
-${handlers(hdField, sdField, manifestField)}
-        const-string v1, "$LABEL"
+        move-object/from16 v1, p3
+        iget-object v8, v1, $scopedType->$contextField:$CONTEXT
 
-        new-instance v2, $primaryType
-        invoke-direct { v2, v1, v8 }, $primaryType-><init>(Ljava/lang/String;$FUNCTION1)V
-        move-object/from16 v42, v2
+        const-string v9, "$hdField"
+        const-string v10, "$sdField"
+        const-string v11, "$manifestField"
 
-        new-instance v2, $labelType
-        invoke-direct { v2, v1, v9 }, $labelType-><init>(Ljava/lang/String;$FUNCTION1)V
-        move-object/from16 v43, v2
+        new-instance v6, $HANDLER
+        invoke-direct/range { v6 .. v11 }, $HANDLER-><init>(Ljava/lang/Object;Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
 
-        new-instance v2, $labelType
-        invoke-direct { v2, v1, v10 }, $labelType-><init>(Ljava/lang/String;$FUNCTION1)V
-        move-object/from16 v44, v2
+        sget-object v12, ${sheet.downloadIcon.definingClass}->${sheet.downloadIcon.name}:$iconEnumType
+        invoke-static { v12 }, ${sheet.iconWrap.definingClass}->${sheet.iconWrap.name}($iconEnumType)${sheet.iconWrap.returnType}
+        move-result-object v13
 
-        sget-object v7, ${icon.definingClass}->${icon.name}:$iconEnumType
-        new-instance v2, $iconWrapperClass
-        invoke-direct { v2, v7 }, $iconWrapperClass-><init>($iconEnumType)V
-        move-object/from16 v45, v2
+        new-instance v30, ${sheet.row.definingClass}
+${rowArguments(rowParameters, sheet.click.type, sheet.iconWrap.returnType.toString())}
+        invoke-direct/range { v30 .. v${30 + rowParameters.size} }, $signature
 
-        move-object/from16 v40, v6
-        sget-object v41, ${mode.definingClass}->${mode.name}:${mode.type}
-        sget-object v46, Ljava/lang/Boolean;->TRUE:Ljava/lang/Boolean;
-        sget-object v47, Ljava/lang/Boolean;->FALSE:Ljava/lang/Boolean;
-        const-string v48, "$TEST_ID"
-        const-string v49, "$CAPTION"
-        const/16 v50, 0x0
-        move-object/from16 v51, v11
-        move-object/from16 v52, v12
-        move-object/from16 v53, v13
-        move-object/from16 v54, v14
-        const/16 v55, 0x11
-        const/16 v56, 0x0
-        const/16 v57, 0x1
-        const/16 v58, 0x0
-
-        invoke-static/range { v40 .. v58 }, $signature
-        move-result-object v0
-        return-object v0
+        move-object/from16 v4, p4
+        move-object/from16 v5, v30
+        invoke-interface { v4, v5 }, $LIST->add($OBJECT)Z
+        :done
+        return-void
     """
 }
 
 /**
- * One handler for each slot the factory takes, each knowing which slot it is.
- *
- * Only the tap slot saves. The others are still given a handler rather than null, because the
- * factory is not documented to accept null, and a handler that returns without a word costs
- * nothing.
+ * The moves that fill the row's own constructor arguments from v31 up: the handler (v6) wherever
+ * the row takes the click interface, the wrapped icon (v13) wherever it takes the icon type, the
+ * label as the first CharSequence (the title) and the row id as the last CharSequence if there is
+ * more than one, the place Facebook's own rows carry theirs. Everything else is left null: this
+ * patch does not know what a subtitle or a weight should be, and the row draws without them.
  */
-private fun handlers(hd: String, sd: String, manifest: String) = (0..6).joinToString("\n") { slot ->
-    val saves = if (slot == TAP_SLOT) 1 else 0
+private fun rowArguments(rowParameters: List<String>, click: String, icon: String): String {
+    val title = rowParameters.indexOf(CHAR_SEQUENCE)
+    val idAt = rowParameters.lastIndexOf(CHAR_SEQUENCE).takeIf { it != title }
 
-    """
-        new-instance v20, $HANDLER
-        move-object/from16 v21, v4
-        move-object/from16 v22, v5
-        const-string v23, "$hd"
-        const-string v24, "$sd"
-        const-string v25, "$manifest"
-        const/16 v26, 0x$slot
-        const/16 v27, 0x$saves
-        invoke-direct/range { v20 .. v27 }, $HANDLER-><init>(Ljava/lang/Object;${CONTEXT}Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;IZ)V
-        move-object/from16 v${8 + slot}, v20
-    """
+    return rowParameters.mapIndexed { index, type ->
+        val register = 31 + index
+        when {
+            type == click -> "move-object/from16 v$register, v6"
+            type == icon -> "move-object/from16 v$register, v13"
+            index == title -> "const-string v$register, \"$LABEL\""
+            index == idAt -> "const-string v$register, \"$ROW_ID\""
+            else -> "const/16 v$register, 0x0"
+        }
+    }.joinToString("\n")
 }
 
-/**
- * Every register that one instruction names, whether it reads it or writes it.
- *
- * The caller wants to know that a register is free. Telling a read from a write needs a table of
- * every opcode, and the answer to the easier question is enough: an instruction that names the
- * register at all is a reason not to borrow it.
- */
-private fun registersTouched(instruction: Instruction): Set<Int> = buildSet {
-    when (instruction) {
-        is RegisterRangeInstruction ->
-            (0 until instruction.registerCount).forEach { add(instruction.startRegister + it) }
-
-        is Instruction35c -> {
-            val count = (instruction as VariableRegisterInstruction).registerCount
-            val registers = listOf(
-                instruction.registerC,
-                instruction.registerD,
-                instruction.registerE,
-                instruction.registerF,
-                instruction.registerG,
-            )
-            registers.take(count).forEach(::add)
-        }
-
-        else -> {
-            if (instruction is OneRegisterInstruction) add(instruction.registerA)
-            if (instruction is TwoRegisterInstruction) add(instruction.registerB)
-            if (instruction is ThreeRegisterInstruction) add(instruction.registerC)
-        }
-    }
-}
-
-/** The local a call argument was copied from, so adding to it adds to the same object. */
-private fun traceSource(instructions: List<Instruction>, callIndex: Int, argument: Int): Int? =
-    (callIndex - 1 downTo maxOf(0, callIndex - 40))
-        .asSequence()
-        .mapNotNull { index ->
-            val instruction = instructions[index]
-            (instruction as? TwoRegisterInstruction)?.takeIf {
-                instruction.opcode == Opcode.MOVE_OBJECT_FROM16 && it.registerA == argument
-            }?.registerB
-        }
-        .firstOrNull()
+private fun holds(method: Method, string: String) =
+    method.implementation?.instructions?.any { it.stringReference() == string } == true
 
 private fun Instruction.methodReference() =
     (this as? ReferenceInstruction)?.reference as? MethodReference
@@ -560,5 +440,5 @@ private fun Instruction.stringReference() =
 private fun MutableMethod.instructions(): List<Instruction> =
     implementation?.instructions?.toList() ?: emptyList()
 
-private fun com.android.tools.smali.dexlib2.iface.Method.instructions(): List<Instruction> =
+private fun Method.instructions(): List<Instruction> =
     implementation?.instructions?.toList() ?: emptyList()

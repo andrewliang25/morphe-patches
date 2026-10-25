@@ -112,7 +112,7 @@ public final class ReelDownload implements Function1<Object, Unit> {
      * <p>The params object holds exactly one field of the source type, and that type is a name that
      * Redex keeps, so no letter has to be written down here.
      */
-    private static Object sourceOf(Object params) {
+    static Object sourceOf(Object params) {
         if (params == null) return null;
 
         // The sidebar holds a rich params object, which holds the plain one, which holds the

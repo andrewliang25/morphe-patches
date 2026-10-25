@@ -18,7 +18,7 @@ To get the same bytecode, select the variant by its title. Do not search for the
 
 > ## 584.0.0.51.56 bump (2026-10-25)
 >
-> 13 of 19 patches applied unchanged. Of the 6 that drifted:
+> 13 of 19 patches applied unchanged. Of the 6 that drifted, all 6 are now fixed:
 >
 > - **`[Feed] Block feed auto refresh`** — fixed. `WarmStartRefreshFingerprint`'s target method
 >   (`LX/3UU;->A05`) gained a leading `long` threshold parameter before the reason string, so the
@@ -42,17 +42,40 @@ To get the same bytecode, select the variant by its title. Do not search for the
 >   static `Integer` colour source taking `(Context, token, palette)` that hands the token to a
 >   sibling static `(token, I, Z)` method — and every instance resolver on that class answering an
 >   `Int` for the token type is hooked, instead of two fixed fingerprints on the old kept name.
-> - **`[Reels] Download any reel`** — still broken on 584. Confirmed against the 584 decompile
->   (`LX/AF0;->A0l`, the method naming `UDDSideBarComponent`) that Redex split the button assembly:
->   `A0l` now calls an intermediate `LX/AF0;->A01` (20 params, 1 `Function1`), which only internally
->   calls the real button factory `LX/2Uj;->A00` (20 params, 4 `Function1`, first param
->   `FbUserSession`) — one level deeper than the patch's shape scan reaches. Finding the factory needs
->   more than a shape tweak: the patch's downstream register-tracing (mode/label/icon extraction,
->   button-list injection) assumes the factory call and the assembly call share one method's register
->   space, which no longer holds now that the factory lives in a separate method from the sidebar
->   builder. Left as follow-up work — the fix needs to either resolve the mode/label/icon types from
->   `A01`'s own parameter list (if they map through), or inject the new button via a call from `A0l`
->   into a helper that replays `A01`'s own call to the factory.
+> - **`[Reels] Download any reel`** — fixed, but moved to a different surface. The sidebar approach
+>   (`LX/AF0;->A0l`, the method naming `UDDSideBarComponent`) was abandoned rather than repaired: on
+>   584 Redex split the button assembly so the real factory (`LX/2Uj;->A00`, 20 params, 4 `Function1`)
+>   sits one method deeper than the sidebar builder (`A0l` calls an intermediate `LX/AF0;->A01`, which
+>   calls the factory), and the sidebar builder itself is register-starved — the one register the old
+>   patch relied on to carry the reel's player value through to the click handler gets reused as
+>   scratch space by unrelated code earlier in the method on 584, and no other register in the whole
+>   ~700-instruction method is free for the whole method's lifetime. A safe fix would need to grow the
+>   method's declared register count and renumber every existing instruction reference — a real,
+>   untried capability, not a quick re-anchor.
+>
+>   Instead, the button now goes on the reel's **"More" sheet** (the three-dot menu with Playback
+>   speed/Quality settings/Captions/Clear mode), which already looks up the reel's player state for
+>   its own rows and has no register pressure (27 total registers, 63 instructions — versus the
+>   sidebar's 90+ and ~700). The row builder is found by the string `fds_control_clear_mode` (the one
+>   static method that adds every row of the sheet); from there the patch finds, all by shape rather
+>   than by name: the `(PlayerOrigin, String)` player-state lookup on one of the builder's own
+>   parameters; the row's own constructor (the `<init>` taking a `CharSequence` built right after the
+>   Clear mode row's id); the click interface (the constructor's one public, single-method parameter);
+>   the icon wrapper (a static method taking an enum and returning one of the constructor's other
+>   parameter types); and — the piece that stalled two earlier investigation passes — the **scoped
+>   context parameter**, found not by its obfuscated name (`LX/3tD;`, confirmed only by a direct
+>   dexlib2 field dump, not JADX's decompiled source text, which renders several decoy classes with
+>   similar short names) but by shape: the one parameter of the row builder whose class declares
+>   exactly one field of type `Context`. The click handler itself can't be written as a compile-time
+>   class implementing that interface, since the interface's identity is obfuscated and only known at
+>   patch time — so the patch adds the interface to an already-compiled extension class
+>   (`ReelMenuDownload`) with dexlib2 and bridges its one method to a concrete `run()`, the same
+>   technique `[Feed] Hide page suggestions and promo cards]` already uses for a different purpose.
+>   Confirmed actually working end to end on-device (not just a clean apply): opened a reel that was
+>   not the logged-in account's own (ruling out Facebook's own per-video download row, which only
+>   builds for your own videos), tapped the injected "Download" row, and watched the extension's own
+>   log trace the whole pipeline — DASH manifest found, video transcoded to H.264, audio to AAC-LC,
+>   `save finished: OK` — with no `VerifyError` anywhere in the session.
 >
 > **A seventh bug, found only by logging into the app on-device, not by "applies cleanly":**
 > `[Feed] Hide sponsored posts` crashed Facebook with a `java.lang.VerifyError` in `FeedDataInitImpl`
