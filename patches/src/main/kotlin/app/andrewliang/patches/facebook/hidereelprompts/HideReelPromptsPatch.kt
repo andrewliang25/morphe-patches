@@ -37,8 +37,9 @@ val hideReelPromptsPatch = bytecodePatch(
     // prompt.
     //
     // Nothing obfuscated is named. The predicate is the only method that reads the prompt's enum
-    // constant, takes one argument and returns a boolean. The other readers take more arguments
-    // or return a component.
+    // constant, takes the reel first and returns a boolean. Up to 581 the reel is its only
+    // argument; 582 added the player's context and the reel's position after it, so the patch
+    // only requires the reel to be present, not that it is the sole parameter.
     execute {
         val overlayType = ReelOverlayTypeFingerprint.method.definingClass
         val promptField = enumConstantField(overlayType, INTEREST_PROMPT)
@@ -46,7 +47,7 @@ val hideReelPromptsPatch = bytecodePatch(
         val matches = mutableListOf<Pair<String, String>>()
         classDefForEach { classDef ->
             classDef.methods.forEach { method ->
-                if (method.returnType != "Z" || method.parameterTypes.size != 1) return@forEach
+                if (method.returnType != "Z" || method.parameterTypes.isEmpty()) return@forEach
                 val reads = method.implementation?.instructions?.any { instruction ->
                     instruction.opcode == Opcode.SGET_OBJECT &&
                         ((instruction as ReferenceInstruction).reference as FieldReference).let {
@@ -60,7 +61,7 @@ val hideReelPromptsPatch = bytecodePatch(
 
         val (owner, name) = matches.single()
         val shouldShow = mutableClassDefBy(owner).methods.single {
-            it.name == name && it.returnType == "Z" && it.parameterTypes.size == 1
+            it.name == name && it.returnType == "Z" && it.parameterTypes.isNotEmpty()
         }
 
         shouldShow.addInstructions(

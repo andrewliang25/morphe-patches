@@ -57,8 +57,8 @@ object Constants {
         appIconColor = 0x0864FF, // Facebook brand blue.
         targets = listOf(
             AppTarget(
-                version = "577.0.0.50.72",
-                versionCodes = mapOf(SupportedAbi.ARM64_V8A to 474426275),
+                version = "584.0.0.51.56",
+                versionCodes = mapOf(SupportedAbi.ARM64_V8A to 476007758),
                 minSdk = 30,
             ),
         ),

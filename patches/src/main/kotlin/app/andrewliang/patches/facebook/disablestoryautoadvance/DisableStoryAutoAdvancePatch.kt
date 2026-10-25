@@ -11,12 +11,12 @@ import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 
 /**
  * The method of the auto-play navigation controller that runs when a story ends. The controller
- * keeps its original name in a trace string. A table of trace names also holds the string, thus
- * the fingerprint pins the story parameter.
+ * keeps its original name in a trace string, which later builds log from a method whose parameter
+ * list has grown past the story card alone, so the fingerprint no longer pins the parameter list:
+ * the trace string is unique enough on its own, and the patch only needs the defining class.
  */
 internal object AutoPlayNavigationFingerprint : Fingerprint(
     returnType = "V",
-    parameters = listOf("Lcom/facebook/stories/model/StoryCard;"),
     strings = listOf("StoryviewerAutoPlayNavigationController.moveToNextBucketOrThread"),
 )
 

@@ -42,23 +42,25 @@ private val SCHEDULE_PARAMETERS = listOf(
 )
 
 /**
- * `NewsFeedFragmentDataController.refreshForRevisit`. Redex keeps the method name. Its last but one
- * parameter is the reason for the revisit.
+ * `NewsFeedFragmentDataController.refreshForRevisit`. Redex keeps the method name. Its last
+ * parameter is the reason for the revisit. Up to 577 it answered a boolean and took a trailing
+ * flag after the reason; later builds dropped both, so it answers nothing and ends at the reason.
  */
 internal object RefreshForRevisitFingerprint : Fingerprint(
     name = "refreshForRevisit",
-    returnType = "Z",
-    parameters = listOf("Z", "Z", "Z", "I", "Ljava/lang/String;", "Z"),
+    returnType = "V",
+    parameters = listOf("Z", "Z", "Z", "I", "Ljava/lang/String;"),
 )
 
 /**
  * `maybeRefreshForWarmStart(source)` of the main feed loader. It logs its own name, and the name of
- * its branch for an empty feed.
+ * its branch for an empty feed. Up to 577 the reason is its only parameter; later builds take a
+ * threshold before it, so the fingerprint pins only the last parameter instead of the whole list.
  */
 internal object WarmStartRefreshFingerprint : Fingerprint(
     returnType = "I",
-    parameters = listOf("Ljava/lang/String;"),
     strings = listOf("maybeRefreshForWarmStart", "doHeadLoadOnEmptyFeed"),
+    custom = { method, _ -> method.parameterTypes.lastOrNull()?.toString() == "Ljava/lang/String;" },
 )
 
 /**
@@ -160,8 +162,8 @@ private fun blockWarmStartRefresh(method: MutableMethod) {
 }
 
 /**
- * Make `refreshForRevisit` return false for the automatic reasons, before it does anything. False
- * is the result that it gives when it does not refresh, and neither caller reads it.
+ * Make `refreshForRevisit` return before it does anything, for the automatic reasons. The method
+ * answers nothing, so returning early is itself the "do not refresh" outcome.
  */
 private fun BytecodePatchContext.blockAutomaticRevisit(method: MutableMethod) {
     val owner = method.definingClass
@@ -205,8 +207,7 @@ private fun BytecodePatchContext.blockAutomaticRevisit(method: MutableMethod) {
             invoke-static/range { p5 .. p5 }, $owner->$IS_AUTOMATIC(Ljava/lang/String;)Z
             move-result v0
             if-eqz v0, :stock
-            const/4 v0, 0x0
-            return v0
+            return-void
         """,
         ExternalLabel("stock", method.getInstruction(0)),
     )
