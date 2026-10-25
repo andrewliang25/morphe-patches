@@ -1,18 +1,45 @@
 # Facebook ad map & findings
 
 Reference for the Facebook (`com.facebook.katana`) patches. It comes from a decompile of
-**577.0.0.50.72**, the version pinned in `app/andrewliang/patches/shared/Constants.kt`.
+**584.0.0.51.56**, the version pinned in `app/andrewliang/patches/shared/Constants.kt`. Most of
+this document still describes 577.0.0.50.72, the version it was first written against — re-confirm
+a section's own anchors before relying on it; see the 584 bump note below for what changed.
 
 APKMirror lists many variants of each Facebook release, and each variant has its own versionCode.
-Thus the versionCode alone does not identify a download. The decompile uses this variant:
+Thus the versionCode alone does not identify a download. The 584 decompile uses this variant:
 
 | | |
 |---|---|
-| APKMirror title | Facebook 577.0.0.50.72 (arm64-v8a) (360-480dpi) (Android 11+) |
-| versionCode | 474426275 — for this variant only |
-| ABI / density / minSdk | `arm64-v8a` / 360–480 dpi / 30 |
+| APKMirror title | Facebook 584.0.0.51.56 (arm64-v8a) (320-480dpi) (Android 11+) |
+| versionCode | 476007758 — for this variant only |
+| ABI / density / minSdk | `arm64-v8a` / 320–480 dpi / 30 |
 
 To get the same bytecode, select the variant by its title. Do not search for the number.
+
+> ## 584.0.0.51.56 bump (2026-10-25)
+>
+> 13 of 19 patches applied unchanged. Of the 6 that drifted:
+>
+> - **`[Feed] Block feed auto refresh`** — fixed. `WarmStartRefreshFingerprint`'s target method
+>   (`LX/3UU;->A05`) gained a leading `long` threshold parameter before the reason string, so the
+>   fingerprint now pins only the last parameter's type instead of the whole list.
+>   `RefreshForRevisitFingerprint`'s target (`LX/2fm;->refreshForRevisit`) changed from answering
+>   `Z` with a trailing flag parameter to answering nothing (`V`) with that flag dropped; the patch's
+>   injected `return v0`/`const 0x0` became a plain `return-void`.
+> - **`[Stories] Disable auto advance`** — fixed. `AutoPlayNavigationFingerprint`'s target
+>   (`LX/B6A;->A00`) gained a second parameter (the callback's own type) alongside the story card, so
+>   the fingerprint no longer pins the parameter list — the trace string is unique enough alone, and
+>   the patch only needs the method's defining class.
+> - **`[Reels] Hide interest prompts`** — fixed. The prompt predicate gained trailing parameters
+>   (context, position) after the reel, matching 582's shape described below; the raw method scan now
+>   accepts any method with at least one parameter instead of requiring exactly one.
+> - **`[Reels] Download any reel`**, **`[Reels] Picture-in-picture`**, **`[General] AMOLED black
+>   theme`** — still broken on 584. Confirmed via the `SysAdminDoc/HushFacebook` fork (a different
+>   Morphe-based Facebook patch set, also targeting 584) that `UDDSideBarComponent`'s button factory
+>   moved out of the sidebar builder into a separate caller method, and that `FDSColors` was renamed
+>   by Redex on 584 (previously a kept name). Both need a real re-derivation against the 584
+>   decompile, not a parameter-shape tweak; left as follow-up work. The PIP patch's three fingerprints
+>   still resolve, but the `lastCallBefore` call-ordering assumption that follows them no longer holds.
 
 Each variant is a separate build with different DEX, not an ABI split of one bundle. Thus
 `COMPATIBILITY_FACEBOOK` pins the versionCode and the minSdk of the tested variant.

@@ -7,6 +7,14 @@ variant and versionCode warning in [`facebook-ads-map.md`](facebook-ads-map.md) 
 > `A0A`, `A0B`, `A00` are Redex names. They change on every release, about every two weeks. No
 > fingerprint uses one — see [Anchoring](#anchoring).
 
+> ⚠️ **584.0.0.51.56 (2026-10-25): still broken.** `FdsColorsComponentFingerprint` and
+> `FdsColorsContextFingerprint` fail on 584 — Redex renamed `FDSColors` itself this release (it had
+> kept that name up to 583). A shape-based resolution (find the class by its singleton field plus the
+> body shape of its colour-source method, as described in `SysAdminDoc/HushFacebook`'s equivalent
+> fingerprint) was attempted but did not converge against the real 584 decompile in the time
+> available; reverted rather than shipped half-working. `DarkSchemeResolveFingerprint` and
+> `FdsSchemeResolveFingerprint` still resolve unchanged. Left as follow-up work.
+
 Credit to [SapitoSucio/FroggoMorphePatches](https://github.com/SapitoSucio/FroggoMorphePatches)
 (GPLv3) for the idea of theming Facebook from the outside.
 
