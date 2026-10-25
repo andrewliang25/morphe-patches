@@ -7,13 +7,16 @@ variant and versionCode warning in [`facebook-ads-map.md`](facebook-ads-map.md) 
 > `A0A`, `A0B`, `A00` are Redex names. They change on every release, about every two weeks. No
 > fingerprint uses one — see [Anchoring](#anchoring).
 
-> ⚠️ **584.0.0.51.56 (2026-10-25): still broken.** `FdsColorsComponentFingerprint` and
-> `FdsColorsContextFingerprint` fail on 584 — Redex renamed `FDSColors` itself this release (it had
-> kept that name up to 583). A shape-based resolution (find the class by its singleton field plus the
-> body shape of its colour-source method, as described in `SysAdminDoc/HushFacebook`'s equivalent
-> fingerprint) was attempted but did not converge against the real 584 decompile in the time
-> available; reverted rather than shipped half-working. `DarkSchemeResolveFingerprint` and
-> `FdsSchemeResolveFingerprint` still resolve unchanged. Left as follow-up work.
+> ⚠️ **584.0.0.51.56 (2026-10-25): fixed.** Redex renamed `FDSColors` itself this release (it had
+> kept that name up to 583), so `FdsColorsComponentFingerprint` and `FdsColorsContextFingerprint`
+> (two fixed fingerprints on the old kept name) no longer matched. The class is now found by shape
+> (`fdsColors()` in `Fingerprints.kt`): a singleton whose static `Integer` colour source takes
+> `(Context, token, palette)` and hands the token to a sibling static `(token, I, Z)` method. Every
+> instance method on that class answering `Int` for the token type gets hooked
+> (`hookFdsColorsResolvers()` in `AmoledThemePatch.kt`), instead of matching two fixed parameter
+> shapes — 577 and 580 each had exactly one resolver per shape, but a future release could have more
+> or fewer without breaking this. `DarkSchemeResolveFingerprint` and `FdsSchemeResolveFingerprint`
+> still resolve unchanged by their old fixed shapes.
 
 Credit to [SapitoSucio/FroggoMorphePatches](https://github.com/SapitoSucio/FroggoMorphePatches)
 (GPLv3) for the idea of theming Facebook from the outside.

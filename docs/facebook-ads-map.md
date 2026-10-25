@@ -33,13 +33,26 @@ To get the same bytecode, select the variant by its title. Do not search for the
 > - **`[Reels] Hide interest prompts`** — fixed. The prompt predicate gained trailing parameters
 >   (context, position) after the reel, matching 582's shape described below; the raw method scan now
 >   accepts any method with at least one parameter instead of requiring exactly one.
-> - **`[Reels] Download any reel`**, **`[Reels] Picture-in-picture`**, **`[General] AMOLED black
->   theme`** — still broken on 584. Confirmed via the `SysAdminDoc/HushFacebook` fork (a different
->   Morphe-based Facebook patch set, also targeting 584) that `UDDSideBarComponent`'s button factory
->   moved out of the sidebar builder into a separate caller method, and that `FDSColors` was renamed
->   by Redex on 584 (previously a kept name). Both need a real re-derivation against the 584
->   decompile, not a parameter-shape tweak; left as follow-up work. The PIP patch's three fingerprints
->   still resolve, but the `lastCallBefore` call-ordering assumption that follows them no longer holds.
+> - **`[Reels] Picture-in-picture`** — fixed. The surface check's call site (`LX/9hK;->A1I`) changed
+>   shape from `(player config, Function0, Function0)Z` to `(player config, Function0, I)Z` — the
+>   second lambda became a trace int — so `lastCallBefore`'s shape predicate now only requires the
+>   first lambda parameter, not both.
+> - **`[General] AMOLED black theme`** — fixed. `FDSColors` was renamed by Redex on 584 (it had kept
+>   its name through 583). The class is now found by shape — a singleton field of its own type plus a
+>   static `Integer` colour source taking `(Context, token, palette)` that hands the token to a
+>   sibling static `(token, I, Z)` method — and every instance resolver on that class answering an
+>   `Int` for the token type is hooked, instead of two fixed fingerprints on the old kept name.
+> - **`[Reels] Download any reel`** — still broken on 584. Confirmed against the 584 decompile
+>   (`LX/AF0;->A0l`, the method naming `UDDSideBarComponent`) that Redex split the button assembly:
+>   `A0l` now calls an intermediate `LX/AF0;->A01` (20 params, 1 `Function1`), which only internally
+>   calls the real button factory `LX/2Uj;->A00` (20 params, 4 `Function1`, first param
+>   `FbUserSession`) — one level deeper than the patch's shape scan reaches. Finding the factory needs
+>   more than a shape tweak: the patch's downstream register-tracing (mode/label/icon extraction,
+>   button-list injection) assumes the factory call and the assembly call share one method's register
+>   space, which no longer holds now that the factory lives in a separate method from the sidebar
+>   builder. Left as follow-up work — the fix needs to either resolve the mode/label/icon types from
+>   `A01`'s own parameter list (if they map through), or inject the new button via a call from `A0l`
+>   into a helper that replays `A01`'s own call to the factory.
 
 Each variant is a separate build with different DEX, not an ABI split of one bundle. Thus
 `COMPATIBILITY_FACEBOOK` pins the versionCode and the minSdk of the tested variant.
