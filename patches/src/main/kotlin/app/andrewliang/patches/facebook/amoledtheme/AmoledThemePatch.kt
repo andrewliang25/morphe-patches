@@ -3,9 +3,11 @@ package app.andrewliang.patches.facebook.amoledtheme
 import app.andrewliang.patches.shared.Constants.COMPATIBILITY_FACEBOOK
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
+import app.morphe.patcher.patch.BytecodePatchContext
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.resourcePatch
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
+import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.Method
 import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
@@ -122,8 +124,7 @@ val amoledThemePatch = bytecodePatch(
         // Route one. Four methods and six returns. Each hook keeps the body of the method and
         // sends the value through the extension before the method returns it.
         DarkSchemeResolveFingerprint.method.hookColorReturns(tokenParameterIndex = 0)
-        FdsColorsComponentFingerprint.method.hookColorReturns(tokenParameterIndex = 0)
-        FdsColorsContextFingerprint.method.hookColorReturns(tokenParameterIndex = 1)
+        hookFdsColorsResolvers()
 
         // The resolver of the view code has a Redex name, thus its descriptor comes from the
         // wrapper that calls it.
@@ -283,5 +284,34 @@ private fun MutableMethod.hookColorReturns(tokenParameterIndex: Int) {
                 move-result v$register
             """,
         )
+    }
+}
+
+/**
+ * Hooks every FDS colour resolver on `FDSColors` ([fdsColors]): each instance method answering an
+ * int that takes the colour token and asks the Integer-answering source itself.
+ *
+ * 577 and 580 each had one resolver per source shape (Litho's own, and a plain `Context`'s), which
+ * two fixed fingerprints on the kept `FDSColors` name matched directly. 584 renamed `FDSColors`
+ * itself, so the class is found by shape first ([fdsColors]), then every instance method on it
+ * that takes the token type its own [fdsColourSource] declares and calls back into the class for
+ * an `Integer` answer gets the hook, whatever the resolver's own parameter list.
+ */
+private fun BytecodePatchContext.hookFdsColorsResolvers() {
+    val type = fdsColors()
+    val colors = mutableClassDefBy(type)
+    val tokenType = checkNotNull(fdsColourSource(colors)).parameterTypes[1].toString()
+
+    val resolvers = colors.methods.filter { method ->
+        !AccessFlags.STATIC.isSet(method.accessFlags) && method.returnType == "I" &&
+            method.parameterTypes.any { it.toString() == tokenType } &&
+            method.implementation?.instructions?.any { instruction ->
+                val reference = (instruction as? ReferenceInstruction)?.reference as? MethodReference
+                reference != null && reference.definingClass == type && reference.returnType == "Ljava/lang/Integer;"
+            } == true
+    }
+    check(resolvers.isNotEmpty()) { "No FDSColors resolver asks the Integer colour source" }
+    resolvers.forEach { method ->
+        method.hookColorReturns(tokenParameterIndex = method.parameterTypes.indexOfFirst { it.toString() == tokenType })
     }
 }

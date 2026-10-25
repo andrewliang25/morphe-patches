@@ -58,14 +58,13 @@ private fun Method.lastCallBefore(end: Int, match: (MethodReference) -> Boolean)
     calls.last { (index, reference) -> index < end && match(reference) }
 
 /**
- * The surface check takes the player configuration and two lambdas, and returns a boolean. It runs
- * the first lambda on the Reels tab and the second lambda on other surfaces.
+ * The surface check takes the player configuration and a lambda, and returns a boolean. 584 traces
+ * the call with a third argument, an int, in place of the second lambda 577 and 580 took.
  */
 private fun MethodReference.isSurfaceCheck() =
     returnType == "Z" &&
         parameterTypes.size == 3 &&
-        parameterTypes[1].toString() == FUNCTION0 &&
-        parameterTypes[2].toString() == FUNCTION0
+        parameterTypes[1].toString() == FUNCTION0
 
 /** Sets the result of the call at [callIndex] to true. The call itself still runs. */
 private fun MutableMethod.forceTrue(callIndex: Int) {
