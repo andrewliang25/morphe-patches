@@ -18,8 +18,9 @@ Reference notes for authoring LINE (`jp.naver.line.android`) patches, distilled 
 ## Supported versions (26.14.0, 26.15.1 and 26.16.0)
 
 26.15.1 needs Android 12L (API 32). 26.14.0 and 26.16.0 need Android 11 (API 30). The bundle keeps
-all three versions. Each fingerprint must match every version, so no patch has a table of names per
-version. Each anchor is a name that R8 keeps:
+all three versions, listed in ascending order in `Constants.kt` (`COMPATIBILITY_LINE.targets`). Each
+fingerprint must match every version, so no patch has a table of names per version. Each anchor is a
+name that R8 keeps:
 
 - String literals, Kotlin `toString` text and Thrift operation names.
 - Kotlin enum-constant names, read with `sget-object`.
