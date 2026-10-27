@@ -45,7 +45,7 @@ Two Gradle modules (`settings.gradle.kts`):
 
 **Patch visibility:** A `bytecodePatch` with a `name` is user-facing (shown in Manager/CLI). A nameless one is an internal dependency pulled in through `dependsOn`.
 
-**Compatibility** (`shared/Constants.kt`): Declares `packageName`, app name, `apkFileType`, icon color, and an `AppTarget` list. `version = null` means any/latest (with `isExperimental = true`). Always pin at least one tested version.
+**Compatibility** (`shared/Constants.kt`): Declares `packageName`, app name, `apkFileType`, icon color, and an `AppTarget` list. Always list `AppTarget` entries in ascending version order (oldest supported version first, newest last). `version = null` means any/latest (with `isExperimental = true`). Always pin at least one tested version.
 
 ### Patcher API notes (hard-won)
 
