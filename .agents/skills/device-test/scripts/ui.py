@@ -37,7 +37,33 @@ ADB = adb_path()
 
 
 def adb(*args, text=True):
-    return subprocess.run([ADB, *args], capture_output=True, text=text)
+    # UTF-8, not the locale code page: the screen dump holds any language (cp1252 fails on Windows).
+    if text:
+        return subprocess.run([ADB, *args], capture_output=True, encoding="utf-8", errors="replace")
+    return subprocess.run([ADB, *args], capture_output=True)
+
+
+def powershell(script, *args):
+    """Run a System.Drawing script on Windows, where sips does not exist. $args holds ARGS."""
+    return subprocess.run(
+        ["powershell", "-NoProfile", "-Command", "Add-Type -AssemblyName System.Drawing; & {" + script + "}", *args],
+        capture_output=True, encoding="utf-8", errors="replace",
+    )
+
+
+RESIZE_PS = """
+$src = [System.Drawing.Image]::FromFile($args[0]); $max = [int]$args[2]
+$scale = [Math]::Min(1.0, $max / [Math]::Max($src.Width, $src.Height))
+$dst = New-Object System.Drawing.Bitmap ([int]($src.Width * $scale)), ([int]($src.Height * $scale))
+$g = [System.Drawing.Graphics]::FromImage($dst)
+$g.InterpolationMode = 'HighQualityBicubic'; $g.DrawImage($src, 0, 0, $dst.Width, $dst.Height)
+$g.Dispose(); $src.Dispose(); $dst.Save($args[1], [System.Drawing.Imaging.ImageFormat]::Png); $dst.Dispose()
+"""
+
+PIXEL_PS = """
+$img = New-Object System.Drawing.Bitmap $args[0]; $c = $img.GetPixel([int]$args[1], [int]$args[2]); $img.Dispose()
+'#{0:x2}{1:x2}{2:x2}' -f $c.R, $c.G, $c.B
+"""
 
 
 def nodes():
@@ -119,12 +145,18 @@ def shot(path, size=1000):
         out.write(data)
     root, ext = os.path.splitext(path)
     small = root + "-small" + ext
-    shutil.copyfile(path, small)
-    subprocess.run(["sips", "-Z", str(size), small], capture_output=True)
+    if shutil.which("sips"):
+        shutil.copyfile(path, small)
+        subprocess.run(["sips", "-Z", str(size), small], capture_output=True)
+    else:
+        powershell(RESIZE_PS, os.path.abspath(path), os.path.abspath(small), str(size))
     print(small)
 
 
 def pixel(path, x, y):
+    if not shutil.which("sips"):
+        print(powershell(PIXEL_PS, os.path.abspath(path), str(x), str(y)).stdout.strip())
+        return
     tmp = path + ".px.png"
     subprocess.run(["sips", "-c", "1", "1", "--cropOffset", str(y), str(x), path, "--out", tmp], capture_output=True)
     subprocess.run(["sips", "-s", "format", "bmp", tmp, "--out", tmp + ".bmp"], capture_output=True)
@@ -176,4 +208,6 @@ def main(argv):
 
 
 if __name__ == "__main__":
+    # Screen text can be in any language. The Windows console code page cannot print all of it.
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     sys.exit(main(sys.argv[1:]))
