@@ -121,6 +121,20 @@ again:
 A patch that you did not include in the build has no switch. The row also shows the author and the
 license.
 
+#### Change Facebook patches in the app
+
+With the "[General] Andrew's Patch Setting" patch, the Facebook **Menu** (☰) has an **Andrew's
+Patch Setting** row at the top. There you can turn these patches on or off without patching again:
+
+- Feed: hide sponsored posts, page suggestions and post prompts, and block feed auto refresh
+- Reels: hide sponsored reels and interest prompts, download any reel, and picture-in-picture
+- Stories: hide sponsored stories, download any story, view stories anonymously, and disable auto
+  advance
+- Hide affiliate product links, and open links in external browser
+
+Some changes show only after Facebook restarts. The screen has a **Restart Facebook** row for this.
+The AMOLED black theme has no switch. A patch that you did not include in the build has no switch.
+
 ### 🛠️ Building
 
 To build Andrew's Patches, obey the instructions in the

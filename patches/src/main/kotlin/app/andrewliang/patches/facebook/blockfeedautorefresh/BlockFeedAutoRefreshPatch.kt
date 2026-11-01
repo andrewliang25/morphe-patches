@@ -1,27 +1,31 @@
 package app.andrewliang.patches.facebook.blockfeedautorefresh
 
+import app.andrewliang.patches.facebook.shared.FACEBOOK_SETTINGS
+import app.andrewliang.patches.facebook.shared.addInstructionsIfFacebookSetting
+import app.andrewliang.patches.facebook.shared.facebookSettingsExtensionPatch
+import app.andrewliang.patches.facebook.shared.markFacebookSettingIncluded
 import app.andrewliang.patches.shared.Constants.COMPATIBILITY_FACEBOOK
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
-import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
-import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
-import app.morphe.patcher.extensions.InstructionExtensions.removeInstruction
+import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
 import app.morphe.patcher.patch.BytecodePatchContext
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod.Companion.toMutable
-import app.morphe.patcher.util.smali.ExternalLabel
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
 import com.android.tools.smali.dexlib2.iface.instruction.NarrowLiteralInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.RegisterRangeInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter
 
 private const val IS_AUTOMATIC = "andrewIsAutomaticRevisit"
+private const val SCHEDULE_IF_ALLOWED = "andrewScheduleLoaderReset"
 
 /**
  * The reasons that the news feed fragment gives when it comes back to the screen by itself. The
@@ -80,6 +84,8 @@ val blockFeedAutoRefreshPatch = bytecodePatch(
 ) {
     compatibleWith(COMPATIBILITY_FACEBOOK)
 
+    dependsOn(facebookSettingsExtensionPatch)
+
     // When you come back to the app after some minutes, Facebook replaces the feed on the screen
     // in three ways, and the patch stops each one:
     //
@@ -96,14 +102,20 @@ val blockFeedAutoRefreshPatch = bytecodePatch(
         keepLoaderInBackground(UserLeftAppFingerprint.method)
         blockWarmStartRefresh(WarmStartRefreshFingerprint.method)
         blockAutomaticRevisit(RefreshForRevisitFingerprint.method)
+
+        markFacebookSettingIncluded("blockFeedAutoRefresh")
     }
 }
 
 /**
- * Remove the call in `onUserLeftApp` that schedules the loader reset. The method still records the
+ * Skip the call in `onUserLeftApp` that schedules the loader reset. The method still records the
  * time that you left, which the stale checks read. The calls that cancel the reset stay too.
+ *
+ * The call goes through a new static method that makes it only while the switch is off. The
+ * replacement reads the same registers in the same form, so the size of the method and its
+ * branches stay the same, and it needs no free register.
  */
-private fun keepLoaderInBackground(method: MutableMethod) {
+private fun BytecodePatchContext.keepLoaderInBackground(method: MutableMethod) {
     val schedule = method.implementation!!.instructions.withIndex().filter { (_, instruction) ->
         val reference = (instruction as? ReferenceInstruction)?.reference as? MethodReference
         reference != null &&
@@ -112,7 +124,53 @@ private fun keepLoaderInBackground(method: MutableMethod) {
     }
     check(schedule.size == 1) { "Expected 1 loader reset schedule in onUserLeftApp, found ${schedule.size}" }
 
-    method.removeInstruction(schedule.single().index)
+    val (index, call) = schedule.single()
+    val reference = (call as ReferenceInstruction).reference as MethodReference
+    // The smali name of the call, such as `invoke-virtual`, without the range suffix.
+    val kind = call.opcode.name.lowercase().replace('_', '-').substringBefore('/').removeSuffix("-range")
+    val receiver = if (kind == "invoke-static") emptyList() else listOf(reference.definingClass)
+    val parameters = receiver + reference.parameterTypes.map { it.toString() }
+    val registers = parameters.sumOf { if (it == "J" || it == "D") 2 else 1 }
+    val helperDescriptor = "(${parameters.joinToString("")})V"
+
+    ImmutableMethod(
+        method.definingClass,
+        SCHEDULE_IF_ALLOWED,
+        parameters.map { ImmutableMethodParameter(it, null, null) },
+        "V",
+        AccessFlags.PUBLIC.value or AccessFlags.STATIC.value,
+        null,
+        null,
+        MutableMethodImplementation(registers + 1),
+    ).toMutable().apply {
+        addInstructions(
+            0,
+            """
+                invoke-static { }, $FACEBOOK_SETTINGS->blockFeedAutoRefresh()Z
+                move-result v0
+                if-nez v0, :blocked
+                $kind/range { p0 .. p${registers - 1} }, $reference
+                :blocked
+                return-void
+            """,
+        )
+        mutableClassDefBy(method.definingClass).methods.add(this)
+    }
+
+    val helper = "${method.definingClass}->$SCHEDULE_IF_ALLOWED$helperDescriptor"
+    method.replaceInstruction(
+        index,
+        when (call) {
+            is RegisterRangeInstruction ->
+                "invoke-static/range { v${call.startRegister} .. v${call.startRegister + call.registerCount - 1} }, $helper"
+            is FiveRegisterInstruction ->
+                "invoke-static { " +
+                    listOf(call.registerC, call.registerD, call.registerE, call.registerF, call.registerG)
+                        .take(call.registerCount).joinToString { "v$it" } +
+                    " }, $helper"
+            else -> error("Unexpected call form ${call.opcode} for the loader reset")
+        },
+    )
 }
 
 /**
@@ -146,8 +204,8 @@ private fun blockWarmStartRefresh(method: MutableMethod) {
 
     // p0 can be above v15, so the call uses a range. v0 is a local that the original code sets
     // before it reads it.
-    method.addInstructionsWithLabels(
-        0,
+    method.addInstructionsIfFacebookSetting(
+        "blockFeedAutoRefresh",
         """
             invoke-direct/range { p0 .. p0 }, $isFeedEmpty
             move-result v0
@@ -155,7 +213,6 @@ private fun blockWarmStartRefresh(method: MutableMethod) {
             const/4 v0, $SKIPPED_WARM_START
             return v0
         """,
-        ExternalLabel("stock", method.getInstruction(0)),
     )
 }
 
@@ -199,8 +256,8 @@ private fun BytecodePatchContext.blockAutomaticRevisit(method: MutableMethod) {
     mutableClassDefBy(owner).methods.add(isAutomatic)
 
     // p5 is the reason. It can be above v15, so the call uses a range.
-    method.addInstructionsWithLabels(
-        0,
+    method.addInstructionsIfFacebookSetting(
+        "blockFeedAutoRefresh",
         """
             invoke-static/range { p5 .. p5 }, $owner->$IS_AUTOMATIC(Ljava/lang/String;)Z
             move-result v0
@@ -208,6 +265,5 @@ private fun BytecodePatchContext.blockAutomaticRevisit(method: MutableMethod) {
             const/4 v0, 0x0
             return v0
         """,
-        ExternalLabel("stock", method.getInstruction(0)),
     )
 }

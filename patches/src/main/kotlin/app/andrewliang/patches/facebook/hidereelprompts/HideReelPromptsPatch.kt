@@ -1,9 +1,11 @@
 package app.andrewliang.patches.facebook.hidereelprompts
 
+import app.andrewliang.patches.facebook.shared.addInstructionsIfFacebookSetting
 import app.andrewliang.patches.facebook.shared.enumConstantField
+import app.andrewliang.patches.facebook.shared.facebookSettingsExtensionPatch
+import app.andrewliang.patches.facebook.shared.markFacebookSettingIncluded
 import app.andrewliang.patches.shared.Constants.COMPATIBILITY_FACEBOOK
 import app.morphe.patcher.Fingerprint
-import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.bytecodePatch
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
@@ -29,6 +31,8 @@ val hideReelPromptsPatch = bytecodePatch(
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_FACEBOOK)
+
+    dependsOn(facebookSettingsExtensionPatch)
 
     // The prompt comes from the server as an overlay item on the reel, or from a flag that the
     // client reads. One predicate combines both with two server settings and decides whether the
@@ -63,12 +67,14 @@ val hideReelPromptsPatch = bytecodePatch(
             it.name == name && it.returnType == "Z" && it.parameterTypes.size == 1
         }
 
-        shouldShow.addInstructions(
-            0,
+        shouldShow.addInstructionsIfFacebookSetting(
+            "hideReelPrompts",
             """
                 const/4 v0, 0x0
                 return v0
             """,
         )
+
+        markFacebookSettingIncluded("hideReelPrompts")
     }
 }

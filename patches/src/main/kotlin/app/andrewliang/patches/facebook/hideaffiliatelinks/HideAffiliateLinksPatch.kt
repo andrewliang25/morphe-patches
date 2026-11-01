@@ -1,10 +1,12 @@
 package app.andrewliang.patches.facebook.hideaffiliatelinks
 
 import app.andrewliang.patches.facebook.hidereelprompts.ReelOverlayTypeFingerprint
+import app.andrewliang.patches.facebook.shared.addInstructionsIfFacebookSetting
 import app.andrewliang.patches.facebook.shared.enumConstantField
+import app.andrewliang.patches.facebook.shared.facebookSettingsExtensionPatch
+import app.andrewliang.patches.facebook.shared.markFacebookSettingIncluded
 import app.andrewliang.patches.shared.Constants.COMPATIBILITY_FACEBOOK
 import app.morphe.patcher.Fingerprint
-import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.BytecodePatchContext
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
@@ -49,6 +51,8 @@ val hideAffiliateLinksPatch = bytecodePatch(
 ) {
     compatibleWith(COMPATIBILITY_FACEBOOK)
 
+    dependsOn(facebookSettingsExtensionPatch)
+
     // A creator can attach a shop link (for example Shopee) to a post and earn a commission. The
     // server sends the link with the post, and Facebook shows a product card for it in three
     // places. Each place asks its own gate, and the patch makes each gate say "no link". The
@@ -57,6 +61,8 @@ val hideAffiliateLinksPatch = bytecodePatch(
         hideReelProductCard()
         hideFeedProductFooter()
         hideCommentProductCard()
+
+        markFacebookSettingIncluded("hideAffiliateLinks")
     }
 }
 
@@ -145,32 +151,18 @@ private fun BytecodePatchContext.hideCommentProductCard() {
     FloatingCardModelFingerprint.method.returnNull()
 }
 
-/** At the start of a method, v0 is free if it is not a parameter register. */
-private fun MutableMethod.hasFreeV0(): Boolean {
-    val wide = parameterTypes.count { it.toString() == "J" || it.toString() == "D" }
-    val parameterRegisters = parameterTypes.size + wide +
-        if (AccessFlags.STATIC.isSet(accessFlags)) 0 else 1
-    return implementation!!.registerCount > parameterRegisters
-}
+private fun MutableMethod.returnNull() = addInstructionsIfFacebookSetting(
+    "hideAffiliateLinks",
+    """
+        const/4 v0, 0x0
+        return-object v0
+    """,
+)
 
-private fun MutableMethod.returnNull() {
-    check(hasFreeV0()) { "v0 of $definingClass->$name is a parameter" }
-    addInstructions(
-        0,
-        """
-            const/4 v0, 0x0
-            return-object v0
-        """,
-    )
-}
-
-private fun MutableMethod.returnFalse() {
-    check(hasFreeV0()) { "v0 of $definingClass->$name is a parameter" }
-    addInstructions(
-        0,
-        """
-            const/4 v0, 0x0
-            return v0
-        """,
-    )
-}
+private fun MutableMethod.returnFalse() = addInstructionsIfFacebookSetting(
+    "hideAffiliateLinks",
+    """
+        const/4 v0, 0x0
+        return v0
+    """,
+)

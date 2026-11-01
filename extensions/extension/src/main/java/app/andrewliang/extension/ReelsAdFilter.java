@@ -47,7 +47,7 @@ public final class ReelsAdFilter {
      * @param adClassName binary name of the ad item base class, for example {@code X.B89}.
      */
     public static List<?> withoutAdSections(List<?> page, String adClassName) {
-        if (page == null || page.isEmpty()) return page;
+        if (page == null || page.isEmpty() || !FacebookSettings.hideSponsoredReels()) return page;
 
         int dropped = 0;
         boolean sectionEmptied = false;
@@ -148,7 +148,7 @@ public final class ReelsAdFilter {
      * @param adClassName binary name of the ad item base class, for example {@code X.B89}.
      */
     public static Collection<?> withoutAds(Collection<?> items, String adClassName) {
-        if (items == null || items.isEmpty()) return items;
+        if (items == null || items.isEmpty() || !FacebookSettings.hideSponsoredReels()) return items;
 
         boolean found = false;
         for (Object item : items) {

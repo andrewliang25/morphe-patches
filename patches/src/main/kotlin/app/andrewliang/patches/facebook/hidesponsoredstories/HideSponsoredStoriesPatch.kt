@@ -1,7 +1,9 @@
 package app.andrewliang.patches.facebook.hidesponsoredstories
 
+import app.andrewliang.patches.facebook.shared.addInstructionsIfFacebookSetting
+import app.andrewliang.patches.facebook.shared.facebookSettingsExtensionPatch
+import app.andrewliang.patches.facebook.shared.markFacebookSettingIncluded
 import app.andrewliang.patches.shared.Constants.COMPATIBILITY_FACEBOOK
-import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.bytecodePatch
 
 @Suppress("unused")
@@ -12,6 +14,8 @@ val hideSponsoredStoriesPatch = bytecodePatch(
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_FACEBOOK)
+
+    dependsOn(facebookSettingsExtensionPatch)
 
     // Return the caller's list unchanged rather than filtering the result: Facebook does exactly
     // this when a bucket data source has nothing to contribute, and it avoids depending on the ad
@@ -37,7 +41,9 @@ val hideSponsoredStoriesPatch = bytecodePatch(
             }
 
             // p0 is `this` (the method is not static), so the Nth parameter is p(N + 1).
-            method.addInstructions(0, "return-object p${listParameter + 1}")
+            method.addInstructionsIfFacebookSetting("hideSponsoredStories", "return-object p${listParameter + 1}")
         }
+
+        markFacebookSettingIncluded("hideSponsoredStories")
     }
 }

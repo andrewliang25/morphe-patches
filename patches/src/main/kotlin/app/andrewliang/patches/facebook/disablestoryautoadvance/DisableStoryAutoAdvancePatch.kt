@@ -1,8 +1,10 @@
 package app.andrewliang.patches.facebook.disablestoryautoadvance
 
+import app.andrewliang.patches.facebook.shared.addInstructionsIfFacebookSetting
+import app.andrewliang.patches.facebook.shared.facebookSettingsExtensionPatch
+import app.andrewliang.patches.facebook.shared.markFacebookSettingIncluded
 import app.andrewliang.patches.shared.Constants.COMPATIBILITY_FACEBOOK
 import app.morphe.patcher.Fingerprint
-import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.bytecodePatch
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
@@ -28,6 +30,8 @@ val disableStoryAutoAdvancePatch = bytecodePatch(
 ) {
     compatibleWith(COMPATIBILITY_FACEBOOK)
 
+    dependsOn(facebookSettingsExtensionPatch)
+
     // When the progress bar of a story is full, the auto-play navigation controller moves to the
     // next story. Before it moves, it asks one predicate if auto play is off. The predicate is true
     // for Facebook's own setting `disable_storyviewer_autoplay`, and for its test builds. The patch
@@ -48,12 +52,14 @@ val disableStoryAutoAdvancePatch = bytecodePatch(
                 } == true
         }
 
-        isAutoPlayOff.addInstructions(
-            0,
+        isAutoPlayOff.addInstructionsIfFacebookSetting(
+            "disableStoryAutoAdvance",
             """
                 const/4 v0, 0x1
                 return v0
             """,
         )
+
+        markFacebookSettingIncluded("disableStoryAutoAdvance")
     }
 }
