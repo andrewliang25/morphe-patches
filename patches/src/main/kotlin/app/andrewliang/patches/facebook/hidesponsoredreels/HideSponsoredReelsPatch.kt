@@ -1,17 +1,25 @@
 package app.andrewliang.patches.facebook.hidesponsoredreels
 
+import app.andrewliang.patches.facebook.shared.addInstructionsIfFacebookSetting
+import app.andrewliang.patches.facebook.shared.facebookSettingsExtensionPatch
+import app.andrewliang.patches.facebook.shared.markFacebookSettingIncluded
+import app.andrewliang.patches.facebook.shared.readFacebookSetting
 import app.andrewliang.patches.shared.Constants.COMPATIBILITY_FACEBOOK
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
-import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
+import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.patch.BytecodePatchContext
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod.Companion.toMutable
+import app.morphe.patcher.util.smali.ExternalLabel
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
 import com.android.tools.smali.dexlib2.iface.instruction.Instruction
+import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.RegisterRangeInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.android.tools.smali.dexlib2.iface.reference.StringReference
@@ -40,6 +48,9 @@ val hideSponsoredReelsPatch = bytecodePatch(
     compatibleWith(COMPATIBILITY_FACEBOOK)
     extendWith("extensions/extension.mpe")
 
+    dependsOn(facebookSettingsExtensionPatch)
+
+    // The two filters check the switch in the extension. Every other site checks it here.
     execute {
         // Facebook does not splice ads into Reels on the device. A logging build showed items
         // reaching the collection only as whole fetched pages, never one at a time, with the ad
@@ -138,7 +149,7 @@ val hideSponsoredReelsPatch = bytecodePatch(
             RealtimeIntentAdInsertFingerprint,
             SfdAdInsertFingerprint,
             PoeAdRenderFingerprint,
-        ).forEach { it.method.addInstructions(0, "return-void") }
+        ).forEach { it.method.addInstructionsIfFacebookSetting(FEATURE, "return-void") }
 
         // Banners over a reel and mid-rolls are fetched while the reel plays, not in the page, so
         // the filters cannot see them. Their fetches return a failed future instead. Each caller
@@ -159,8 +170,8 @@ val hideSponsoredReelsPatch = bytecodePatch(
             .forEach(::returnFailedFuture)
 
         // The idle state runs its own video ad query on the GraphQL executor, which the whole app
-        // shares. Thus only this one executor call changes. The helper call has the same size and
-        // no arguments, so the next move-result gets the failed future.
+        // shares. Thus only this one executor call changes. While the switch is on, a branch goes
+        // around it to the helper call, which puts the failed future in the result register.
         val idleVideoFetch = ReelsVideoAdQueryFingerprint.method
         val idleInstructions = idleVideoFetch.instructions()
         val queryIndex = idleInstructions.indexOfFirst { it.string == REELS_VIDEO_AD_QUERY }
@@ -173,9 +184,30 @@ val hideSponsoredReelsPatch = bytecodePatch(
         check(idleInstructions[executeIndex + 1].opcode == Opcode.MOVE_RESULT_OBJECT) {
             "The executor call at $executeIndex has no move-result-object"
         }
-        idleVideoFetch.replaceInstruction(
+        // The gate borrows the result register. The move-result writes it, so it is free before
+        // the call, if the call does not read it.
+        val result = (idleInstructions[executeIndex + 1] as OneRegisterInstruction).registerA
+        val executeCall = idleInstructions[executeIndex]
+        val arguments = when (executeCall) {
+            is RegisterRangeInstruction ->
+                (executeCall.startRegister until executeCall.startRegister + executeCall.registerCount).toList()
+            is FiveRegisterInstruction ->
+                listOf(executeCall.registerC, executeCall.registerD, executeCall.registerE,
+                    executeCall.registerF, executeCall.registerG).take(executeCall.registerCount)
+            else -> error("Unexpected executor call form ${executeCall.opcode}")
+        }
+        check(result !in arguments) { "The executor call reads v$result, its own result register" }
+        idleVideoFetch.addInstructionsWithLabels(
             executeIndex,
-            "invoke-static { }, ${failedFutureOn(idleVideoFetch.definingClass)}",
+            readFacebookSetting(FEATURE, "v$result") +
+                """
+                    if-eqz v$result, :fetch
+                    invoke-static { }, ${failedFutureOn(idleVideoFetch.definingClass)}
+                    move-result-object v$result
+                    goto :fetched
+                """,
+            ExternalLabel("fetch", idleVideoFetch.getInstruction(executeIndex)),
+            ExternalLabel("fetched", idleVideoFetch.getInstruction(executeIndex + 2)),
         )
 
         // The ad-break lookup retries a failed fetch each second while the reel plays. Its tick
@@ -184,15 +216,20 @@ val hideSponsoredReelsPatch = bytecodePatch(
         val unresolvedState = mutableClassDefBy(UnresolvedAdStateFingerprint.method.definingClass)
         unresolvedState.methods
             .single { it.returnType == "J" && it.parameterTypes.size == 2 && it.parameterTypes[1] == "I" }
-            .addInstructions(
-                0,
+            .addInstructionsIfFacebookSetting(
+                FEATURE,
                 """
                     const-wide/16 v0, -0x1
                     return-wide v0
                 """,
             )
+
+        markFacebookSettingIncluded(FEATURE)
     }
 }
+
+/** The switch of this patch in "[General] Andrew's Patch Setting". */
+private const val FEATURE = "hideSponsoredReels"
 
 private const val FAILED_FUTURE = "failedAdFetch"
 
@@ -230,10 +267,10 @@ private fun BytecodePatchContext.failedFutureOn(classType: String): String {
     return reference
 }
 
-/** Makes [method] return the failed future. It can write v0, because it returns at once. */
+/** Makes [method] return the failed future while the switch is on. */
 private fun BytecodePatchContext.returnFailedFuture(method: MutableMethod) =
-    method.addInstructions(
-        0,
+    method.addInstructionsIfFacebookSetting(
+        FEATURE,
         """
             invoke-static { }, ${failedFutureOn(method.definingClass)}
             move-result-object v0

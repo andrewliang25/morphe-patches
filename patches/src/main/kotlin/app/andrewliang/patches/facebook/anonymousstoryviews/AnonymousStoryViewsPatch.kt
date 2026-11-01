@@ -1,5 +1,8 @@
 package app.andrewliang.patches.facebook.anonymousstoryviews
 
+import app.andrewliang.patches.facebook.shared.addInstructionsIfFacebookSetting
+import app.andrewliang.patches.facebook.shared.facebookSettingsExtensionPatch
+import app.andrewliang.patches.facebook.shared.markFacebookSettingIncluded
 import app.andrewliang.patches.shared.Constants.COMPATIBILITY_FACEBOOK
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
@@ -65,6 +68,8 @@ val anonymousStoryViewsPatch = bytecodePatch(
     compatibleWith(COMPATIBILITY_FACEBOOK)
     extendWith("extensions/extension.mpe")
 
+    dependsOn(facebookSettingsExtensionPatch)
+
     // The story viewer collects the cards that you saw and sends them in one request when it
     // pauses or closes. A logging build showed that this request (DirectSeenMutation) is the only
     // GraphQL call that viewing a story makes.
@@ -93,7 +98,7 @@ val anonymousStoryViewsPatch = bytecodePatch(
         check(senders.size == 1) { "Expected 1 story seen sender, found ${senders.size}" }
         val sender = senders.single()
 
-        sender.addInstructions(0, "return-void")
+        sender.addInstructionsIfFacebookSetting("anonymousStoryViews", "return-void")
 
         // The seen helper runs once for each card that the viewer shows. It takes the bucket and
         // the card, next to each other, so one range call passes both to the extension.
@@ -171,6 +176,8 @@ val anonymousStoryViewsPatch = bytecodePatch(
                 return v0
             """,
         )
+
+        markFacebookSettingIncluded("anonymousStoryViews")
     }
 }
 

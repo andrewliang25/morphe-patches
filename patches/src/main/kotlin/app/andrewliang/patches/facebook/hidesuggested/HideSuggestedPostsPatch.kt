@@ -2,14 +2,14 @@ package app.andrewliang.patches.facebook.hidesuggested
 
 import app.andrewliang.patches.facebook.shared.AddNewEdgeToCollectionFingerprint
 import app.andrewliang.patches.facebook.shared.FEED_UNIT_EDGE
+import app.andrewliang.patches.facebook.shared.addInstructionsIfFacebookSetting
+import app.andrewliang.patches.facebook.shared.facebookSettingsExtensionPatch
+import app.andrewliang.patches.facebook.shared.markFacebookSettingIncluded
 import app.andrewliang.patches.facebook.shared.feedUnitGetter
 import app.andrewliang.patches.shared.Constants.COMPATIBILITY_FACEBOOK
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
-import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
-import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
-import app.morphe.patcher.util.smali.ExternalLabel
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
@@ -55,6 +55,8 @@ val hideSuggestedPostsPatch = bytecodePatch(
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_FACEBOOK)
+
+    dependsOn(facebookSettingsExtensionPatch)
 
     // Same chokepoint as "Hide sponsored posts"; both prepend a guard returning false, so they
     // compose in either order.
@@ -103,19 +105,20 @@ val hideSuggestedPostsPatch = bytecodePatch(
 
         val feedUnitGetter = feedUnitGetter()
         // p2 (the edge) must be copied down: invoke-virtual takes 4-bit register operands.
-        target.addInstructionsWithLabels(
-            0,
+        target.addInstructionsIfFacebookSetting(
+            "hidePageSuggestions",
             """
                 move-object/from16 v0, p2
                 invoke-virtual { v0 }, $FEED_UNIT_EDGE->${feedUnitGetter.name}()${feedUnitGetter.returnType}
                 move-result-object v0
                 invoke-static { v0 }, $host->$FILTER_NAME$FILTER_DESC
                 move-result v0
-                if-eqz v0, :keep
+                if-eqz v0, :stock
                 const/4 v0, 0x0
                 return v0
             """,
-            ExternalLabel("keep", target.getInstruction(0)),
         )
+
+        markFacebookSettingIncluded("hidePageSuggestions")
     }
 }

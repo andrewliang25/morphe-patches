@@ -60,7 +60,7 @@ public final class ExternalBrowser {
      *         caller must continue and open the in-app browser as before.
      */
     public static boolean redirect(Activity activity, Intent intent) {
-        if (activity == null || intent == null) return false;
+        if (activity == null || intent == null || !FacebookSettings.externalBrowser()) return false;
 
         Uri uri = intent.getData();
         if (uri == null || !isWebUrl(uri)) return false;

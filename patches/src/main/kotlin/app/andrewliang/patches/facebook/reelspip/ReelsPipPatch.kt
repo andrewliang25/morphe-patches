@@ -1,8 +1,10 @@
 package app.andrewliang.patches.facebook.reelspip
 
+import app.andrewliang.patches.facebook.shared.facebookSettingsExtensionPatch
+import app.andrewliang.patches.facebook.shared.forceTrueIfFacebookSetting
+import app.andrewliang.patches.facebook.shared.markFacebookSettingIncluded
 import app.andrewliang.patches.shared.Constants.COMPATIBILITY_FACEBOOK
 import app.morphe.patcher.Fingerprint
-import app.morphe.patcher.extensions.InstructionExtensions.addInstruction
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
 import com.android.tools.smali.dexlib2.Opcode
@@ -67,12 +69,12 @@ private fun MethodReference.isSurfaceCheck() =
         parameterTypes[1].toString() == FUNCTION0 &&
         parameterTypes[2].toString() == FUNCTION0
 
-/** Sets the result of the call at [callIndex] to true. The call itself still runs. */
+/** Sets the result of the call at [callIndex] to true while the switch is on. The call itself still runs. */
 private fun MutableMethod.forceTrue(callIndex: Int) {
     val moveResult = implementation!!.instructions[callIndex + 1]
     require(moveResult.opcode == Opcode.MOVE_RESULT) { "No boolean result after the call in $name" }
     val register = (moveResult as OneRegisterInstruction).registerA
-    addInstruction(callIndex + 2, "const/16 v$register, 0x1")
+    forceTrueIfFacebookSetting(callIndex + 2, register, "reelsPip")
 }
 
 @Suppress("unused")
@@ -83,6 +85,8 @@ val reelsPipPatch = bytecodePatch(
     default = false,
 ) {
     compatibleWith(COMPATIBILITY_FACEBOOK)
+
+    dependsOn(facebookSettingsExtensionPatch)
 
     // Facebook has its own picture in picture for the Reels tab, but a server flag turns it off.
     // Before the tab turns on picture in picture, it asks a surface check, which reads that flag.
@@ -121,5 +125,7 @@ val reelsPipPatch = bytecodePatch(
             val (check, _) = arm.lastCallBefore(arm.deviceCheckIndex()) { it.isSurfaceCheck() }
             arm.forceTrue(check)
         }
+
+        markFacebookSettingIncluded("reelsPip")
     }
 }
