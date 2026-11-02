@@ -161,7 +161,7 @@ patch restores it through [MicroG-RE](https://github.com/MorpheApp/MicroG-RE).
 ### Facebook: other Meta apps do not install (re-signed builds)
 
 **What:** After you install a patched **Facebook** build, an official Meta app that shares the same
-permission names does not install. **Facebook Lite** is the reported example. The installer stops
+permission names does not install. **Facebook Lite** and **Messenger** are the known examples. The installer stops
 with `INSTALL_FAILED_DUPLICATE_PERMISSION`.
 
 **Why:** Meta apps declare the same family permissions, for example
