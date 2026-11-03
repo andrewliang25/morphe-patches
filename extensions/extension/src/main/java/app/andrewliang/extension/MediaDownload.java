@@ -67,6 +67,7 @@ public final class MediaDownload {
      * @return whether a download started. {@code false} lets the caller fall back to the app.
      */
     public static boolean saveStory(Context context, Object host) {
+        if (!FacebookSettings.downloadStory()) return false;
         try {
             List<String> urls = collectStoryUrls(host);
 

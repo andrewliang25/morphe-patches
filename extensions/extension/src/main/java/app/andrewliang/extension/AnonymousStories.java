@@ -72,6 +72,7 @@ public final class AnonymousStories {
 
     /** Called when the story viewer shows {@code card} of {@code bucket}. */
     public static void markCardSeen(Object bucket, Object card) {
+        if (!FacebookSettings.anonymousStoryViews()) return;
         try {
             String cardId = id(card);
             String bucketId = id(bucket);
@@ -106,6 +107,7 @@ public final class AnonymousStories {
                 getTimeValue = find(tree.getClass(), "getTimeValue", int.class);
             }
             server = (Boolean) getBooleanValue.invoke(tree, hash);
+            if (!FacebookSettings.anonymousStoryViews()) return server;
             Object id = getString.invoke(tree, ID_FIELD);
             if (id == null) return server;
 

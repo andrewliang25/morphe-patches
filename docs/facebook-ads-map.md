@@ -156,14 +156,15 @@ story-viewer half of that work is still **not device-tested**.
 | `[Ad] Block ad telemetry` | 6 void methods across 4 classes with kept names | All are `return-void`. `onStartCommand` and the predicates are untouched |
 | `[Ad] Disable Audience Network` | 5 manifest components | All have `android:enabled="false"` |
 | `[General] Open links in external browser` | `BrowserLiteActivity->onCreate` and `->onNewIntent`, hooked after their super call | Both branches resolve to a target index: `onCreate` to the trace-close marker load, `onNewIntent` to the original next instruction |
-| `[Stories] Download any story` | The one capability check in `StoryViewerMoreButtonCallback`, plus the body of the action's tap handler | `const/4` into the register its `move-result` wrote, so the cached capability reads true; then the handler runs our own download, which skips Facebook's licensed-music check (issue #110) |
+| `[Stories] Download any story` | The one capability check in `StoryViewerMoreButtonCallback`, plus the body of the action's tap handler | A `FacebookSettings.downloadStory(Z)Z` call after the `move-result`, so the cached capability reads true while the switch is on; then the handler runs our own download, which skips Facebook's licensed-music check (issue #110) |
 | `[Feed] Hide post prompts` | The static `(LX/2Pv;)Z` predicate on `NTFeedStoryBumperComponent` (`LX/2Xd;->A03`) returns false | Two instructions at index 0. See [Prompts inside posts and reels](#prompts-inside-posts-and-reels) |
 | `[Reels] Hide interest prompts` | The interest-prompt predicate `LX/8qp;->A0O(LX/5LS;)Z` returns false | Two instructions at index 0. See [Prompts inside posts and reels](#prompts-inside-posts-and-reels) |
-| `[Feed] Block feed auto refresh` | 3 sites of the feed loader and the feed fragment: the reset schedule in `onUserLeftApp` (`LX/ecb;->A0Q`), `maybeRefreshForWarmStart` (`LX/ecb;->A05`) and `refreshForRevisit` (`LX/2Vz;`) | One call removed, and two early returns. See [Feed auto refresh](#feed-auto-refresh) |
+| `[Feed] Block feed auto refresh` | 3 sites of the feed loader and the feed fragment: the reset schedule in `onUserLeftApp` (`LX/ecb;->A0Q`), `maybeRefreshForWarmStart` (`LX/ecb;->A05`) and `refreshForRevisit` (`LX/2Vz;`) | The reset call goes through a new helper (`LX/ecb;->andrewScheduleLoaderReset`) that makes it only while the switch is off, and two early returns. See [Feed auto refresh](#feed-auto-refresh) |
 | `[Stories] View stories anonymously` | The seen sender (`LX/A5o;->A00`, next to the kept `getRequest`) returns at once. The seen helper (`LX/A3k;->A00`) tells the extension about each card. 33 reads of the two seen fields go through the extension | `return-void` at index 0, one range call at index 0, and 33 one-for-one `invoke` swaps. See [Anonymous story views](#anonymous-story-views) |
 | `[General] Hide affiliate product links` | The overlay predicate `LX/8qp;->A0C` returns false. The feed footer id `LX/33g;->A00` and the floating card model `OrganicAffiliateFloatingCtaPlugin->A00` return null | Two instructions at index 0 of each. See [Affiliate links](#affiliate-links) |
+| `[General] Andrew's Patch Setting` | `onCreateView` of the Menu drawer fragment (`LX/BS1;`, `BookmarkComponentsFragment` before Redex) | One range call and its `move-result-object` before the one `return-object`. See [Andrew's Patch Setting](#andrews-patch-setting) |
 | `[Stories] Disable auto advance` | The auto-play predicate `LX/9xI;->A01`, the check for `disable_storyviewer_autoplay`, returns true | Two instructions at index 0. See [Story auto advance](#story-auto-advance) |
-| `[Reels] Picture-in-picture` | The result of the surface check `LX/52v;->A0O` at two call sites: in `LX/Aus;->A01` and in `LX/7s8;->A0J` | One `const/16` after each `move-result`. The check itself still runs. See [Reels picture in picture](#reels-picture-in-picture) |
+| `[Reels] Picture-in-picture` | The result of the surface check `LX/52v;->A0O` at two call sites: in `LX/Aus;->A01` and in `LX/7s8;->A0J` | One `FacebookSettings.reelsPip(Z)Z` call after each `move-result`: true while the switch is on, Facebook's answer while it is off. The check itself still runs. See [Reels picture in picture](#reels-picture-in-picture) |
 
 Together the eight patches rewrite 28 classes, and they add the extension on top of that. The CLI
 prints this count as `Stripping N modified classes`. Two controlled runs on 2026-09-19 against
@@ -1337,6 +1338,86 @@ window away, it closed and the playback paused. The crash buffer was empty.
 `ai_styles_receiver` and `fb_shorts_viewer` together find `Aus.A02`. The trace string
 `VideoHomeDataControllerImpl.onLeaveFbShortsAdsView` and `UNIFIED_PLAYER_VDD_IN_WARION` find
 `7s8.A0J`. The surface check is the call that takes two `Function0` lambdas and returns a boolean.
+
+## Andrew's Patch Setting
+
+`[General] Andrew's Patch Setting` adds a row, "Andrew's Patch Setting", to the top of the Menu
+drawer. The row opens a screen with a runtime switch for 14 patches, then credits and the license.
+Who it helps: a user of the prebuilt APK from `patched-apps`, who otherwise cannot turn off one
+patch without patching the APK again. LINE has the same patch (`docs/line-patch-map.md`, "Settings
+screen"). Anchors are 577.0.0.50.72.
+
+### Where the row can go
+
+| Surface | Code | Verdict |
+|---|---|---|
+| Menu drawer (☰ on the Home tab) | Native: `LX/BS1;`, `BookmarkComponentsFragment` before Redex. Its rows are Litho components (`BookmarkFolderItemComponent`) | **Used** |
+| Menu tab | `com.facebook.bookmark.fragment.BloksBookmarksMenuTabFragment`, a native frame around Bloks rows | Not used. A probe on its `onCreateView` logged nothing on the test account, which has the drawer and no Menu tab |
+| Settings & privacy | Bloks, from the server | A native row cannot go inside it |
+| Settings ▸ Media | Native `MediaActivity`, a `PreferenceScreen` | Possible, but three levels deep, and on a re-signed build it opens only with `[Fix] Restore screens on re-signed builds` |
+
+`LX/BS1;->onCreateView` keeps its old name as a string (`"BookmarkComponentsFragment"`) next to
+`"sidebar_menu"`, and the fingerprint uses both. The method returns `FrameLayout 0x7f0a031b`. That
+frame holds one full-height `LithoView` (`0x7f0a031d`), and the drawer list scrolls inside it. A
+logging build showed the tree when the drawer first opened: the frame is 959 px wide, the list
+paints a plain `ColorDrawable`, and a row is 133 px high with its content 33 px from the left.
+
+### How the patch adds the row
+
+1. Before the one `return-object v2`, the patch adds
+   `invoke-static/range {v2 .. v2}, FacebookSettings->addMenuRow(View)View` and its
+   `move-result-object v2`. The return is not a branch target, so the call always runs.
+2. `addMenuRow` adds a top margin of one row height to each child of the frame, and adds the row
+   above them. The row stays outside the list, so it does not scroll.
+3. The row and the screen take their background from the `ColorDrawable` of the list. Thus they
+   follow Facebook's dark mode, which is its own setting and not the night bit of Android, and the
+   AMOLED theme. Text colours are Facebook's light or dark set, picked by the brightness of that
+   background. Device: `#252728` in the drawer and on the screen in dark mode, white in light mode.
+
+The extension builds every view in code. Facebook keeps almost no resource names (766 of 773 strings, 2,849
+of 2,852 layouts are nameless). Of 84 named drawables, none is a gear, so the extension draws the
+gear (`FacebookSettingsScreen.GearDrawable`). The screen is a full-screen framework `Dialog` over
+`FbMainTabActivity`, so it needs no manifest entry and works on a Root Mount install.
+
+### The switches
+
+Each switched patch depends on `facebookSettingsExtensionPatch` and marks itself in the build with
+`markFacebookSettingIncluded`, so the screen shows only the switches of the patches in the build.
+All switches are on by default. The helpers are in `facebook/shared/FacebookSettings.kt`:
+
+| Shape | Helper | Patches |
+|---|---|---|
+| An early return at the start of a method | `addInstructionsIfFacebookSetting(feature, smali)`. It writes v0 and stops the build if v0 is a parameter register | Sponsored posts, page suggestions, post prompts, reel prompts, story auto advance, sponsored stories (4 methods), affiliate links (3), feed auto refresh (2), sponsored reels (8), anonymous story views (sender) |
+| A block in the middle of a method | `addInstructionsIfFacebookSetting(index, feature, scratch, smali)` | Reel download (the sidebar button) |
+| A boolean forced true | `forceTrueIfFacebookSetting`: a `(Z)Z` call after the `move-result` | Reels PiP (2), story download (the Save item) |
+| A call that the patch removed | A new static helper with the same arguments makes the call only while the switch is off | Feed auto refresh (the loader reset) |
+| A call that the patch replaced | A branch to the helper call while the switch is on, else the original call | Sponsored reels (the idle ad query) |
+| Logic in the extension | The Java method checks the switch | Sponsored reels (2 filters), story download (the tap), anonymous story views, external browser |
+
+AMOLED has no switch. Its resource route rewrites dark greys in `colors.xml` at patch time, and no
+code at run time can undo that. With the switch off, the code routes give the greys back, but every
+resource colour stays black.
+
+### What the device test showed
+
+The three `[Ad]` patches stop ads before any hide filter sees one, so the sponsored switches were
+also tried in a build without them.
+
+| Switch | Off | On | Restart |
+|---|---|---|---|
+| Download any reel | No Download button in the sidebar | Button back | Needed |
+| Download any story | No Save item in the story menu | "Save reel" item back | Not needed |
+| Picture-in-picture | Home from a reel: no pinned task | The reel plays in a pinned window | Tested after a restart |
+| Disable auto advance | The viewer moved to the next person | The viewer stayed on the full progress bar | Tested after a restart |
+| Open links in external browser | `fb://webview` opened Facebook's in-app browser | Opened the default browser | Tested after a restart |
+| Hide post prompts | "Are you interested in this post?" in 50 screens of feed | None in 50 screens | Tested after a restart |
+| Hide affiliate product links | A Shopee product card | None | Tested after a restart |
+| Hide interest prompts | "Are you interested in this reel?" in 30 reels | None in 30 reels | Tested after a restart |
+| Block feed auto refresh | After 10 minutes on the home screen, a new feed | The same posts after 10 minutes | Tested after a restart |
+
+Not seen on the test account: a sponsored post, reel or story, even without the `[Ad]` patches, and
+a page suggestion unit. The viewer list of anonymous story views is visible only to the owner of the
+story. These switches are checked in the bytecode only.
 
 ## Re-signed builds: Facebook trusts its own certificate
 

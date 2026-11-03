@@ -1,6 +1,9 @@
 package app.andrewliang.patches.facebook.downloadstory
 
 import app.andrewliang.patches.facebook.shared.enableSaveAsH264
+import app.andrewliang.patches.facebook.shared.facebookSettingsExtensionPatch
+import app.andrewliang.patches.facebook.shared.forceTrueIfFacebookSetting
+import app.andrewliang.patches.facebook.shared.markFacebookSettingIncluded
 import app.andrewliang.patches.facebook.shared.reportedFieldNames
 import app.andrewliang.patches.facebook.shared.saveAsH264Option
 import app.andrewliang.patches.shared.Constants.COMPATIBILITY_FACEBOOK
@@ -46,6 +49,8 @@ val downloadStoryPatch = bytecodePatch(
     compatibleWith(COMPATIBILITY_FACEBOOK)
 
     extendWith("extensions/extension.mpe")
+
+    dependsOn(facebookSettingsExtensionPatch)
 
     val saveAsH264 = saveAsH264Option()
 
@@ -180,6 +185,8 @@ val downloadStoryPatch = bytecodePatch(
         )
 
         rememberPlayerSources()
+
+        markFacebookSettingIncluded("downloadStory")
     }
 }
 
@@ -263,12 +270,10 @@ private fun BytecodePatchContext.rememberPlayerSources() {
 }
 
 /**
- * Overwrite the result of the call at [index] with `true`.
+ * Make the result of the call at [index] `true` while the switch is on.
  *
- * The patch replaces the `move-result` after the call, and not the branch that reads it. The
- * constant goes into the register that this instruction already writes. Both instructions are one
- * code unit. Thus the layout of the method, its branch offsets and its register allocation do not
- * change. The call still runs. Only its answer is ignored.
+ * The patch changes the register after the `move-result`, and not the branch that reads it. The
+ * call still runs. While the switch is on, only its answer is ignored.
  */
 private fun MutableMethod.forceResultTrue(instructions: List<Instruction>, index: Int) {
     val moveResult = instructions.getOrNull(index + 1)
@@ -279,7 +284,7 @@ private fun MutableMethod.forceResultTrue(instructions: List<Instruction>, index
     val register = (moveResult as OneRegisterInstruction).registerA
     check(register < 16) { "$definingClass->$name: result register v$register is out of range" }
 
-    replaceInstruction(index + 1, "const/4 v$register, 0x1")
+    forceTrueIfFacebookSetting(index + 2, register, "downloadStory")
 }
 
 private fun MutableMethod.instructionsOrEmpty(): List<Instruction> =

@@ -1,8 +1,10 @@
 package app.andrewliang.patches.facebook.hidepostprompts
 
+import app.andrewliang.patches.facebook.shared.addInstructionsIfFacebookSetting
+import app.andrewliang.patches.facebook.shared.facebookSettingsExtensionPatch
+import app.andrewliang.patches.facebook.shared.markFacebookSettingIncluded
 import app.andrewliang.patches.shared.Constants.COMPATIBILITY_FACEBOOK
 import app.morphe.patcher.Fingerprint
-import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.bytecodePatch
 import com.android.tools.smali.dexlib2.AccessFlags
 
@@ -26,6 +28,8 @@ val hidePostPromptsPatch = bytecodePatch(
 ) {
     compatibleWith(COMPATIBILITY_FACEBOOK)
 
+    dependsOn(facebookSettingsExtensionPatch)
+
     // A bumper is a strip that the server attaches to a story and that Facebook draws between the
     // post and its like bar. Each one is a server-built template, and "Are you interested in this
     // post?" is one kind. All the kinds in the app are engagement prompts ("show less", follow,
@@ -45,12 +49,14 @@ val hidePostPromptsPatch = bytecodePatch(
                 it.parameterTypes.size == 1
         }
 
-        hasBumper.addInstructions(
-            0,
+        hasBumper.addInstructionsIfFacebookSetting(
+            "hidePostPrompts",
             """
                 const/4 v0, 0x0
                 return v0
             """,
         )
+
+        markFacebookSettingIncluded("hidePostPrompts")
     }
 }

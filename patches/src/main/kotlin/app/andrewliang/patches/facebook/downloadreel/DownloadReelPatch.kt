@@ -1,6 +1,9 @@
 package app.andrewliang.patches.facebook.downloadreel
 
+import app.andrewliang.patches.facebook.shared.addInstructionsIfFacebookSetting
 import app.andrewliang.patches.facebook.shared.enableSaveAsH264
+import app.andrewliang.patches.facebook.shared.facebookSettingsExtensionPatch
+import app.andrewliang.patches.facebook.shared.markFacebookSettingIncluded
 import app.andrewliang.patches.facebook.shared.reportedFieldNames
 import app.andrewliang.patches.facebook.shared.saveAsH264Option
 import app.andrewliang.patches.shared.Constants.COMPATIBILITY_FACEBOOK
@@ -93,6 +96,8 @@ val downloadReelPatch = bytecodePatch(
 ) {
     compatibleWith(COMPATIBILITY_FACEBOOK)
     extendWith("extensions/extension.mpe")
+
+    dependsOn(facebookSettingsExtensionPatch)
 
     val saveAsH264 = saveAsH264Option()
 
@@ -379,8 +384,11 @@ val downloadReelPatch = bytecodePatch(
                 " at instruction(s) ${busy.joinToString()}, so the injection cannot borrow them"
         }
 
-        sidebar.addInstructions(
+        // The button is added only while the switch is on. The gate borrows v0 too.
+        sidebar.addInstructionsIfFacebookSetting(
             assemblyIndex - 3,
+            "downloadReel",
+            "v0",
             """
                 move-object/from16 v0, v${argumentRegister(FB_USER_SESSION)}
                 move-object/from16 v1, v${argumentRegister(scopedType)}
@@ -401,6 +409,8 @@ val downloadReelPatch = bytecodePatch(
         println("REEL factory=${factory.definingClass}->${factory.name}${factory.returnType}")
         println("REEL icon=${icon!!.definingClass}->${icon!!.name}")
         println("REEL fields hd=$hdField sd=$sdField manifest=$manifestField player=${playerField.name} session=${sessionField.name}")
+
+        markFacebookSettingIncluded("downloadReel")
     }
 }
 

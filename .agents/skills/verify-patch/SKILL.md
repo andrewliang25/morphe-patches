@@ -66,7 +66,11 @@ Run it in the background when it covers both versions or `--all`.
 - Output: `work/verify/<label>/` holds `patched.apk`, `result.json`, `patch.log`, `diff.txt` and
   `sweep.txt`. The original dex files are cached in `work/verify/.orig/`.
 - The patch CLI is `work/morphe-desktop-*-all.jar` (the `-all.jar` of MorpheApp/morphe-desktop).
-  The build runs on JBR 21, and the Java tools run on the default `java` (17 or newer).
+- The build, the CLI and the Java tools run on one JDK 21: `$JAVA_HOME` if set, else
+  `work/tools/jdk-21*` (Windows), else the macOS JBR. If `$ANDROID_HOME` is not set, the script
+  uses `work/tools/android-sdk`.
+- The build uses the `gh` token. If there is no token, or the token cannot read the Morphe
+  packages, the script builds offline from the Gradle cache and mavenLocal (`work/init.gradle.kts`).
 - **A verification tool that ignores an argument will verify the wrong file.** `work/Fb.java` takes
   its dex directory from the **`FBDEX` environment variable**. It accepts `--dex <dir>` and ignores
   it, falling back to the unpatched `work/fb-extract/dex`. Export `FBDEX` before every post-apply

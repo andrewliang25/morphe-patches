@@ -603,7 +603,7 @@ starting point, so no one needs to sweep the APK again.
 | [General] Andrew's Patch Setting | `line.settings` | a row below "Profile" in Settings, via `ka5/o2.a()` (see below) |
 | [Fix] Restore location maps via MicroG-RE | `line.fixlocationmaps` | `fo/p.b` — the maps module context (see below) |
 | [Chat] Hide tips under messages | `line.hidechattips` | `rm1.u.invokeSuspend` — the "CHECK" tip under a bubble (see below) |
-| [General] Hide Agent i buttons | `line.hideagenti` | `wm2.j` Home header icon + `function.search.line_ai_entry.enabled` (see below) |
+| [General] Hide Agent i buttons | `line.hideagenti` | `wm2.j` Home header icon + `function.search.line_ai_entry.enabled` + the two `CHATROOM_AI_BUTTON_SHOWN_AFTER_MILLIS` getters (see below) |
 | [Chat] Hide AI Friends button | `line.chatheaderbuttons` | `function.ai.character.display_button` (see below) |
 | [General] Custom font | `line.customfont` | LINE's premium font path: `PremiumFontProvider`, the androidx certificate check, the Font page (see below) |
 
@@ -1071,6 +1071,45 @@ replaced Album, and the AI button showed at the end of the Home and Chats search
 patch gives back the stock layout, with no crash. The probe cannot show the `wm2.j` site, because
 this account has the older Home header (bookmark, bell, add friend, Settings). Only disassembly
 confirms that site.
+
+### Agent i in chats (issue #208)
+
+Settings → Agent i (JP) or the AI icon visibility screen (other regions) offers "Show" and "Hide
+temporarily". All regions share the one screen (`go0.q`). Only the description string differs:
+`line_aiiconvisibility_desc_hidetemporarilyagenti` when `fo0.s.a()` is true (Agent i branding),
+else `line_aiiconvisibility_desc_hidetemporarily`. A TW account can thus test it.
+
+The choice is local. No server call is made. One key of the general key-value store,
+`CHATROOM_AI_BUTTON_SHOWN_AFTER_MILLIS` (type long), holds the time until which Agent i stays
+hidden (26.16.0 names):
+
+| Role | Method | What it does |
+|---|---|---|
+| Writer | `r21.b.b(do0.a, …)` | "Hide" writes `LocalDate.now().plusDays(30)` at midnight. "Show" writes 0. Both the Settings screen and the toggle in the chat (`zm1.g`) call it. |
+| Reader (chat) | `s81.c.v()` | `AiTalkChipsViewModel.r()`: hidden while `clock.millis() <= v()` |
+| Reader (Settings) | `r21.b.a()` | `fo0.y`: "Hide" is selected while `currentTimeMillis() < a()` |
+| Reader (Labs) | `vh8.g0$a.a(…)` | Turning on the "Scheduling agent" lab shows `LabsAiTalkChipVisibilityPopupFragment` while hidden |
+
+**The patch.** Both getters (`s81.c.v()`, `r21.b.a()`) are the same four instructions: `sget-object`
+of the key, `invoke-static` of the long getter of the store, `move-result-wide`, `return-wide`. The
+store class is `dao/d` in 26.14.0 and `dao/c` later, so the patch does not anchor on it. The patch
+finds them by this shape and the key name (R8 keeps enum constant names), and makes them return
+`Long.MAX_VALUE`. It fails unless it finds exactly two. Both readers only compare the value with the
+current time, so the large value is safe. The writer is left alone: what it stores no longer matters.
+
+**Side effects.** The Settings screen always shows "Hide temporarily". Tapping "Show" writes 0, the
+radio stays on "Hide", and LINE still shows its "will be shown" toast. The Labs reader reads the key
+directly and is left alone, so its popup shows only for a hide that was saved before patching.
+Changing the "30 days" strings would need a resource patch for every language. It is not done.
+
+**Verification (26.16.0, TW account, 2026-11-01).** The TW test account has no entry to the screen
+(no "LINE AI services" row), and the activity `AiSubscriptionDisplayAiButtonActivity` is not
+exported. A local probe made the "Andrew's Patch Setting" row start that activity by class name.
+The screen then drew as "Show AI icon in chat". "Hide temporarily" was selected on an account that
+never picked it. Tapping "Show" showed the toast `Set to "Show"`, but the check stayed on "Hide
+temporarily", also after the screen was opened again. No crash and no `VerifyError`. The chat
+reader (`s81.c.v()`) cannot be observed on this account, because it shows no AI chips. Only
+disassembly confirms that site.
 
 ---
 

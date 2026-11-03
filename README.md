@@ -17,9 +17,9 @@ Morphe Manager to build a modified APK.
 ## 🩹 Patches list
 
 <!-- PATCHES_START EXPANDED -->
-> **[v3.9.0](https://github.com/andrewliang25/morphe-patches/releases/tag/v3.9.0)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;51 patches total
+> **[v3.10.0-dev.1](https://github.com/andrewliang25/morphe-patches/releases/tag/v3.10.0-dev.1)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;52 patches total
 <details open>
-<summary>📦 Facebook&nbsp;&nbsp;•&nbsp;&nbsp;19 patches</summary>
+<summary>📦 Facebook&nbsp;&nbsp;•&nbsp;&nbsp;20 patches</summary>
 <br>
 
 **🎯 Supported versions:**
@@ -38,6 +38,7 @@ Morphe Manager to build a modified APK.
 | [[Feed] Hide sponsored posts](#feed-hide-sponsored-posts) | Removes sponsored posts from the news feed, with no gap left behind. |  |
 | [[Fix] Restore screens on re-signed builds](#fix-restore-screens-on-re-signed-builds) | Makes profiles and some Settings pages open again on a re-signed build. A Root Mount install does not need this patch. |  |
 | [[General] AMOLED black theme](#general-amoled-black-theme) | Makes Facebook's dark mode black instead of dark grey. Turn on dark mode in Facebook first. |  |
+| [[General] Andrew's Patch Setting](#general-andrew-s-patch-setting) | Adds "Andrew's Patch Setting" to the top of the Facebook menu. There you can turn some patches on or off without patching again, and see the credits and licenses. |  |
 | [[General] Hide affiliate product links](#general-hide-affiliate-product-links) | Removes the product cards of affiliate shop links from Reels, feed posts and comments. The "Commission eligible" label stays. |  |
 | [[General] Open links in external browser](#general-open-links-in-external-browser) | Opens web links in your default browser instead of Facebook's in-app browser. Facebook pages still open in the app. |  |
 | [[Reels] Download any reel](#reels-download-any-reel) | Adds a Download button beside every reel. Videos save at the best quality the player streams. | • Save as H.264 |
@@ -57,7 +58,7 @@ Morphe Manager to build a modified APK.
 
 **🎯 Supported versions:**
 
-| 26.16.0 | 26.15.1 | 26.14.0 |
+| 26.14.0 | 26.15.1 | 26.16.0 |
 | :---: | :---: | :---: |
 
 | 💊&nbsp;Patch | 📜&nbsp;Description | ⚙️&nbsp;Options |
@@ -81,7 +82,7 @@ Morphe Manager to build a modified APK.
 | [[General] Andrew's Patch Setting](#general-andrew-s-patch-setting) | Adds "Andrew's Patch Setting" to LINE Settings, below "Profile". There you can turn some patches on or off without patching again, and see the credits and licenses. |  |
 | [[General] Custom font](#general-custom-font) | Adds a button to LINE's Font page to use a font file from your device. The page then no longer loads LINE's font list from the server. |  |
 | [[General] Disable VOOM](#general-disable-voom) | VOOM deep links, shares, and notifications do nothing. If you open the standalone VOOM feed, it closes. Messaging and the other tabs do not change. |  |
-| [[General] Hide Agent i buttons](#general-hide-agent-i-buttons) | Removes the Agent i button from the Home header and from the search bar. |  |
+| [[General] Hide Agent i buttons](#general-hide-agent-i-buttons) | Removes the Agent i button from the Home header and from the search bar, and hides Agent i in chats permanently. |  |
 | [[General] Hide new item badges](#general-hide-new-item-badges) | Hides the green dots and N badges that mark new items, on header buttons, tabs, menus, lists and settings rows. Unread message counts do not change. |  |
 | [[General] Open links in external browser](#general-open-links-in-external-browser) | Opens web links in your default browser instead of LINE's in-app browser. LIFF mini-apps and LINE links stay in LINE. |  |
 | [[General] Redirect LINE Pay](#general-redirect-line-pay) | Opens LINE Pay in the standalone LINE Pay app, so the integrity check that fails on a re-signed build never runs. |  |
@@ -121,6 +122,20 @@ again:
 A patch that you did not include in the build has no switch. The row also shows the author and the
 license.
 
+#### Change Facebook patches in the app
+
+With the "[General] Andrew's Patch Setting" patch, the Facebook **Menu** (☰) has an **Andrew's
+Patch Setting** row at the top. There you can turn these patches on or off without patching again:
+
+- Feed: hide sponsored posts, page suggestions and post prompts, and block feed auto refresh
+- Reels: hide sponsored reels and interest prompts, download any reel, and picture-in-picture
+- Stories: hide sponsored stories, download any story, view stories anonymously, and disable auto
+  advance
+- Hide affiliate product links, and open links in external browser
+
+Some changes show only after Facebook restarts. The screen has a **Restart Facebook** row for this.
+The AMOLED black theme has no switch. A patch that you did not include in the build has no switch.
+
 ### 🛠️ Building
 
 To build Andrew's Patches, obey the instructions in the
@@ -143,27 +158,10 @@ Google Play Services. No patch can change this ([details](docs/line-patch-map.md
 This limitation does not affect chat-history backup. The *[Fix] Restore chat backup sign-in via MicroG-RE*
 patch restores it through [MicroG-RE](https://github.com/MorpheApp/MicroG-RE).
 
-### LINE: maps show an empty grid (re-signed builds)
-
-**What:** On a patched **LINE** build, the maps on the location screens are empty. This covers the
-location picker, the location messages in a chat, and the location posts. You can still send your
-current location, and only the map is blank.
-
-**Why:** Google draws a map only for an API key that is registered under LINE's package name **and**
-its original signing certificate. A re-signed build changes that certificate. Google Play Services
-reports the certificate from its own process, so no patch can correct it
-([details](docs/line-patch-map.md)).
-
-**Workaround:** enable the *[Fix] Restore location maps via MicroG-RE* patch. It draws the maps through
-[MicroG-RE](https://github.com/MorpheApp/MicroG-RE) **7.0.0 or later** instead, which is the first
-version with a map renderer. Google Play Services must still be installed. The tiles then come from OpenFreeMap,
-so they do not look like Google Maps. There is no satellite view. A **Root Mount** install keeps
-LINE's original signature and needs neither the patch nor MicroG-RE.
-
 ### Facebook: other Meta apps do not install (re-signed builds)
 
 **What:** After you install a patched **Facebook** build, an official Meta app that shares the same
-permission names does not install. **Facebook Lite** is the reported example. The installer stops
+permission names does not install. **Facebook Lite** and **Messenger** are the known examples. The installer stops
 with `INSTALL_FAILED_DUPLICATE_PERMISSION`.
 
 **Why:** Meta apps declare the same family permissions, for example

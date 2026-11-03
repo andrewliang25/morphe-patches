@@ -11,6 +11,9 @@
 #   --all         Apply every patch of the app in the bundle (default and non-default), not named ones.
 #   --default     Apply the default patch set, as the Manager does.
 #   --no-build    Use the bundle in patches/build/libs as it is.
+#   --offline     Build from the Gradle cache and mavenLocal (work/init.gradle.kts), with no PAT.
+#                 The script also builds offline when `gh auth token` gives no token, or when the
+#                 build with the token fails.
 #   --mpp FILE    Use this bundle (for example a released .mpp) instead of building. Implies --no-build.
 #   --force       Apply to a version that Constants.kt does not pin yet (a new LINE version).
 #   --continue    Keep applying the other patches after one fails.
@@ -25,10 +28,21 @@ HERE=$(cd "$(dirname "$0")" && pwd)
 REPO=$(cd "$HERE/../../../.." && pwd)
 APKS="$REPO/../patched-apps/temp"
 OUT="$REPO/work/verify"
-JBR=/Users/andrewliang/Library/Java/JavaVirtualMachines/jbr-21.0.6/Contents/Home
-JAVA21="${JAVA21:-$JBR/bin/java}"
+
+# The JDK 21 for the build and the Java tools: $JAVA_HOME if set, else the JDK in work/tools
+# (Windows), else the macOS JBR.
+JDK="${JAVA_HOME:-}"
+[ -n "$JDK" ] && [ -x "$JDK/bin/java" ] || JDK=$(ls -d "$REPO"/work/tools/jdk-21* 2>/dev/null | tail -1)
+[ -n "$JDK" ] || JDK=/Users/andrewliang/Library/Java/JavaVirtualMachines/jbr-21.0.6/Contents/Home
+JAVA21="${JAVA21:-$JDK/bin/java}"
+[ -x "$JAVA21" ] || [ -x "$JAVA21.exe" ] || { echo "No JDK 21 at $JDK. Set JAVA_HOME."; exit 1; }
+# The Android SDK for the extension build: $ANDROID_HOME if set, else work/tools/android-sdk.
+if [ -z "${ANDROID_HOME:-}" ] && [ -d "$REPO/work/tools/android-sdk" ]; then
+    export ANDROID_HOME="$REPO/work/tools/android-sdk"
+fi
 
 app=LINE; versions=(); apks=(); patches=(); mode=named; build=1; diff=1; mpp=""; extra=(); tag=""
+offline=0
 while [ $# -gt 0 ]; do
     case "$1" in
         --app) app=$(echo "$2" | tr '[:lower:]' '[:upper:]'); shift 2 ;;
@@ -37,6 +51,7 @@ while [ $# -gt 0 ]; do
         --all) mode=all; shift ;;
         --default) mode=default; shift ;;
         --no-build) build=0; shift ;;
+        --offline) offline=1; shift ;;
         --mpp) mpp="$2"; build=0; shift 2 ;;
         --force) extra+=(-f); shift ;;
         --continue) extra+=(--continue-on-error); shift ;;
@@ -60,8 +75,19 @@ if [ $build -eq 1 ]; then
     echo "### build"
     rm -rf "$REPO/patches/build/libs"
     token=$(gh auth token 2>/dev/null)
-    (cd "$REPO" && JAVA_HOME=$JBR GITHUB_ACTOR=andrewliang25 GITHUB_TOKEN="$token" \
-        ./gradlew :patches:buildAndroid --no-daemon -q 2>&1 | grep -E "^e:|error:|FAILURE")
+    if [ $offline -eq 0 ] && [ -n "$token" ]; then
+        (cd "$REPO" && JAVA_HOME=$JDK GITHUB_ACTOR=andrewliang25 GITHUB_TOKEN="$token" \
+            ./gradlew :patches:buildAndroid --no-daemon -q 2>&1 | grep -E "^e:|error:|FAILURE|What went wrong" -A2)
+        # A token without read:packages cannot fetch the Morphe plugin. Then build offline.
+        ls "$REPO"/patches/build/libs/patches-*.mpp > /dev/null 2>&1 || { echo "### build offline"; offline=1; }
+    else
+        offline=1
+    fi
+    if [ $offline -eq 1 ]; then
+        (cd "$REPO" && JAVA_HOME=$JDK ./gradlew :patches:buildAndroid --no-daemon -q --offline \
+            --init-script work/init.gradle.kts -Pgpr.user=dummy -Pgpr.key=dummy 2>&1 \
+            | grep -E "^e:|error:|FAILURE|What went wrong" -A2)
+    fi
 fi
 MPP=${mpp:-$(ls "$REPO"/patches/build/libs/patches-*.mpp 2>/dev/null | head -1)}
 [ -n "$MPP" ] || { echo "Build failed: no patches/build/libs/patches-*.mpp"; exit 1; }
@@ -107,11 +133,16 @@ for apk in "${apks[@]}"; do
     python3 -I - "$dir/result.json" <<'EOF' || status=1
 import json, sys
 result = json.load(open(sys.argv[1]))
-applied = [p["name"] for p in result.get("appliedPatches", [])]
+# A patch entry is a plain name or an object with a name, depending on the CLI version.
+def name(p):
+    return p.get("name") if isinstance(p, dict) else str(p)
+def reason(p):
+    return str(p.get("exception") or p.get("error") or p) if isinstance(p, dict) else ""
+applied = [name(p) for p in result.get("appliedPatches", [])]
 failed = result.get("failedPatches", [])
 print(f"  applied {len(applied)}, failed {len(failed)}")
 for f in failed:
-    print("  FAILED", f.get("name"), "-", str(f.get("exception") or f.get("error") or f)[:300])
+    print("  FAILED", name(f), "-", reason(f)[:300])
 sys.exit(1 if failed else 0)
 EOF
 
@@ -134,14 +165,14 @@ EOF
     mkdir -p "$dir/dex"
     unzip -q -o "$dir/patched.apk" 'classes*.dex' -d "$dir/dex"
 
-    if java -cp "$DEXLIB:$GUAVA" "$HERE/BranchSweep.java" "$dir"/dex/*.dex > "$dir/sweep.txt" 2>&1; then
+    if "$JAVA21" -cp "$DEXLIB:$GUAVA" "$HERE/BranchSweep.java" "$dir"/dex/*.dex > "$dir/sweep.txt" 2>&1; then
         echo "  sweep: OK"
     else
         echo "  sweep: FAILED, see $dir/sweep.txt"; head -5 "$dir/sweep.txt"; status=1
     fi
 
     if [ $diff -eq 1 ]; then
-        java -cp "$DEXLIB:$GUAVA" "$HERE/DexDiff.java" "$orig" "$dir/dex" > "$dir/diff.txt" 2>&1
+        "$JAVA21" -cp "$DEXLIB:$GUAVA" "$HERE/DexDiff.java" "$orig" "$dir/dex" > "$dir/diff.txt" 2>&1
         echo "  $(grep '^SUMMARY' "$dir/diff.txt")"
         echo "  changed classes:"; grep '^== ' "$dir/diff.txt" | sed 's/^== /    /'
         echo "  diff: $dir/diff.txt"

@@ -1,5 +1,7 @@
 package app.andrewliang.patches.facebook.externalbrowser
 
+import app.andrewliang.patches.facebook.shared.facebookSettingsExtensionPatch
+import app.andrewliang.patches.facebook.shared.markFacebookSettingIncluded
 import app.andrewliang.patches.shared.Constants.COMPATIBILITY_FACEBOOK
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
@@ -44,6 +46,8 @@ val forceExternalBrowserPatch = bytecodePatch(
     compatibleWith(COMPATIBILITY_FACEBOOK)
     extendWith("extensions/extension.mpe")
 
+    dependsOn(facebookSettingsExtensionPatch)
+
     // Each hook goes in after the superclass call. At that point the activity is a valid Activity
     // for the extension, and the browser is not built yet. The extension returns false when the
     // link must stay in the app. The injected branch then continues into the original code.
@@ -75,6 +79,8 @@ val forceExternalBrowserPatch = bytecodePatch(
         check(hooked > 0) {
             "No in-app browser activity. The com.facebook.browser packages have new names."
         }
+
+        markFacebookSettingIncluded("externalBrowser")
     }
 }
 
