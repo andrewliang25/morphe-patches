@@ -177,7 +177,8 @@ final class FacebookSettingsScreen {
         boolean stories = FacebookSettings.hideSponsoredStoriesIncluded() || FacebookSettings.downloadStoryIncluded()
                 || FacebookSettings.anonymousStoryViewsIncluded()
                 || FacebookSettings.disableStoryAutoAdvanceIncluded();
-        boolean general = FacebookSettings.hideAffiliateLinksIncluded() || FacebookSettings.externalBrowserIncluded();
+        boolean general = FacebookSettings.hideAffiliateLinksIncluded() || FacebookSettings.externalBrowserIncluded()
+                || FacebookSettings.amoledThemeIncluded();
 
         if (!feed && !reels && !stories && !general) {
             content.addView(note(activity, "No patches in this build have a switch.", palette));
@@ -259,6 +260,17 @@ final class FacebookSettingsScreen {
             if (FacebookSettings.externalBrowserIncluded()) {
                 content.addView(toggle(activity, FacebookSettings.EXTERNAL_BROWSER, "Open links in external browser",
                         "Opens web links in your default browser.", palette, showRestart));
+            }
+            if (FacebookSettings.amoledThemeIncluded()) {
+                // Facebook keeps some colours for the life of the process, so a restart in a new
+                // task does not change the status bar and the top bar.
+                View close = row(activity, "Close Facebook", "Open Facebook again to apply the theme.", palette);
+                close.setVisibility(View.GONE);
+                close.setOnClickListener(v -> CustomFontPicker.exit(activity));
+                content.addView(toggle(activity, FacebookSettings.AMOLED_THEME, "AMOLED black theme",
+                        "Black instead of dark grey in dark mode.", palette,
+                        () -> close.setVisibility(View.VISIBLE)));
+                content.addView(close);
             }
         }
 

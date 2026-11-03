@@ -75,10 +75,34 @@ That method returns a **resource id** and not a colour, so `Resources.getColor` 
 int passes a hook. `#101011` is the resource `0x7f06014c`, and it is what the night table points to.
 This is why the top bar, the composer and the story tray stayed grey after route 1 alone.
 
-A `resourcePatch` rewrites `res/values/colors.xml` and `res/values-night/colors.xml`. On
-577.0.0.50.72 it changes **39 entries**, among them `0x7f06014c` (the wash), `0x7f060002` night
-(`#242526`) and `0x7f060452` night (`#252728`). Night text is far above the threshold and is
-untouched.
+Until the switch, a `resourcePatch` rewrote `res/values/colors.xml` and
+`res/values-night/colors.xml`. On 577.0.0.50.72 it changed **39 entries**, among them `0x7f06014c`
+(the wash), `0x7f060002` night (`#242526`) and `0x7f060452` night (`#252728`). A resource value is
+fixed in the APK, so no switch can turn that off.
+
+Now the resource half only lists those entries, as `<id>:<night>`, and writes the list into
+`AmoledResources.overrides()`. Right after the super call of `FacebookApplication.onCreate`,
+`AmoledResources.install` reads the switch. When it is on, the method builds a small
+`resources.arsc` in memory: one package `0x7f`, one `color` type, a default and a `night` configuration,
+and each entry `#ff000000`. It loads that table with `ResourcesProvider.loadFromTable` (API 30)
+and adds the `ResourcesLoader` to the Application, and to each Activity in `onActivityPreCreated`.
+Each new Activity asks the switch again and adds or removes the loader. That is not enough in a
+running process: the status bar and the top bar keep the colour that the process started with
+(device, 2026-11-04), although every context of the Activity resolves the wash correctly. Thus a
+change of the switch shows a "Close Facebook" row, which ends the process as LINE's font row does
+(`CustomFontPicker.exit`). "Restart Facebook" keeps the process and does not apply the theme.
+The framework reads a loader like the APK's own table, and a loader wins over the APK for an entry
+with the same configuration. Thus a theme attribute, a layout or a drawable that names the colour gets
+black too. No code hook reaches those reads.
+
+`aapt2 dump resources` shows the stock configurations as `()` and `(night)` with no `-v8`, so the table
+uses the same two configurations. Facebook's `registerActivityLifecycleCallbacks` wraps each callback in
+`LifecycleCallbacksTracer$WrapperApi29`, which forwards `onActivityPreCreated`.
+
+Two hooks were tried first and fell short on the device (2026-11-03): `LX/1tK;->A02`, which returns
+the resource id to the view code, and a reroute of every app call to `getColor`. The feed turned
+black, but the status bar, top bar, composer and story tray stayed `#171818`. The framework reads
+those colours from the theme, where no code hook reaches.
 
 ### Route 3 — code writes the colour itself
 
@@ -86,8 +110,10 @@ The palette tables, the top bar, the system bars and each Litho component that d
 hold the colour as a literal. Neither a resolver nor a resource reaches them. This is why the Reels
 bar stayed `#252728` after routes 1 and 2.
 
-The patch sweeps every class with `classDefForEach` and rewrites each dark grey it writes, which
-costs about 30 seconds. Two narrower anchors were tried first and both fell short: the name-kept
+The patch sweeps every class with `classDefForEach`. After each dark grey that the code writes, it
+adds `invoke-static/range` to `AmoledTheme.literal(I)I` and a `move-result` into the same register.
+The literal stays, so the switch decides, and the range form takes any register. The sweep costs
+about 30 seconds and skips the classes of the extension, which read the switch. Two narrower anchors were tried first and both fell short: the name-kept
 chrome classes, and the methods that return `ColorData`.
 
 ### Route 4 — the server sends the colour as text

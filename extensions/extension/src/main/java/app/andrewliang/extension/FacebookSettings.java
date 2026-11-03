@@ -43,6 +43,7 @@ public final class FacebookSettings {
     static final String DISABLE_STORY_AUTO_ADVANCE = "disable_story_auto_advance";
     static final String HIDE_AFFILIATE_LINKS = "hide_affiliate_links";
     static final String EXTERNAL_BROWSER = "external_browser";
+    static final String AMOLED_THEME = "amoled_theme";
 
     // Some switches are read on hot paths (each feed item, each seen field), so the values are read
     // from storage once and then kept here. Only the settings screen writes them.
@@ -102,6 +103,10 @@ public final class FacebookSettings {
 
     public static boolean externalBrowser() {
         return isOn(EXTERNAL_BROWSER);
+    }
+
+    public static boolean amoledTheme() {
+        return isOn(AMOLED_THEME);
     }
 
     // The patches that force a boolean true call these: they give true while the switch is on, and
@@ -177,12 +182,19 @@ public final class FacebookSettings {
         return false;
     }
 
+    static boolean amoledThemeIncluded() {
+        return false;
+    }
+
     static boolean isOn(String key) {
         if (!rowIncluded()) return true;
         Boolean value = VALUES.get(key);
         if (value != null) return value;
         SharedPreferences preferences = preferences();
-        boolean stored = preferences == null || preferences.getBoolean(key, true);
+        // Before the Application exists there is no storage. Answer on without keeping it, so a
+        // switch that is off is read again once storage is there. AMOLED reads colours this early.
+        if (preferences == null) return true;
+        boolean stored = preferences.getBoolean(key, true);
         VALUES.put(key, stored);
         return stored;
     }
