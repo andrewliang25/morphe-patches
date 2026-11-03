@@ -13,7 +13,7 @@ val fixBiometricLoginPatch = bytecodePatch(
     name = "[Fix] Restore biometric login",
     description = "Biometric login can be linked again on a re-signed build. A Root Mount " +
         "install does not need this patch.",
-    default = false,
+    default = true,
 ) {
     compatibleWith(COMPATIBILITY_LINE)
 
