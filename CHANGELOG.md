@@ -1,3 +1,10 @@
+## [3.10.0](https://github.com/andrewliang25/morphe-patches/compare/v3.9.0...v3.10.0) (2026-11-03)
+
+### ✨ New Features
+
+* **Facebook:** add Andrew's Patch Setting ([eef74c6](https://github.com/andrewliang25/morphe-patches/commit/eef74c64198228c1ca0215ef6b505b05dc054cea))
+* **LINE - Hide Agent i buttons:** hide Agent i in chats permanently ([4ba9872](https://github.com/andrewliang25/morphe-patches/commit/4ba98720c9ba2ae1de406f92f0810b95f31556a5)), closes [#208](https://github.com/andrewliang25/morphe-patches/issues/208)
+
 ## [3.10.0-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v3.9.0...v3.10.0-dev.1) (2026-11-01)
 
 ### ✨ New Features
