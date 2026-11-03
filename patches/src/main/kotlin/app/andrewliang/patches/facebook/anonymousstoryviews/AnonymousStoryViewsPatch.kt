@@ -63,7 +63,7 @@ val anonymousStoryViewsPatch = bytecodePatch(
     name = "[Stories] View stories anonymously",
     description = "Stops Facebook telling the server which stories you saw, so you are not in " +
         "the viewer list. Stories that you saw still show as seen on this device.",
-    default = false,
+    default = true,
 ) {
     compatibleWith(COMPATIBILITY_FACEBOOK)
     extendWith("extensions/extension.mpe")

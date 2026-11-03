@@ -1260,7 +1260,7 @@ others.
 ## Story auto advance
 
 Issue #109 asks for a story to stay on the screen until you tap or swipe.
-`[Stories] Disable auto advance` does this. It is off by default.
+`[Stories] Disable auto advance` does this. It is on by default.
 
 **How a story ends.** A frame callback of `StoryViewerProgressBarControllerImpl` (`LX/9ui;->A02`,
 named in a trace string) moves the progress bar. `LX/9ui;->A03` limits the progress to 0–1000 and
@@ -1289,7 +1289,7 @@ player. Thus the patch is probably not the cause, but no build without the patch
 ## Reels picture in picture
 
 Issue #174 asks for picture in picture (PiP) for all Facebook media. Facebook 577 has its own PiP
-for the Reels tab, and `[Reels] Picture-in-picture` turns it on. The patch is off by default. Feed
+for the Reels tab, and `[Reels] Picture-in-picture` turns it on. The patch is on by default. Feed
 videos and stories have no PiP code, thus the patch cannot give them PiP.
 
 **The PiP helper.** `LX/AIo;` is `ReelsPipUtil`. Its lambdas keep the names
