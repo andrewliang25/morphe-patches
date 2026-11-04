@@ -20,6 +20,10 @@ import java.util.Set;
  *
  * <p>{@link #apply} runs for each colour on each layout pass. Thus it makes no object, loads no
  * class and writes no log.
+ *
+ * <p>Each route asks {@link FacebookSettings#amoledTheme()} only after the colour already counts as
+ * a dark background, so the switch costs nothing for the other colours. With the switch off, every
+ * method gives back what Facebook computed.
  */
 public final class AmoledTheme {
 
@@ -44,6 +48,9 @@ public final class AmoledTheme {
      * green or dark brown banner has much more, and it keeps its colour.
      */
     private static final int MAX_SPREAD = 8;
+
+    /** Opaque black. */
+    private static final int BLACK = 0xFF000000;
 
     /**
      * The tokens that name a background area. The short names come from Mig and the long names
@@ -97,8 +104,17 @@ public final class AmoledTheme {
     public static int apply(int color, Object token) {
         if (!isDarkNeutral(color, MAX_TOKEN_CHANNEL)) return color;
         if (!(token instanceof Enum)) return color;
+        if (!BACKGROUND_TOKENS.contains(((Enum<?>) token).name())) return color;
 
-        return BACKGROUND_TOKENS.contains(((Enum<?>) token).name()) ? 0xFF000000 : color;
+        return FacebookSettings.amoledTheme() ? BLACK : color;
+    }
+
+    /**
+     * Route three: a dark grey that the code writes as a literal. The patch keeps the literal and
+     * sends it through here, so the switch decides. The patch already checked the value.
+     */
+    public static int literal(int color) {
+        return FacebookSettings.amoledTheme() ? BLACK : color;
     }
 
     /**
@@ -114,7 +130,8 @@ public final class AmoledTheme {
      */
     public static int parseColor(String text) {
         int color = Color.parseColor(text);
-        return isDarkNeutral(color, MAX_CHANNEL) ? 0xFF000000 : color;
+        if (!isDarkNeutral(color, MAX_CHANNEL)) return color;
+        return FacebookSettings.amoledTheme() ? BLACK : color;
     }
 
     /** True for an opaque grey with each channel at or below {@code maxChannel}. */

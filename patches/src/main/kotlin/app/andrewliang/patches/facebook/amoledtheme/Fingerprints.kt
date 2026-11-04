@@ -66,6 +66,18 @@ internal object FdsColorsContextFingerprint : Fingerprint(
 )
 
 /**
+ * `FacebookApplication.onCreate`, where route two adds the black colour resources. The super call
+ * is the first instruction, and the hook goes right after it.
+ */
+internal object FacebookApplicationOnCreateFingerprint : Fingerprint(
+    definingClass = "Lcom/facebook/katana/app/FacebookApplication;",
+    name = "onCreate",
+    returnType = "V",
+    parameters = listOf(),
+    filters = listOf(methodCall(opcode = Opcode.INVOKE_SUPER, name = "onCreate")),
+)
+
+/**
  * The step to the resolver of the view code. That resolver has a Redex name and no literal, thus
  * the patch matches this wrapper and reads the descriptor of its `invoke-static`. The wrapper is
  * the only method that reads the one `Context` field.

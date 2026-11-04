@@ -1,6 +1,10 @@
 package app.andrewliang.patches.facebook.amoledtheme
 
+import app.andrewliang.patches.facebook.shared.facebookSettingsExtensionPatch
+import app.andrewliang.patches.facebook.shared.markFacebookSettingIncluded
 import app.andrewliang.patches.shared.Constants.COMPATIBILITY_FACEBOOK
+import app.andrewliang.patches.shared.resourceId
+import app.andrewliang.patches.shared.resourceIdsPatch
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
 import app.morphe.patcher.patch.bytecodePatch
@@ -33,14 +37,26 @@ private const val BLACK = -0x1000000
 /** Gets the resolved colour and its token. Gives the colour to draw. */
 private const val APPLY = "Lapp/andrewliang/extension/AmoledTheme;->apply(ILjava/lang/Object;)I"
 
+/** Gets a dark grey that the code writes. Gives black while the switch is on. */
+private const val LITERAL = "Lapp/andrewliang/extension/AmoledTheme;->literal(I)I"
+
 /** The framework call that turns a colour string, such as `"#FF252728"`, into a colour. */
 private const val PARSE_COLOR = "Landroid/graphics/Color;->parseColor(Ljava/lang/String;)I"
 
 /** The extension call that replaces it. It has the same signature. */
 private const val PARSE_COLOR_DARK = "Lapp/andrewliang/extension/AmoledTheme;->parseColor(Ljava/lang/String;)I"
 
-/** The classes of the extension. Route four skips them, because the replacement calls the original. */
+/** Route two: builds the resource table of black colours and adds it to the app. */
+private const val AMOLED_RESOURCES = "Lapp/andrewliang/extension/AmoledResources;"
+
+/** The classes of the extension. The sweeps skip them, because their code reads the switch. */
 private const val EXTENSION_PACKAGE = "Lapp/andrewliang/"
+
+/**
+ * The dark grey colour resources, as `<id>:<night>` in hex, for `AmoledResources.overrides()`.
+ * The resource half fills it before the bytecode half runs.
+ */
+private val darkColorResources = mutableListOf<String>()
 
 /**
  * True for a dark grey, which is what a background uses. False for a dark colour with a hue, which
@@ -54,12 +70,16 @@ private fun isDarkNeutral(red: Int, green: Int, blue: Int): Boolean {
 /**
  * A colour reaches the screen by four routes, and this patch covers all four with one rule.
  *
- * The first route is a resolver: a component asks the design system, and the bytecode half hooks
- * the four methods that answer. The second is a resource: a view reads a colour by id, so no int
- * passes a hook, and the resource half below rewrites it. The third is a literal written in code,
- * which the bytecode half rewrites in place. The fourth is a string that the server sends, which
- * the app parses with `Color.parseColor`. The bytecode half sends each of those calls through the
- * extension.
+ * The first route is a resolver: a component asks the design system, and the patch hooks the four
+ * methods that answer. The second is a resource: a theme, a layout or a view reads a colour by id.
+ * The resource half below lists the dark grey resources, and at run time the extension adds a
+ * resource table that gives them as black. The third is a literal written in code, which the patch
+ * sends through the extension right where it is written. The fourth is a string that the server
+ * sends, which the app parses with `Color.parseColor`. The patch sends each of those calls through
+ * the extension.
+ *
+ * Every route ends in the extension, so the switch in "Andrew's Patch Setting" turns the theme off
+ * without a new build. The APK's own resources stay stock.
  *
  * Routes two, three and four match on the **value** or on a framework call, with no class, method
  * or resource name.
@@ -67,24 +87,26 @@ private fun isDarkNeutral(red: Int, green: Int, blue: Int): Boolean {
  * anchor here. A value of this exact shape is a colour and nothing else.
  */
 private val amoledThemeResourcePatch = resourcePatch {
-    execute {
-        var changed = 0
+    dependsOn(resourceIdsPatch)
 
-        listOf("res/values/colors.xml", "res/values-night/colors.xml")
-            .filter { get(it, false).exists() }
-            .forEach { path ->
+    execute {
+        darkColorResources.clear()
+
+        listOf("res/values/colors.xml" to 0, "res/values-night/colors.xml" to 1)
+            .filter { (path, _) -> get(path, false).exists() }
+            .forEach { (path, night) ->
                 document(path).use { document ->
                     val colors = document.getElementsByTagName("color")
                     for (index in 0 until colors.length) {
                         val color = colors.item(index) as? Element ?: continue
                         if (!isDarkBackground(color.textContent)) continue
-                        color.textContent = "#ff000000"
-                        changed++
+                        val id = resourceId("color", color.getAttribute("name"))
+                        darkColorResources += "${id.toString(16)}:$night"
                     }
                 }
             }
 
-        check(changed > 0) { "No dark colour resource found, so the theme would stay grey" }
+        check(darkColorResources.isNotEmpty()) { "No dark colour resource found, so the theme would stay grey" }
     }
 }
 
@@ -109,12 +131,12 @@ private fun isDarkBackground(value: String): Boolean {
 val amoledThemePatch = bytecodePatch(
     name = "[General] AMOLED black theme",
     description = "Makes Facebook's dark mode black instead of dark grey. Turn on dark mode in " +
-        "Facebook first.",
-    default = false,
+        "Facebook first. You can turn it off in Andrew's Patch Setting.",
+    default = true,
 ) {
     compatibleWith(COMPATIBILITY_FACEBOOK)
 
-    dependsOn(amoledThemeResourcePatch)
+    dependsOn(amoledThemeResourcePatch, facebookSettingsExtensionPatch)
 
     extendWith("extensions/extension.mpe")
 
@@ -142,19 +164,39 @@ val amoledThemePatch = bytecodePatch(
                 resolver.parameterTypes.map(CharSequence::toString)
         }.hookColorReturns(tokenParameterIndex = 1)
 
+        // Route two. The extension gets the list of dark grey resources, and the app adds the
+        // black table when it starts, right after the super call of Application.onCreate.
+        val overrides = mutableClassDefBy(AMOLED_RESOURCES).methods.single { it.name == "overrides" }
+        val literal = overrides.implementation!!.instructions.withIndex()
+            .single { it.value.opcode == Opcode.CONST_STRING }
+        val register = (literal.value as OneRegisterInstruction).registerA
+        overrides.replaceInstruction(
+            literal.index,
+            "const-string v$register, \"${darkColorResources.joinToString(",")}\"",
+        )
+
+        val onCreate = FacebookApplicationOnCreateFingerprint.method
+        val application = onCreate.implementation!!.registerCount - 1 // `this`
+        onCreate.addInstructions(
+            FacebookApplicationOnCreateFingerprint.instructionMatches[0].index + 1,
+            "invoke-static/range { v$application .. v$application }, " +
+                "$AMOLED_RESOURCES->install(Landroid/app/Application;)V",
+        )
+
         // Route three. The palette tables, the top bar of the feed, the system bars and each Litho
         // component that draws its own chrome all write a colour instead of asking for one, so no
-        // resolver and no resource reaches them. The sweep reads every class and rewrites only the
+        // resolver and no resource reaches them. The sweep reads every class and changes only the
         // classes that hold one, which takes about 30 seconds.
         val owners = mutableSetOf<String>()
         classDefForEach { classDef ->
+            if (classDef.type.startsWith(EXTENSION_PACKAGE)) return@classDefForEach
             if (classDef.methods.any { it.hasDarkColor() }) owners += classDef.type
         }
 
-        val rewritten = owners.sumOf { type ->
-            mutableClassDefByOrNull(type)?.methods?.sumOf { it.blackenDarkColors() } ?: 0
+        val gated = owners.sumOf { type ->
+            mutableClassDefByOrNull(type)?.methods?.sumOf { it.gateDarkColors() } ?: 0
         }
-        check(rewritten > 0) { "No dark colour written in code, so the chrome would stay grey" }
+        check(gated > 0) { "No dark colour written in code, so the chrome would stay grey" }
 
         // Route four. The server sends some colours as strings, and the app parses them with
         // Color.parseColor. Each of those calls goes to the extension instead.
@@ -168,6 +210,8 @@ val amoledThemePatch = bytecodePatch(
             mutableClassDefByOrNull(type)?.methods?.sumOf { it.rerouteParseColor() } ?: 0
         }
         check(rerouted > 0) { "No call to Color.parseColor found, so server colours would stay grey" }
+
+        markFacebookSettingIncluded("amoledTheme")
     }
 }
 
@@ -218,14 +262,27 @@ private fun MutableMethod.rerouteParseColor(): Int {
 private fun Method.hasDarkColor(): Boolean =
     implementation?.instructions?.any { it.isDarkColor() } == true
 
-/** Replaces each dark grey that this method writes with black. Answers how many it replaced. */
-private fun MutableMethod.blackenDarkColors(): Int {
+/**
+ * Sends each dark grey that this method writes through the extension, right after the literal.
+ * Answers how many it sent.
+ *
+ * The literal stays, so the switch can keep it. The call is in the range form, because the register
+ * can be above v15. A branch onto the instruction after the literal skips the call, but that path
+ * never wrote the literal.
+ */
+private fun MutableMethod.gateDarkColors(): Int {
     val sites = (implementation ?: return 0).instructions.withIndex()
         .filter { it.value.isDarkColor() }
         .map { it.index to (it.value as OneRegisterInstruction).registerA }
 
     sites.asReversed().forEach { (index, register) ->
-        replaceInstruction(index, "const v$register, $BLACK")
+        addInstructions(
+            index + 1,
+            """
+                invoke-static/range { v$register .. v$register }, $LITERAL
+                move-result v$register
+            """,
+        )
     }
     return sites.size
 }

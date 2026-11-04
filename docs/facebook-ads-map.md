@@ -1260,7 +1260,7 @@ others.
 ## Story auto advance
 
 Issue #109 asks for a story to stay on the screen until you tap or swipe.
-`[Stories] Disable auto advance` does this. It is off by default.
+`[Stories] Disable auto advance` does this. It is on by default.
 
 **How a story ends.** A frame callback of `StoryViewerProgressBarControllerImpl` (`LX/9ui;->A02`,
 named in a trace string) moves the progress bar. `LX/9ui;->A03` limits the progress to 0–1000 and
@@ -1289,7 +1289,7 @@ player. Thus the patch is probably not the cause, but no build without the patch
 ## Reels picture in picture
 
 Issue #174 asks for picture in picture (PiP) for all Facebook media. Facebook 577 has its own PiP
-for the Reels tab, and `[Reels] Picture-in-picture` turns it on. The patch is off by default. Feed
+for the Reels tab, and `[Reels] Picture-in-picture` turns it on. The patch is on by default. Feed
 videos and stories have no PiP code, thus the patch cannot give them PiP.
 
 **The PiP helper.** `LX/AIo;` is `ReelsPipUtil`. Its lambdas keep the names
@@ -1342,7 +1342,7 @@ window away, it closed and the playback paused. The crash buffer was empty.
 ## Andrew's Patch Setting
 
 `[General] Andrew's Patch Setting` adds a row, "Andrew's Patch Setting", to the top of the Menu
-drawer. The row opens a screen with a runtime switch for 14 patches, then credits and the license.
+drawer. The row opens a screen with a runtime switch for 15 patches, then credits and the license.
 Who it helps: a user of the prebuilt APK from `patched-apps`, who otherwise cannot turn off one
 patch without patching the APK again. LINE has the same patch (`docs/line-patch-map.md`, "Settings
 screen"). Anchors are 577.0.0.50.72.
@@ -1392,11 +1392,13 @@ All switches are on by default. The helpers are in `facebook/shared/FacebookSett
 | A boolean forced true | `forceTrueIfFacebookSetting`: a `(Z)Z` call after the `move-result` | Reels PiP (2), story download (the Save item) |
 | A call that the patch removed | A new static helper with the same arguments makes the call only while the switch is off | Feed auto refresh (the loader reset) |
 | A call that the patch replaced | A branch to the helper call while the switch is on, else the original call | Sponsored reels (the idle ad query) |
-| Logic in the extension | The Java method checks the switch | Sponsored reels (2 filters), story download (the tap), anonymous story views, external browser |
+| Logic in the extension | The Java method checks the switch | Sponsored reels (2 filters), story download (the tap), anonymous story views, external browser, AMOLED (every route) |
 
-AMOLED has no switch. Its resource route rewrites dark greys in `colors.xml` at patch time, and no
-code at run time can undo that. With the switch off, the code routes give the greys back, but every
-resource colour stays black.
+AMOLED used to have no switch, because its resource route rewrote dark greys in `colors.xml` at
+patch time and no code at run time can undo that. Now the resources stay stock. Routes 1, 3 and 4
+end in `AmoledTheme`, which asks the switch only for a colour that is already a dark background,
+and route 2 adds a `ResourcesLoader` with black colours only while the switch is on.
+See `docs/facebook-theme-map.md`. The palette tables are built once, so a change needs a restart.
 
 ### What the device test showed
 

@@ -749,8 +749,8 @@ server; the rest check Google, a third-party SDK, or a caller, or are Pay-native
 |---|---|---|---|
 | `ct/c` → Firebase Installations (FIS) | `X-Android-Cert` header → FCM token | SHA-1 hex | Fixed (`fixpushnotifications`) |
 | `pr/a` → Firebase Remote Config (`ConfigFetchHttpClient.fetch`, `remoteconfig.internal.d.i`) | same `X-Android-Cert` header, shared Firebase helper | SHA-1 hex | Fixed (`fixpushnotifications`) |
-| `com/linecorp/ltsm/fido2/v.b` | WebAuthn `clientDataJSON` origin `android:apk-key-hash-sha256:…` → LINE FIDO server | SHA-256 base64 | Fixed (`fixbiometriclogin`, off by default, issue #195) |
-| `com/linecorp/webauthn/util/Fido2Util` | a second WebAuthn stack (`com.linecorp.webauthn`, callers `PublicKeyCredential`, `Authenticator`), same origin | SHA-256 base64 | Fixed (`fixbiometriclogin`, off by default) |
+| `com/linecorp/ltsm/fido2/v.b` | WebAuthn `clientDataJSON` origin `android:apk-key-hash-sha256:…` → LINE FIDO server | SHA-256 base64 | Fixed (`fixbiometriclogin`, on by default, issue #195) |
+| `com/linecorp/webauthn/util/Fido2Util` | a second WebAuthn stack (`com.linecorp.webauthn`, callers `PublicKeyCredential`, `Authenticator`), same origin | SHA-256 base64 | Fixed (`fixbiometriclogin`, on by default) |
 
 ### Sites that do NOT break on re-sign
 
@@ -796,7 +796,7 @@ not LINE Pay. Both `com.linecorp.ltsm.fido2.v.b(Context, String, byte[])` and
 WebAuthn `clientDataJSON` origin. On a re-signed build the hash is the certificate of the user. The
 origin matches no facet of the account, so the FIDO server refuses the registration.
 
-- Patch (`patches/line/fixbiometriclogin/`, off by default): in both methods, right after the
+- Patch (`patches/line/fixbiometriclogin/`, on by default): in both methods, right after the
   `move-result-object v$hashReg` of `Base64.encodeToString`, the patch calls
   `LineSignature.apkKeyHash()` and writes the genuine signer hash into `v$hashReg`.
 - Which cert: `SigningInfo.getApkContentsSigners()` returns the rotated v3.1 signer on Android 13
