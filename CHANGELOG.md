@@ -1,3 +1,11 @@
+## [3.11.0](https://github.com/andrewliang25/morphe-patches/compare/v3.10.0...v3.11.0) (2026-11-07)
+
+### ✨ New Features
+
+* **Facebook - AMOLED black theme:** add a switch and turn it on by default ([ea1cae9](https://github.com/andrewliang25/morphe-patches/commit/ea1cae9fe8e1af0ec63485c511001f36140032f3))
+* **Facebook:** turn on three Stories and Reels patches by default ([17040df](https://github.com/andrewliang25/morphe-patches/commit/17040dfceff3eb4815a31e67533bce13bb7a9e8b))
+* **LINE - Restore biometric login:** turn it on by default ([9065851](https://github.com/andrewliang25/morphe-patches/commit/90658514fd5f20f536cc4471f1ce7bc8ee7213a2))
+
 ## [3.11.0-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v3.10.0...v3.11.0-dev.1) (2026-11-04)
 
 ### ✨ New Features
