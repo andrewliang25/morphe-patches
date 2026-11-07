@@ -17,7 +17,7 @@ Morphe Manager to build a modified APK.
 ## 🩹 Patches list
 
 <!-- PATCHES_START EXPANDED -->
-> **[v3.10.0](https://github.com/andrewliang25/morphe-patches/releases/tag/v3.10.0)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;52 patches total
+> **[v3.11.0-dev.1](https://github.com/andrewliang25/morphe-patches/releases/tag/v3.11.0-dev.1)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;52 patches total
 <details open>
 <summary>📦 Facebook&nbsp;&nbsp;•&nbsp;&nbsp;20 patches</summary>
 <br>
@@ -37,7 +37,7 @@ Morphe Manager to build a modified APK.
 | [[Feed] Hide post prompts](#feed-hide-post-prompts) | Removes the prompts Facebook adds inside a post, such as "Are you interested in this post?". |  |
 | [[Feed] Hide sponsored posts](#feed-hide-sponsored-posts) | Removes sponsored posts from the news feed, with no gap left behind. |  |
 | [[Fix] Restore screens on re-signed builds](#fix-restore-screens-on-re-signed-builds) | Makes profiles and some Settings pages open again on a re-signed build. A Root Mount install does not need this patch. |  |
-| [[General] AMOLED black theme](#general-amoled-black-theme) | Makes Facebook's dark mode black instead of dark grey. Turn on dark mode in Facebook first. |  |
+| [[General] AMOLED black theme](#general-amoled-black-theme) | Makes Facebook's dark mode black instead of dark grey. Turn on dark mode in Facebook first. You can turn it off in Andrew's Patch Setting. |  |
 | [[General] Andrew's Patch Setting](#general-andrew-s-patch-setting) | Adds "Andrew's Patch Setting" to the top of the Facebook menu. There you can turn some patches on or off without patching again, and see the credits and licenses. |  |
 | [[General] Hide affiliate product links](#general-hide-affiliate-product-links) | Removes the product cards of affiliate shop links from Reels, feed posts and comments. The "Commission eligible" label stays. |  |
 | [[General] Open links in external browser](#general-open-links-in-external-browser) | Opens web links in your default browser instead of Facebook's in-app browser. Facebook pages still open in the app. |  |
@@ -157,6 +157,22 @@ Google Play Services. No patch can change this ([details](docs/line-patch-map.md
 
 This limitation does not affect chat-history backup. The *[Fix] Restore chat backup sign-in via MicroG-RE*
 patch restores it through [MicroG-RE](https://github.com/MorpheApp/MicroG-RE).
+
+### LINE: some merchants do not accept LINE Pay
+
+**What:** At some merchants, a LINE Pay payment from a website or an ordering system fails. LINE
+opens, then the standalone **LINE Pay** app opens and shows an error. Examples of the error are
+"you must use the LINE app for this function" (`您必須透過LINE應用程式操作此功能`) and "update LINE".
+
+**Why:** LINE Pay inside LINE has an integrity check that fails on a modified LINE. The
+*[General] Redirect LINE Pay* patch sends each payment to the standalone LINE Pay app instead. Most
+merchants accept this. Some merchants accept a payment only from inside LINE, so the LINE Pay app
+refuses it. These patches do not change the LINE Pay part of LINE, because a change to payment code
+can get your account banned and can cause legal problems. So this will not be fixed
+([#161](https://github.com/andrewliang25/morphe-patches/issues/161),
+[#220](https://github.com/andrewliang25/morphe-patches/issues/220)).
+
+**Workaround:** at these merchants, pay in a different way, for example pay in the store.
 
 ### Facebook: other Meta apps do not install (re-signed builds)
 

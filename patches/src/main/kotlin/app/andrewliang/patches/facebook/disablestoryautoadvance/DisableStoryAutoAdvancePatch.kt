@@ -26,7 +26,7 @@ internal object AutoPlayNavigationFingerprint : Fingerprint(
 val disableStoryAutoAdvancePatch = bytecodePatch(
     name = "[Stories] Disable auto advance",
     description = "Keeps each story on the screen until you tap or swipe to the next one.",
-    default = false,
+    default = true,
 ) {
     compatibleWith(COMPATIBILITY_FACEBOOK)
 

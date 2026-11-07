@@ -82,7 +82,7 @@ val reelsPipPatch = bytecodePatch(
     name = "[Reels] Picture-in-picture",
     description = "Keeps a reel playing in a small window when you leave Facebook from the " +
         "Reels tab. Only vertical reels get a window. Needs Android 12 or later.",
-    default = false,
+    default = true,
 ) {
     compatibleWith(COMPATIBILITY_FACEBOOK)
 
