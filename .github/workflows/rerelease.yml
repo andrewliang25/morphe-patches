@@ -1,0 +1,106 @@
+name: Re-release
+
+# Recovery for a release that failed after semantic-release pushed its tag (for example a
+# transient Sigstore error in release.yml's Attest step). A re-run of release.yml cannot recover
+# it: semantic-release sees the tag and releases nothing. This workflow rebuilds the tag and
+# publishes it the way release.yml does. It leaves the failed draft alone. Delete that draft by hand.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag whose release failed (for example v3.11.0)'
+        required: true
+
+jobs:
+  rerelease:
+    name: Re-release ${{ inputs.tag }}
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TAG: ${{ inputs.tag }}
+    steps:
+      - name: Check the tag
+        run: |
+          set -euo pipefail
+          if ! gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" >/dev/null 2>&1; then
+            echo "::error::Tag $TAG does not exist."
+            exit 1
+          fi
+          # This endpoint returns published releases only, not drafts.
+          if gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" >/dev/null 2>&1; then
+            echo "::error::Release $TAG is already published. Published releases are immutable."
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag }}
+          fetch-depth: 0
+
+      - name: Read the release notes
+        run: |
+          set -euo pipefail
+          # semantic-release puts the release notes in the body of the commit that it tags.
+          subject=$(git log -1 --format=%s "$TAG")
+          if [ "$subject" != "chore: Release $TAG [skip ci]" ]; then
+            echo "::error::$TAG does not point to a semantic-release commit (subject: $subject)."
+            exit 1
+          fi
+          git log -1 --format=%b "$TAG" >"$RUNNER_TEMP/notes.md"
+          if [ ! -s "$RUNNER_TEMP/notes.md" ]; then
+            echo "::error::The release commit of $TAG has no release notes."
+            exit 1
+          fi
+
+      - name: Setup Java
+        uses: actions/setup-java@v6.1.0
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      # The same Gradle task that gradle-semantic-release-plugin runs in release.yml. The tag
+      # already holds the version in gradle.properties.
+      - name: Build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          ./gradlew publish --no-daemon -q
+          mpp="patches/build/libs/patches-${TAG#v}.mpp"
+          if [ ! -f "$mpp" ]; then
+            echo "::error::The build did not produce $mpp."
+            ls -l patches/build/libs
+            exit 1
+          fi
+
+      - name: Attest
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-name: 'Morphe Patches ${{ inputs.tag }}'
+          subject-path: |
+            patches/build/libs/patches-*.mpp
+            !patches/build/libs/patches-*-sources.mpp
+            !patches/build/libs/patches-*-javadoc.mpp
+
+      # 'gh release create' with an asset makes a draft, uploads the asset, then publishes, so it
+      # works with immutable releases. It works by release id, so the failed draft cannot be hit.
+      - name: Publish release
+        run: |
+          set -euo pipefail
+          args=(--verify-tag --title "$TAG" --notes-file "$RUNNER_TEMP/notes.md")
+          if [[ "$TAG" == *-* ]]; then
+            # A dev tag is a pre-release, as in .releaserc. GitHub never marks one as latest.
+            args+=(--prerelease)
+          elif [ "$(git tag -l 'v*' --sort=-v:refname | grep -v -e '-' | head -1)" = "$TAG" ]; then
+            args+=(--latest)
+          else
+            # An older stable tag. Do not move "latest" back to it.
+            args+=(--latest=false)
+          fi
+          gh release create "$TAG" "patches/build/libs/patches-${TAG#v}.mpp" "${args[@]}"
