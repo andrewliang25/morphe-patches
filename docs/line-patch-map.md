@@ -736,19 +736,22 @@ LINE also has Pay web screens that the patch does not hook: `PayWebActivity` and
 
 A re-signed (Standard) install breaks any feature where LINE **reports its own signing certificate
 to a server that pinned LINE's official certificate**. This section inventories every place LINE
-26.15.1 reads its signer, so the full blast radius is visible in one pass. It records the
+26.15.1 and 26.16.0 read their signer, so the full blast radius is visible in one pass. It records the
 biometric-link finding (issue #195) and the payment analysis (issues #96, #161).
 
 Scan: `getApkContentsSigners`, `PackageInfo.signatures`, `SigningInfo`, and the `android:apk-key-hash`
 literal across all `smali*` trees. Twenty sites read the signer. Four self-report it to a pinning
 server; the rest check Google, a third-party SDK, or a caller, or are Pay-native.
 
+Obfuscated names are given as `26.15.1` / `26.16.0`. 26.16.0 has the same sites as 26.15.1. Only
+the obfuscated names changed, and the text strings of each class are the same.
+
 ### Sites that break on re-sign (self-report to a pinning server)
 
 | Site | Mechanism | Hash format | Status |
 |---|---|---|---|
-| `ct/c` → Firebase Installations (FIS) | `X-Android-Cert` header → FCM token | SHA-1 hex | Fixed (`fixpushnotifications`) |
-| `pr/a` → Firebase Remote Config (`ConfigFetchHttpClient.fetch`, `remoteconfig.internal.d.i`) | same `X-Android-Cert` header, shared Firebase helper | SHA-1 hex | Fixed (`fixpushnotifications`) |
+| `fz/c` / `ez/c` → Firebase Installations (FIS) | `X-Android-Cert` header → FCM token | SHA-1 hex | Fixed (`fixpushnotifications`) |
+| `pr/a` / `or/a` → Firebase Remote Config (`ConfigFetchHttpClient.fetch`, `remoteconfig.internal.d.i`) | same `X-Android-Cert` header, shared Firebase helper | SHA-1 hex | Fixed (`fixpushnotifications`) |
 | `com/linecorp/ltsm/fido2/v.b` | WebAuthn `clientDataJSON` origin `android:apk-key-hash-sha256:…` → LINE FIDO server | SHA-256 base64 | Fixed (`fixbiometriclogin`, on by default, issue #195) |
 | `com/linecorp/webauthn/util/Fido2Util` | a second WebAuthn stack (`com.linecorp.webauthn`, callers `PublicKeyCredential`, `Authenticator`), same origin | SHA-256 base64 | Fixed (`fixbiometriclogin`, on by default) |
 
@@ -756,12 +759,12 @@ server; the rest check Google, a third-party SDK, or a caller, or are Pay-native
 
 | Site | What it is | Why re-sign does not break it |
 |---|---|---|
-| `er/j`, `er/k` | GMS / Play availability bootstrap | reads Google's cert, not LINE's |
-| `zs/e` (`PhoneskyVerificationUtils`), `qv/a` (Google signature verifier), `cu/f5` (wearable) | bundled Google SDK verifiers | verify Google / Play certs, local |
-| `j7/e` | androidx `FontProvider` cert check | checks the font provider, not LINE |
-| `wv/f` | AndroidManifest / `versionCode` reader | not a certificate report |
-| `qy5/f0` | Samsung Smart Switch migration provider | verifies the caller's cert, local |
-| `u48/c` | LY shared-storage ContentProvider allowlist (`lysharedstorage_release`) | verifies calling apps, local |
+| `er/j`, `er/k` / `dr/j`, `dr/k` | GMS / Play availability bootstrap | reads Google's cert, not LINE's |
+| `zs/e` / `ys/e` (`PhoneskyVerificationUtils`), `qv/a` / `pv/a` (Google signature verifier), `cu/f5` / `bu/f5` (wearable) | bundled Google SDK verifiers | verify Google / Play certs, local |
+| `j7/e` (both versions) | androidx `FontProvider` cert check | checks the font provider, not LINE |
+| `wv/f` / `vv/f` | AndroidManifest / `versionCode` reader | not a certificate report |
+| `qy5/f0` / `yy5/g0` | Samsung Smart Switch migration provider | verifies the caller's cert, local |
+| `u48/c` / `g88/b` | LY shared-storage ContentProvider allowlist (`lysharedstorage_release`) | verifies calling apps, local |
 | `VosWrapperBase`, `com/vkey/android/cg` | VKey V-OS / V-Guard (LINE Pay) | native; Pay only; out of scope |
 | `fsecurity/model/Jws.signatures` | a JWS / JWT signature list | not the APK signing cert |
 
