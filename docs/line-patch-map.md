@@ -608,6 +608,7 @@ starting point, so no one needs to sweep the APK again.
 | [General] Hide LINE AI image editing | `line.hidelineaiimageedit` | the getter of `function.ai.lineai.enabled_entry_points` (see below) |
 | [Chat] Hide AI Friends button | `line.chatheaderbuttons` | `function.ai.character.display_button` (see below) |
 | [General] Custom font | `line.customfont` | LINE's premium font path: `PremiumFontProvider`, the androidx certificate check, the Font page (see below) |
+| [General] Enable themes on sub devices | `line.subdevicethemes` | the dark-mode check, the Settings Themes row and the My Themes Theme Shop button (see below) |
 
 Each is an independent, `default = true`, user-facing `bytecodePatch` — one feature (or one
 feature's full set of entry points) per patch. Most are instruction-level edits. *Redirect LINE
@@ -2230,6 +2231,84 @@ fonts back on a re-signed build too.
 `mq4.t`/`yw4.s` (the callback that LINE registers), `f7/e`/`j7/e` (androidx `FontProvider`),
 `er4/f`/`qx4/f` (the list loader) and its registers `v4`, `v10`, `v12`. The patch finds each one
 by shape or by string, not by name.
+
+## Themes on a sub device & the "[General] Enable themes on sub devices" patch
+
+A sub device is a second phone or a tablet that logs in to an account whose main device is
+another phone (LINE's `SECONDARY` device type). On a sub device LINE hides Settings ▸ Themes,
+keeps the app in light mode and blocks the Theme Shop (issue #221).
+
+### The sub-device flag
+
+The flag is an interface method that LINE gets from its service locator. The patch reads it
+through this sequence in every version: `sget-object key`, `invoke-static lookup(Context, key)`,
+`move-result-object`, `check-cast`, `invoke-interface …()Z`.
+
+| | 26.14.0 | 26.15.1 | 26.16.0 |
+|---|---|---|---|
+| Flag | `c50/e0.t()` | `fa0/d0.s()` | `fa0/d0.q()` |
+| Dark-mode check | `v98/n.b(Context)Z` | `ug8/o.b(Context)Z` | `gk8/o.b()Z` (no parameter) |
+| Night-mode setter (called by `LineApplication`) | `u10/a.b(Z)` | `z60/a.a(Z)` | `z60/a.a(Z)` |
+| Settings builder (Themes row) | `ka5/o2` | `xg5/h2` | `eh5/t2` |
+| Row visibility → always-true | `m55/z.u` → `m55/z.m` | `zb5/y.u` → `zb5/y.m` | `ec5/k0.u` → `ec5/k0.m` |
+| My Themes adapter (Theme Shop footer) | `xa7/j` | `wh7/j` | `si7/j` |
+| Shared shop opener | not mapped | not mapped | `dl7/a.d(…, yf7/f, …)V` |
+
+Do not hook the flag itself. It has about 95 callers, and it also sets the app type that LINE
+sends to the server (`ANDROIDSECONDARY`), E2EE key handling, FullSync and backup restore.
+
+### The theme gates
+
+- **Dark mode.** At start, `LineApplication` calls the dark-mode check and passes the result to
+  the night-mode setter. The check returns false at once on a sub device. Otherwise it reads the
+  "Use Black theme when in dark mode" setting (`THEME_AUTO_DARK_MODE`).
+- **Settings ▸ Themes.** The row constructor takes a visibility predicate. For Themes it is
+  `!isSubDevice` (the static field `u` of the base row class). The field `m` of the same class
+  always gives `true`.
+- **Theme Shop.** The "Theme Shop" button under My Themes calls the shared shop opener
+  `dl7/a.d`. On a sub device it shows `secondary_invalidscheme` ("Your device doesn't support this
+  type of URL"). The opener also serves `STICKER_SHOP`, `STICKER_PREMIUM_*` and `STICON_SHOP`.
+  `dl7/a.e`, `dl7/a.g`, the theme LIFF opener `dg7/j.g` and seven deep-link handlers (for example
+  `nr8/l1.d`, `line://shop/theme/…`) check the flag too.
+
+### Theme downloads are not gated
+
+A theme downloads and applies on a sub device. The "To use this, please update the app to the
+latest version" dialog (`shop_need_update_application`) is a version check, not a sub-device
+check. My Themes (`qi7/u0` on 26.16.0) sets `isCurrentAppVersionSupported` from the theme's
+`appVersionRange` (`gk8/o.a`). On 2026-11-14 the server gave Black, Cony and Brown a minimum of
+26.17.0, so a main device on 26.16.0 gets the same dialog. The dark-mode path does not check the
+range, so Black still downloads.
+
+### What the patch does
+
+1. Clears the flag after its `move-result` in the dark-mode check. The check then goes on to the
+   user's setting.
+2. Adds `isSubDevice(Context)Z` to the class of the dark-mode check. It copies the flag sequence
+   from that check.
+3. Passes the always-true predicate (`m`) to the Themes row constructor.
+4. In the My Themes adapter, after the null check of the `shop_button` TextView, calls
+   `isSubDevice` and `SubDeviceThemes.hideThemeShop(Z, View)`. On a sub device the button is
+   `GONE`. A main device keeps the button.
+
+The patch does not open the shop. On a main device the patch changes nothing, because the flag is
+already false there.
+
+### Verification (26.16.0, sub device, 2026-11-14)
+
+A probe logged `isSecondary=true`, then `result=true` and `MODE_NIGHT_YES` with the check forced.
+With the patch, Settings ▸ Themes showed My Themes, Purchase history, Gift Box and the Black
+switch. With Original selected and the switch on, a cold start in system dark mode showed Black,
+and in system light mode Original. My Themes had no Theme Shop button. Cony downloaded and applied
+(probe with the version check forced). Applying a theme by hand in dark mode turns the Black switch
+off. This is LINE's own behavior. No crash and no `VerifyError`. Nobody tested a main device with
+the patch.
+
+### Values that drift on a version bump
+
+Everything in the table above. The patch finds the dark-mode check by `THEME_AUTO_DARK_MODE` and
+return type `Z`, the Settings builder by `MORETAB_SETTINGS_THEMES` and `settings_theme_title`, and
+the adapter by the footer layout, the `shop_button` id and a `check-cast` to `TextView`.
 
 ## Watch list — surfaced in 26.14.0, not yet actionable
 
