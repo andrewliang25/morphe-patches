@@ -1,6 +1,6 @@
 {
   "NOTE": "Do NOT manually edit this file. This file is automatically updated when semantic release (release.yml) runs. Manually editing this file can break your releases and break third party tools that use this file.",
-  "version": "3.12.0-dev.1",
+  "version": "3.12.0-dev.2",
   "patches": [
     {
       "name": "[Ad] Block ad telemetry",
@@ -1137,10 +1137,11 @@
     },
     {
       "name": "[General] Hide Agent i buttons",
-      "description": "Removes the Agent i button from the Home header and from the search bar, and hides Agent i in chats permanently.",
+      "description": "Removes Agent i from the Home header, the search bar, the Wallet tab header and Settings, and hides Agent i in chats permanently, with its \"Show Agent i in chat\" switch in the + menu.",
       "default": true,
       "dependencies": [
-        "ResourcePatch"
+        "ResourcePatch",
+        "BytecodePatch"
       ],
       "compatiblePackages": [
         {

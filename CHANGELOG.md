@@ -1,3 +1,9 @@
+## [3.12.0-dev.2](https://github.com/andrewliang25/morphe-patches/compare/v3.12.0-dev.1...v3.12.0-dev.2) (2026-11-14)
+
+### ✨ New Features
+
+* **LINE - Hide Agent i buttons:** hide Agent i in Wallet, Settings and the + menu, and add a switch ([#229](https://github.com/andrewliang25/morphe-patches/issues/229)) ([496c8d2](https://github.com/andrewliang25/morphe-patches/commit/496c8d26a6c310cc24120236ec698cf592924c14))
+
 ## [3.12.0-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v3.11.0...v3.12.0-dev.1) (2026-11-14)
 
 ### ✨ New Features
