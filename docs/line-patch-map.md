@@ -1136,9 +1136,12 @@ photo viewer has the same type check. The names `aitalk_ask_ai` and `aitalk_ai_s
 sources of the AI talk suggestions, and no reader looks for them in this list.
 
 **The patch.** The parser reads the key, then `Map.get`, then the getter for the default value. The
-fingerprint matches that order, and the patch makes the getter return `Collections.emptyList()`.
-It refuses a getter that is not a plain `iget-object` + `return-object`. Every reader then sees the
-state of an account where the server turns on no entries. The normal photo editor
+fingerprint matches that order. The patch refuses a getter that is not a plain `iget-object` +
+`return-object`. The getter has `.locals 0`, so the list it read goes through
+`LineSettings.hideLineAiImageEdit(List)List` before the return. While the switch "Hide LINE AI
+image editing" is on, that call gives `Collections.emptyList()`. Every reader then sees the state
+of an account where the server turns on no entries. While the switch is off, the call gives the
+same list back. The normal photo editor
 (`chat_gallery_image_edit_button`, "Edit photo") and the text scan button are not in the list, so
 they stay.
 
@@ -2009,6 +2012,7 @@ Device findings (Xiaomi, Android 16):
 | Hide LINE GIFT / Transfer button | `hidegift`, `hidetransfer` | entry of `yi1/h.j` and `yi1/j.j`, `p0` |
 | Hide attach menu extra tools | `hideattachmenutools` | entry of `yi1/d.f`, `p2` |
 | Hide tips under messages | `hidechattips` | `hideChatTips(Z)Z` after the `instance-of v3, sm1/g$b` in `rm1/u.invokeSuspend` |
+| Hide LINE AI image editing | `hidelineaiimageedit` | `hideLineAiImageEdit(List)List` before the `return-object` of the entry point list getter (`ya5/d.e()` in 26.16.0, `.locals 0`) |
 | Custom font | `customfont` | `customFont(Z)Z` after the sync `move v4, v12` in the Font list loader. The extension methods read `customFont()` themselves. Its "Close LINE" row ends the process, because a new task does not change LINE's Compose screens. |
 
 - A gate is one of two shapes. A branch gate is `invoke-static LineSettings-><x>()Z` +
