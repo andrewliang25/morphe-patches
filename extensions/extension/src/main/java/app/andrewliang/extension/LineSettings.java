@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -43,6 +44,7 @@ public final class LineSettings {
     static final String HIDE_TRANSFER = "hide_transfer";
     static final String HIDE_ATTACH_TOOLS = "hide_attach_tools";
     static final String HIDE_CHAT_TIPS = "hide_chat_tips";
+    static final String HIDE_LINE_AI_IMAGE_EDIT = "hide_line_ai_image_edit";
     static final String CUSTOM_FONT = "custom_font";
 
     /** The resource name of the row title. The settings patch adds it to strings.xml. */
@@ -119,6 +121,10 @@ public final class LineSettings {
         return isOn(HIDE_CHAT_TIPS);
     }
 
+    public static boolean hideLineAiImageEdit() {
+        return isOn(HIDE_LINE_AI_IMAGE_EDIT);
+    }
+
     public static boolean customFont() {
         return isOn(CUSTOM_FONT);
     }
@@ -140,6 +146,11 @@ public final class LineSettings {
 
     public static boolean hideChatTips(boolean shown) {
         return shown && !hideChatTips();
+    }
+
+    /** The LINE AI entry point list: empty while the switch is on. */
+    public static List<?> hideLineAiImageEdit(List<?> entries) {
+        return hideLineAiImageEdit() ? Collections.emptyList() : entries;
     }
 
     /** The Font page list syncs from LINE's server only while the custom font switch is off. */
@@ -214,6 +225,10 @@ public final class LineSettings {
     }
 
     static boolean hideChatTipsIncluded() {
+        return false;
+    }
+
+    static boolean hideLineAiImageEditIncluded() {
         return false;
     }
 
