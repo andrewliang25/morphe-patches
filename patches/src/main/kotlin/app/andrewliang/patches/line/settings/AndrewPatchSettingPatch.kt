@@ -309,12 +309,8 @@ val andrewPatchSettingPatch = bytecodePatch(
         )
 
         // The list getter: `sget-object p0, <rows>` then `return-object p0`. The call goes
-        // before the return, and has no branch.
-        val getter = mutableClassDefBy(rowsClass).methods.single { method ->
-            method.returnType == "Ljava/util/List;" && method.parameterTypes.isEmpty() &&
-                method.implementation?.instructions?.map { it.opcode } ==
-                listOf(Opcode.SGET_OBJECT, Opcode.RETURN_OBJECT)
-        }
+        // right after the read, and has no branch.
+        val getter = settingsListGetter(rowsClass)
         val listRegister = (getter.implementation!!.instructions.first() as OneRegisterInstruction).registerA
         getter.addInstructions(
             1,

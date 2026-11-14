@@ -3,8 +3,11 @@ package app.andrewliang.patches.line.hideagenti
 import app.andrewliang.patches.line.shared.ServerFlagFingerprint
 import app.andrewliang.patches.shared.resourceId
 import app.morphe.patcher.Fingerprint
+import app.morphe.patcher.InstructionLocation.MatchAfterImmediately
 import app.morphe.patcher.literal
+import app.morphe.patcher.methodCall
 import app.morphe.patcher.opcode
+import app.morphe.patcher.string
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.Method
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
@@ -62,3 +65,33 @@ internal fun isAgentIInChatHiddenUntilGetter(method: Method): Boolean {
         instructions[2].opcode == Opcode.MOVE_RESULT_WIDE &&
         instructions[3].opcode == Opcode.RETURN_WIDE
 }
+
+internal const val WALLET_HEADER = "Lcom/linecorp/line/wallet/impl/v3/view/WalletV3GrandDesignHeaderView;"
+
+/**
+ * The method of the Wallet tab header that adds the Agent i button (`o()`). It builds the button
+ * state, with the click handler `onAgentIButtonClick`, and stores it. Without a state the header
+ * draws no button.
+ */
+internal object WalletAgentIButtonFingerprint : Fingerprint(
+    definingClass = WALLET_HEADER,
+    returnType = "V",
+    parameters = listOf(),
+    filters = listOf(string("onAgentIButtonClick()V")),
+)
+
+/**
+ * The code that shows the "Show Agent i in chat" switch at the top of the + menu of a chat
+ * (`sm1.f1.invoke()` in 26.16.0). It finds the switch view, sets it VISIBLE or GONE from one
+ * boolean, and then builds its content only if the same boolean is true.
+ */
+internal object PlusMenuAgentISwitchFingerprint : Fingerprint(
+    filters = listOf(
+        literal({ resourceId("id", "chat_ui_attach_menu_ai_talk_chip_switch") }),
+        methodCall(name = "findViewById", location = MatchAfterImmediately()),
+        opcode(Opcode.MOVE_RESULT_OBJECT, location = MatchAfterImmediately()),
+        opcode(Opcode.CHECK_CAST, location = MatchAfterImmediately()),
+        methodCall(definingClass = "Landroid/view/View;", name = "setVisibility"),
+        opcode(Opcode.IF_EQZ, location = MatchAfterImmediately()),
+    ),
+)

@@ -604,7 +604,7 @@ starting point, so no one needs to sweep the APK again.
 | [Fix] Restore location maps via MicroG-RE | `line.fixlocationmaps` | `fo/p.b` — the maps module context (see below) |
 | [Fix] Restore Google login via MicroG-RE | `line.fixgooglelogin` | the androidx.credentials provider choice, the Play Services provider's version check and the Identity Sign-In client (see "Google account access") |
 | [Chat] Hide tips under messages | `line.hidechattips` | `rm1.u.invokeSuspend` — the "CHECK" tip under a bubble (see below) |
-| [General] Hide Agent i buttons | `line.hideagenti` | `wm2.j` Home header icon + `function.search.line_ai_entry.enabled` + the two `CHATROOM_AI_BUTTON_SHOWN_AFTER_MILLIS` getters (see below) |
+| [General] Hide Agent i buttons | `line.hideagenti` | `wm2.j` Home header icon + `function.search.line_ai_entry.enabled` + the two `CHATROOM_AI_BUTTON_SHOWN_AFTER_MILLIS` getters + `WalletV3GrandDesignHeaderView.o()` + the `AiSubscription` Settings rows + the + menu "Show Agent i in chat" switch (see below) |
 | [General] Hide LINE AI image editing | `line.hidelineaiimageedit` | the getter of `function.ai.lineai.enabled_entry_points` (see below) |
 | [Chat] Hide AI Friends button | `line.chatheaderbuttons` | `function.ai.character.display_button` (see below) |
 | [General] Custom font | `line.customfont` | LINE's premium font path: `PremiumFontProvider`, the androidx certificate check, the Font page (see below) |
@@ -1053,13 +1053,16 @@ flags in the config classes `g45.c` and `g45.i2`, and each of these flags has a 
 **One parse pattern finds both accessors.** The parser `g45.e` reads each flag as
 `const-string "<key>"`, then the accessor for its default value, then `h45.a.a(key, map, default)`.
 R8 renames the accessor but keeps the key. `line/shared/ServerFlag.kt` matches the key and the
-`()Z` call right after it, then makes that accessor return false. Every reader then sees the value
+`()Z` call right after it. The patches then make that accessor return false: "Hide Agent i buttons"
+and "Hide AI Friends button" pass its value through their switch before the return. Every reader then sees the value
 that LINE gets when the server turns the flag off.
 
 **Why the Home header is hidden at the view, not at a flag.** The Home header value comes from
 `b3.hb.b()` → `g45.c.z()`, the master Agent i flag. The APK reads it 24 times, for example in the
 AI talk suggestions settings. A false value there changes much more than one button. Thus the patch
-replaces only the `iget-boolean wm2.j.a` in the header lambda with `const 0`.
+passes only the `iget-boolean wm2.j.a` in the header lambda through `hideAgentI(Z)Z`. The register
+is `p1`, which can be above v15, so the call is `invoke-static/range`. The `if-eqz` that tests it
+follows the read directly, with no label between them, in all three versions.
 
 **AI Friends and Album share one slot.** The header builder in `qz1.f` adds `AI_FRIEND` if `t()`
 is true, and `ALBUM` if it is false. `qy1.j0` reads `t()` too, for the Album button and its green
@@ -1098,8 +1101,10 @@ hidden (26.16.0 names):
 **The patch.** Both getters (`s81.c.v()`, `r21.b.a()`) are the same four instructions: `sget-object`
 of the key, `invoke-static` of the long getter of the store, `move-result-wide`, `return-wide`. The
 store class is `dao/d` in 26.14.0 and `dao/c` later, so the patch does not anchor on it. The patch
-finds them by this shape and the key name (R8 keeps enum constant names), and makes them return
-`Long.MAX_VALUE`. It fails unless it finds exactly two. Both readers only compare the value with the
+finds them by this shape and the key name (R8 keeps enum constant names). While the switch "Hide
+Agent i" is on, they return `Long.MAX_VALUE`. The result register is written only by the
+`move-result-wide`, so the switch value goes into it at entry. With the switch off, LINE's own
+"Show" and "Hide temporarily" work again. It fails unless it finds exactly two. Both readers only compare the value with the
 current time, so the large value is safe. The writer is left alone: what it stores no longer matters.
 
 **Side effects.** The Settings screen always shows "Hide temporarily". Tapping "Show" writes 0, the
@@ -1156,6 +1161,56 @@ constructor of the configuration class and also applied the patch. All three but
 gone, while "Edit photo" and the text scan button stayed. No crash and no `VerifyError`. The album, Note and profile photo
 viewers could not be opened on this account (no album or Note in Keep Memo, no profile photo).
 Only disassembly confirms those three.
+
+### More Agent i entries in the "[General] Hide Agent i buttons" patch
+
+Besides the Home header, the search bar and Agent i in chats, the patch covers three more entries.
+uta-a/linimal (`docs/analysis/agent-i-entry-points.md`) listed them first. All six sites read the
+one switch "Hide Agent i".
+
+| Entry | Where | Site (26.16.0) | What the patch does |
+|---|---|---|---|
+| Agent i button | Wallet tab header, newer design only | `WalletV3GrandDesignHeaderView.o()`: builds the button state with `onAgentIButtonClick` | Returns at entry. With no state, the header draws no button. |
+| "Agent i" (JP) or "LINE AI services" | Settings list | two rows in `eh5/t2.<clinit>` with the key of `eh5/a.AiSubscription` | The list getter drops the rows with that key. |
+| "Show Agent i in chat" switch | top of the + menu of a chat (`chat_ui_attach_menu_ai_talk_chip_switch`) | `sm1/f1.invoke()`: one boolean sets the view VISIBLE or GONE, then decides whether to build its content | The boolean goes through the switch right after the `check-cast` of the view. |
+
+**Wallet header.** `wallet/impl/v3/a` calls `o()` only if the Wallet uses the newer header
+(`c().G()`) and the server gives an Agent i URL. `o()` builds nothing but the Agent i state. The
+class name and the string `onAgentIButtonClick()V` are kept by R8 in all three versions.
+
+**Settings rows.** Both rows share the key `AiSubscription`. A predicate picks one of them by the
+Agent i branding (`fo0.s.a()`). The row key is a `String` field of the row base class (`ec5/k0.a`
+in 26.16.0). `andrewHideAgentIRows` reads the key the same way the builder does (the enum
+constant, then its key accessor) and calls `LineSettings.hideAgentI(List, String)`. The
+extension drops each row that has a `String` field equal to the key. "Andrew's Patch Setting"
+hooks the same getter. Both patches find it with `settingsListGetter`, which accepts the getter
+with or without the call of the other patch, so the order of the two patches does not matter.
+
+**+ menu switch.** LINE shows this switch when Agent i in chat is available and Agent i is hidden
+in this chat. The chat site of the patch keeps Agent i hidden in every chat, so without this site the
+switch shows in every chat and does nothing. The flag register is the one that the `if-eqz` after
+`setVisibility` tests (v2, v5 and v3 in the three versions).
+
+**Not covered.** The chat menu item "Manage account" (`lineai_assistant_title_lineai`, `d60/l`)
+shows only in the LINE AI chat itself (`ChatHistoryMenuFragment` compares the chat id with a
+server value) and opens the settings of that chat. The Commerce tab header icon
+(`commercetab_header_agent_i`) has no traced click path. Neither is an entry from elsewhere.
+
+**Verification of the switch (26.16.0, TW account, 2026-11-14).** The account shows none of these
+entries. A local probe forced the search bar flag, the "LINE AI services" row predicate
+(`eh5/t2$m0`) and the + menu flag to true. With the switch on, the search bar had no AI button,
+Settings had no "LINE AI services" row and the + menu of Keep Memo had no "Show Agent i in chat".
+With the switch off and LINE restarted, all three showed. No crash and no `VerifyError`. Three
+sites were not observed:
+
+- The Wallet site: the account uses the older Wallet header, so `o()` never runs. Forcing
+  `c().G()` switches the whole Wallet tab to the other design.
+- The Home header site: the account has the older Home header (see above).
+- The hidden-until getters: the "LINE AI services" row opens nothing on this account, and the
+  screen activity is not exported. The unconditional form of this site was device-confirmed
+  earlier (see "Agent i in chats").
+
+Only disassembly confirms the switch at these three sites.
 
 ---
 
@@ -2035,6 +2090,7 @@ Device findings (Xiaomi, Android 16):
 | Hide attach menu extra tools | `hideattachmenutools` | entry of `yi1/d.f`, `p2` |
 | Hide tips under messages | `hidechattips` | `hideChatTips(Z)Z` after the `instance-of v3, sm1/g$b` in `rm1/u.invokeSuspend` |
 | Hide LINE AI image editing | `hidelineaiimageedit` | `hideLineAiImageEdit(List)List` before the `return-object` of the entry point list getter (`ya5/d.e()` in 26.16.0, `.locals 0`) |
+| Hide Agent i | `hideagenti` | `hideAgentI(Z)Z` (range) after the `iget-boolean` of the Home header lambda. `hideAgentI(Z)Z` before the `return` of the search bar flag accessor. Entry of both hidden-until getters, the result register. `hideAgentI(Z)Z` after the `check-cast` of the + menu switch view in `sm1/f1.invoke()`. Entry of `WalletV3GrandDesignHeaderView.o()`, `v0`. `hideAgentI(List,String)List` in the added `andrewHideAgentIRows`, called by the Settings list getter |
 | Custom font | `customfont` | `customFont(Z)Z` after the sync `move v4, v12` in the Font list loader. The extension methods read `customFont()` themselves. Its "Close LINE" row ends the process, because a new task does not change LINE's Compose screens. |
 
 - A gate is one of two shapes. A branch gate is `invoke-static LineSettings-><x>()Z` +
