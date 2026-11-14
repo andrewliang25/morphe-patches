@@ -4,6 +4,7 @@ name: Re-release
 # transient Sigstore error in release.yml's Attest step). A re-run of release.yml cannot recover
 # it: semantic-release sees the tag and releases nothing. This workflow rebuilds the tag and
 # publishes it the way release.yml does. It leaves the failed draft alone. Delete that draft by hand.
+# If semantic-release failed to push the channel note of the tag, this workflow adds it.
 
 on:
   workflow_dispatch:
@@ -57,6 +58,31 @@ jobs:
             echo "::error::The release commit of $TAG has no release notes."
             exit 1
           fi
+
+      # semantic-release pushes a note right after the tag: refs/notes/semantic-release-<tag> holds
+      # the channels of the tag. On dev, it counts a pre-release tag as the last release only if
+      # the note has the "dev" channel. Without the note, the next run picks this version again and
+      # fails on the existing tag. The channel comes from .releaserc: null on main, and the name of
+      # the pre-release branch, which is also the pre-release id of the tag ("dev").
+      - name: Restore the channel note
+        run: |
+          set -euo pipefail
+          ref="refs/notes/semantic-release-$TAG"
+          if [ -n "$(git ls-remote origin "$ref")" ]; then
+            echo "The note $ref exists."
+            exit 0
+          fi
+          if [[ "$TAG" == *-* ]]; then
+            pre="${TAG#*-}"
+            note="{\"channels\":[\"${pre%%.*}\"]}"
+          else
+            note='{"channels":[null]}'
+          fi
+          git -c user.name='github-actions[bot]' \
+            -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            notes --ref "semantic-release-$TAG" add -m "$note" "$TAG^{commit}"
+          git push origin "$ref"
+          echo "::notice::Added the missing note $ref: $note"
 
       - name: Setup Java
         uses: actions/setup-java@v6.1.0
