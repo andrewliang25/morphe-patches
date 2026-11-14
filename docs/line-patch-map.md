@@ -602,6 +602,7 @@ starting point, so no one needs to sweep the APK again.
 | [Tab] Hide Shopping tab | `line.hideshoppingtab` | `COMMERCE` + `COMMERCE_TW` in `b68/g.a()` (see above) |
 | [General] Andrew's Patch Setting | `line.settings` | a row below "Profile" in Settings, via `ka5/o2.a()` (see below) |
 | [Fix] Restore location maps via MicroG-RE | `line.fixlocationmaps` | `fo/p.b` — the maps module context (see below) |
+| [Fix] Restore Google login via MicroG-RE | `line.fixgooglelogin` | the androidx.credentials provider choice, the Play Services provider's version check and the Identity Sign-In client (see "Google account access") |
 | [Chat] Hide tips under messages | `line.hidechattips` | `rm1.u.invokeSuspend` — the "CHECK" tip under a bubble (see below) |
 | [General] Hide Agent i buttons | `line.hideagenti` | `wm2.j` Home header icon + `function.search.line_ai_entry.enabled` + the two `CHATROOM_AI_BUTTON_SHOWN_AFTER_MILLIS` getters (see below) |
 | [Chat] Hide AI Friends button | `line.chatheaderbuttons` | `function.ai.character.display_button` (see below) |
@@ -1455,7 +1456,7 @@ belongs to before touching anything — conflating them cost a round of wrong co
 | LINE code | `jl0.t.a(...)` → `kl0.i` (`TYPE_GOOGLE_ID_TOKEN_CREDENTIAL`) | `ix4.a0.b(Context, Object)` |
 | Mechanism | `androidx.credentials.CredentialManager` | `AccountPicker.newChooseAccountIntent` + `GoogleAuthUtil` |
 | Who chooses the provider | **the system** (framework enumerates registered credential providers) | **LINE**, via a hardcoded `setPackage` |
-| Patchable | **No** | **Yes** — `gmscoreauth`, device-confirmed working 2026-08-12 |
+| Patchable | **Yes** — `fixgooglelogin`, MicroG-RE sign-in screen device-confirmed 2026-11-14 | **Yes** — `gmscoreauth`, device-confirmed working 2026-08-12 |
 
 Both fail on a re-signed build for the same underlying reason: an Android OAuth client is keyed to
 **(package name, signing certificate)**, so re-signing means no client matches and Google refuses
@@ -1466,13 +1467,12 @@ Path 1's callers: `settings/account/LineUserAccountSettingsFragment`,
 `registration/restore/ui/AccountRestoreEapLoginFragment`. The `kl0` package is LINE's third-party
 identity login (it also carries `apple_login_code_result_key`), shared by Google and Apple.
 
-### Path 1 is not patchable
+### Path 1 through the system Credential Manager (stock)
 
-LINE asks the platform for a credential. `system_server` enumerates registered providers and picks
-Google's `…credman.service.GoogleIdService`. LINE never names Play Services, so there is **no package,
-action or string in the APK to rewrite**, and MicroG-RE implements the *GMS* Credentials API but not
-`android.service.credentials.CredentialProviderService`, so it cannot be offered as a provider either.
-Device log:
+On Android 14 and later, androidx.credentials asks the platform for a credential. `system_server`
+enumerates registered providers and picks Google's `…credman.service.GoogleIdService`. MicroG-RE does
+not implement `android.service.credentials.CredentialProviderService`, so it cannot be offered as a
+provider there. Device log:
 
 ```
 CredentialManager(1527): Provider session created for:
@@ -1481,12 +1481,34 @@ Auth.Api.Credentials: [AccountReauth_flowRunner] Flow failed.
 colz: [8] Unknown error [status=UNREGISTERED_ON_API_CONSOLE].
 ```
 
-Reviving this needs a credential provider added to MicroG-RE plus per-user setup — a feature in
-someone else's project, not a patch.
+### Path 1 is patchable — what `fixgooglelogin` does
 
-Path 1's only workaround is install-side: a **Root Mount** install keeps the original signature, so
-both paths work; **Standard** re-signs. This limitation is also documented user-facing as a "Known
-limitation" in `README.md` — update both together. On a version bump, re-check by watching
+The earlier verdict ("not patchable") missed a second provider. LINE also carries androidx.credentials'
+Play Services provider (`CredentialProviderPlayServicesImpl`), which runs in LINE's process and is
+used before Android 14. Its legacy branch uses the Identity Sign-In client, and MicroG-RE publishes
+that service as `app.revanced.android.gms.auth.api.identity.service.signin.START`. The approach comes
+from the Linimal bundle (uta-a/linimal, ADR 0004). The patch changes three sites (26.16.0 names):
+
+| Site | Edit |
+|---|---|
+| Provider choice `t7.a0.a(a0, Object)` (TV and car feature strings) | For a request whose options are all `TYPE_GOOGLE_ID_TOKEN_CREDENTIAL`, return the Play Services provider from `t7.a0.b()` (built from `CREDENTIAL_PROVIDER_KEY`). |
+| `CredentialProviderPlayServicesImpl.onGetCredential` | The `isAvailableOnDevice(252400000)` result goes through a hook that returns false for that request, so the provider takes the Sign-In client branch. The hook also arms the redirect for 60 seconds. |
+| Sign-In client `ds.n` (action getter holds `…identity.service.signin.START`) | A new `E()` override, and `D()` and `F()`, ask the extension. The first connection after the arm binds to `app.revanced.android.gms` with MicroG-RE's action and no dynamic lookup. Dynamic lookup ignores the package and returns Play Services. |
+
+Passkey and password requests, and every other GMS client, keep their original values. Without
+MicroG-RE every hook returns the original value. The certificate comes from the manifest entry of
+`gmscoreauth`, so the patch depends on that manifest patch. The client names are `an.n` (26.14.0),
+`es.n` (26.15.1) and `ds.n` (26.16.0).
+
+**Verification (26.16.0, Android SDK 37, MicroG-RE 7.2.1, 2026-11-14).** Settings ▸ Account ▸ Google ▸
+Link opened MicroG-RE's `AssistedSignInActivity` and then `AuthSignInActivity` ("Choose an account
+to continue to LINE"). The log showed `clientPackageName:jp.naver.line.android`,
+`idTokenRequested=true` and LINE's server client ID `4586549225-quhf8ev7…`. The Play Services
+sign-in screen did not open. Back returned to Account settings with no crash. The account was not
+picked, so a completed link or login is not confirmed.
+
+A **Root Mount** install keeps the original signature and needs neither patch. This path is also
+documented user-facing as a "Known limitation" in `README.md`, so update both together. On a version bump, re-check by watching
 `logcat | grep -iE "START u0|CredentialManager|Auth\.Api|SpoofUtils|UNREGISTERED_ON_API_CONSOLE"` at
 the account-selection tap — the obfuscated names (`ix4.a0`, `aq.a`, `kl0.i`, `u7.*`, `l18/d`,
 `hx4/i`) drift.
@@ -1588,8 +1610,8 @@ needs the same certificate UPPERCASE because LINE's `rl.h.b` uppercases for `X-A
 | Backup call sites | `hx4.d.invoke(String)` → `l18.d`; `hx4.i`, `hx4.l`, `hx4.z`, `backuprestore.data.b$c`, `AutomaticChatBackupWorker` | all consume the account **name** string. |
 | Auth service client | `com.google.android.gms.internal.auth.d` | `D()` → `com.google.android.gms.auth.service.START`. Inherits `E()`. |
 | GMS client base | `kl.d` | `E()` = service package, `public` not `final`. **Do not rewrite its literal.** |
-| Credential Manager path | `jl0.t` → `kl0.i`; wrapper `u7.*` | Path 1. Not interceptable. |
-| Classic sign-in (unused) | `al.g`, `SignInHubActivity`, `gm.n` | Present in the APK but referenced only from inside the GMS library — **no LINE code path uses them**, so there is no legacy route to force. `al.g.j()`'s `GOOGLE_SIGN_IN` intent is in-app (`setClass(SignInHubActivity)`) and must not be redirected. MicroG-RE publishes no `auth.api.identity.service.signin.START`, so `gm.n` has no target either. |
+| Credential Manager path | `jl0.t` → `kl0.i`; wrapper `u7.*` | Path 1. The system provider cannot be intercepted, but `fixgooglelogin` moves the request to LINE's own Play Services provider (see above). |
+| Classic sign-in (unused) | `al.g`, `SignInHubActivity`, `gm.n` | Present in the APK but referenced only from inside the GMS library — **no LINE code path uses them**, so there is no legacy route to force. `al.g.j()`'s `GOOGLE_SIGN_IN` intent is in-app (`setClass(SignInHubActivity)`) and must not be redirected. The Identity Sign-In client (`gm.n` in 26.11.0, `ds.n` in 26.16.0) is reachable through the Play Services provider of androidx.credentials, and MicroG-RE 7.2.1 does publish `app.revanced.android.gms.auth.api.identity.service.signin.START`: see "Path 1 is patchable". |
 
 If anyone ports the shared `gmsCoreSupportPatch` from morphe-patches, note two fingerprints it
 hard-requires do **not** resolve against LINE: `GooglePlayUtilityFingerprint` (needs a
