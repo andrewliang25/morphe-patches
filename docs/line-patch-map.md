@@ -604,6 +604,7 @@ starting point, so no one needs to sweep the APK again.
 | [Fix] Restore location maps via MicroG-RE | `line.fixlocationmaps` | `fo/p.b` — the maps module context (see below) |
 | [Chat] Hide tips under messages | `line.hidechattips` | `rm1.u.invokeSuspend` — the "CHECK" tip under a bubble (see below) |
 | [General] Hide Agent i buttons | `line.hideagenti` | `wm2.j` Home header icon + `function.search.line_ai_entry.enabled` + the two `CHATROOM_AI_BUTTON_SHOWN_AFTER_MILLIS` getters (see below) |
+| [General] Hide LINE AI image editing | `line.hidelineaiimageedit` | the getter of `function.ai.lineai.enabled_entry_points` (see below) |
 | [Chat] Hide AI Friends button | `line.chatheaderbuttons` | `function.ai.character.display_button` (see below) |
 | [General] Custom font | `line.customfont` | LINE's premium font path: `PremiumFontProvider`, the androidx certificate check, the Font page (see below) |
 
@@ -1113,6 +1114,44 @@ never picked it. Tapping "Show" showed the toast `Set to "Show"`, but the check 
 temporarily", also after the screen was opened again. No crash and no `VerifyError`. The chat
 reader (`s81.c.v()`) cannot be observed on this account, because it shows no AI chips. Only
 disassembly confirms that site.
+
+### LINE AI image editing & the "[General] Hide LINE AI image editing" patch
+
+LINE AI image editing ("AI Edit") has no gate of its own at each button. Every entry reads one
+server list, `function.ai.lineai.enabled_entry_points`, and shows only if its name is in the list.
+The getter of the list is `g45.c.d()` (26.14.0), `ta5.d.e()` (26.15.1) and `ya5.d.e()` (26.16.0).
+
+| Entry name | Surface | Reader (26.16.0) |
+|---|---|---|
+| `chatroom_context_menu` | "AI Edit" in the message long-press menu | `fm1.e1$k` → `kq1.a.a` |
+| `chatroom_side_menu` | LINE AI button next to an image message (26.15.1 and later) | `lq1.i` → `kq1.a.a` |
+| `chatroom_image_viewer` | LINE AI button in the header of the chat photo viewer | `ChatVisualEndPageViewModel$a` |
+| `album_image_viewer` | Album photo viewer | `qo0.n` |
+| `note_post_image_viewer` | Note photo viewer (`NoteMediaViewerActivity`) | `nr3.p` |
+| `myprofile_photo_endpage` | Your own profile photo viewer | `eg8.r` |
+
+`kq1.a.a(messageType, flag, source)` is the chat gate. It is true only for the types `SINGLE`,
+`ROOM`, `GROUP` and `MEMO`, so OpenChat (`SQUARE_GROUP`) never shows the chat entries. The chat
+photo viewer has the same type check. The names `aitalk_ask_ai` and `aitalk_ai_search` are entry
+sources of the AI talk suggestions, and no reader looks for them in this list.
+
+**The patch.** The parser reads the key, then `Map.get`, then the getter for the default value. The
+fingerprint matches that order, and the patch makes the getter return `Collections.emptyList()`.
+It refuses a getter that is not a plain `iget-object` + `return-object`. Every reader then sees the
+state of an account where the server turns on no entries. The normal photo editor
+(`chat_gallery_image_edit_button`, "Edit photo") and the text scan button are not in the list, so
+they stay.
+
+**Verification (26.16.0, TW account, 2026-11-14).** The server list on this account is empty, so
+no entry shows there, with or without the patch. A local probe filled the list. Then the side
+button (robot icon above Share), "AI Edit" in the long-press menu and the viewer header button
+(`chat_gallery_line_ai_button`) showed on a Keep Memo image. The probe logged `kq1.a.a` with
+`type=MEMO … result=true` for `CONTEXT_MENU` and `IMAGE_MESSAGE_SIDE_MENU`, and the viewer read
+the list from `ChatVisualEndPageViewModel$a`. A second test build filled the list field in the
+constructor of the configuration class and also applied the patch. All three buttons were then
+gone, while "Edit photo" and the text scan button stayed. No crash and no `VerifyError`. The album, Note and profile photo
+viewers could not be opened on this account (no album or Note in Keep Memo, no profile photo).
+Only disassembly confirms those three.
 
 ---
 
