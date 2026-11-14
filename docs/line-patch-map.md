@@ -602,8 +602,10 @@ starting point, so no one needs to sweep the APK again.
 | [Tab] Hide Shopping tab | `line.hideshoppingtab` | `COMMERCE` + `COMMERCE_TW` in `b68/g.a()` (see above) |
 | [General] Andrew's Patch Setting | `line.settings` | a row below "Profile" in Settings, via `ka5/o2.a()` (see below) |
 | [Fix] Restore location maps via MicroG-RE | `line.fixlocationmaps` | `fo/p.b` — the maps module context (see below) |
+| [Fix] Restore Google login via MicroG-RE | `line.fixgooglelogin` | the androidx.credentials provider choice, the Play Services provider's version check and the Identity Sign-In client (see "Google account access") |
 | [Chat] Hide tips under messages | `line.hidechattips` | `rm1.u.invokeSuspend` — the "CHECK" tip under a bubble (see below) |
-| [General] Hide Agent i buttons | `line.hideagenti` | `wm2.j` Home header icon + `function.search.line_ai_entry.enabled` + the two `CHATROOM_AI_BUTTON_SHOWN_AFTER_MILLIS` getters (see below) |
+| [General] Hide Agent i buttons | `line.hideagenti` | `wm2.j` Home header icon + `function.search.line_ai_entry.enabled` + the two `CHATROOM_AI_BUTTON_SHOWN_AFTER_MILLIS` getters + `WalletV3GrandDesignHeaderView.o()` + the `AiSubscription` Settings rows + the + menu "Show Agent i in chat" switch (see below) |
+| [General] Hide LINE AI image editing | `line.hidelineaiimageedit` | the getter of `function.ai.lineai.enabled_entry_points` (see below) |
 | [Chat] Hide AI Friends button | `line.chatheaderbuttons` | `function.ai.character.display_button` (see below) |
 | [General] Custom font | `line.customfont` | LINE's premium font path: `PremiumFontProvider`, the androidx certificate check, the Font page (see below) |
 
@@ -1051,13 +1053,16 @@ flags in the config classes `g45.c` and `g45.i2`, and each of these flags has a 
 **One parse pattern finds both accessors.** The parser `g45.e` reads each flag as
 `const-string "<key>"`, then the accessor for its default value, then `h45.a.a(key, map, default)`.
 R8 renames the accessor but keeps the key. `line/shared/ServerFlag.kt` matches the key and the
-`()Z` call right after it, then makes that accessor return false. Every reader then sees the value
+`()Z` call right after it. The patches then make that accessor return false: "Hide Agent i buttons"
+and "Hide AI Friends button" pass its value through their switch before the return. Every reader then sees the value
 that LINE gets when the server turns the flag off.
 
 **Why the Home header is hidden at the view, not at a flag.** The Home header value comes from
 `b3.hb.b()` → `g45.c.z()`, the master Agent i flag. The APK reads it 24 times, for example in the
 AI talk suggestions settings. A false value there changes much more than one button. Thus the patch
-replaces only the `iget-boolean wm2.j.a` in the header lambda with `const 0`.
+passes only the `iget-boolean wm2.j.a` in the header lambda through `hideAgentI(Z)Z`. The register
+is `p1`, which can be above v15, so the call is `invoke-static/range`. The `if-eqz` that tests it
+follows the read directly, with no label between them, in all three versions.
 
 **AI Friends and Album share one slot.** The header builder in `qz1.f` adds `AI_FRIEND` if `t()`
 is true, and `ALBUM` if it is false. `qy1.j0` reads `t()` too, for the Album button and its green
@@ -1096,8 +1101,10 @@ hidden (26.16.0 names):
 **The patch.** Both getters (`s81.c.v()`, `r21.b.a()`) are the same four instructions: `sget-object`
 of the key, `invoke-static` of the long getter of the store, `move-result-wide`, `return-wide`. The
 store class is `dao/d` in 26.14.0 and `dao/c` later, so the patch does not anchor on it. The patch
-finds them by this shape and the key name (R8 keeps enum constant names), and makes them return
-`Long.MAX_VALUE`. It fails unless it finds exactly two. Both readers only compare the value with the
+finds them by this shape and the key name (R8 keeps enum constant names). While the switch "Hide
+Agent i" is on, they return `Long.MAX_VALUE`. The result register is written only by the
+`move-result-wide`, so the switch value goes into it at entry. With the switch off, LINE's own
+"Show" and "Hide temporarily" work again. It fails unless it finds exactly two. Both readers only compare the value with the
 current time, so the large value is safe. The writer is left alone: what it stores no longer matters.
 
 **Side effects.** The Settings screen always shows "Hide temporarily". Tapping "Show" writes 0, the
@@ -1113,6 +1120,97 @@ never picked it. Tapping "Show" showed the toast `Set to "Show"`, but the check 
 temporarily", also after the screen was opened again. No crash and no `VerifyError`. The chat
 reader (`s81.c.v()`) cannot be observed on this account, because it shows no AI chips. Only
 disassembly confirms that site.
+
+### LINE AI image editing & the "[General] Hide LINE AI image editing" patch
+
+LINE AI image editing ("AI Edit") has no gate of its own at each button. Every entry reads one
+server list, `function.ai.lineai.enabled_entry_points`, and shows only if its name is in the list.
+The getter of the list is `g45.c.d()` (26.14.0), `ta5.d.e()` (26.15.1) and `ya5.d.e()` (26.16.0).
+
+| Entry name | Surface | Reader (26.16.0) |
+|---|---|---|
+| `chatroom_context_menu` | "AI Edit" in the message long-press menu | `fm1.e1$k` → `kq1.a.a` |
+| `chatroom_side_menu` | LINE AI button next to an image message (26.15.1 and later) | `lq1.i` → `kq1.a.a` |
+| `chatroom_image_viewer` | LINE AI button in the header of the chat photo viewer | `ChatVisualEndPageViewModel$a` |
+| `album_image_viewer` | Album photo viewer | `qo0.n` |
+| `note_post_image_viewer` | Note photo viewer (`NoteMediaViewerActivity`) | `nr3.p` |
+| `myprofile_photo_endpage` | Your own profile photo viewer | `eg8.r` |
+
+`kq1.a.a(messageType, flag, source)` is the chat gate. It is true only for the types `SINGLE`,
+`ROOM`, `GROUP` and `MEMO`, so OpenChat (`SQUARE_GROUP`) never shows the chat entries. The chat
+photo viewer has the same type check. The names `aitalk_ask_ai` and `aitalk_ai_search` are entry
+sources of the AI talk suggestions, and no reader looks for them in this list.
+
+**The patch.** The parser reads the key, then `Map.get`, then the getter for the default value. The
+fingerprint matches that order. The patch refuses a getter that is not a plain `iget-object` +
+`return-object`. The getter has `.locals 0`, so the list it read goes through
+`LineSettings.hideLineAiImageEdit(List)List` before the return. While the switch "Hide LINE AI
+image editing" is on, that call gives `Collections.emptyList()`. Every reader then sees the state
+of an account where the server turns on no entries. While the switch is off, the call gives the
+same list back. The normal photo editor
+(`chat_gallery_image_edit_button`, "Edit photo") and the text scan button are not in the list, so
+they stay.
+
+**Verification (26.16.0, TW account, 2026-11-14).** The server list on this account is empty, so
+no entry shows there, with or without the patch. A local probe filled the list. Then the side
+button (robot icon above Share), "AI Edit" in the long-press menu and the viewer header button
+(`chat_gallery_line_ai_button`) showed on a Keep Memo image. The probe logged `kq1.a.a` with
+`type=MEMO … result=true` for `CONTEXT_MENU` and `IMAGE_MESSAGE_SIDE_MENU`, and the viewer read
+the list from `ChatVisualEndPageViewModel$a`. A second test build filled the list field in the
+constructor of the configuration class and also applied the patch. All three buttons were then
+gone, while "Edit photo" and the text scan button stayed. No crash and no `VerifyError`. The album, Note and profile photo
+viewers could not be opened on this account (no album or Note in Keep Memo, no profile photo).
+Only disassembly confirms those three.
+
+### More Agent i entries in the "[General] Hide Agent i buttons" patch
+
+Besides the Home header, the search bar and Agent i in chats, the patch covers three more entries.
+uta-a/linimal (`docs/analysis/agent-i-entry-points.md`) listed them first. All six sites read the
+one switch "Hide Agent i".
+
+| Entry | Where | Site (26.16.0) | What the patch does |
+|---|---|---|---|
+| Agent i button | Wallet tab header, newer design only | `WalletV3GrandDesignHeaderView.o()`: builds the button state with `onAgentIButtonClick` | Returns at entry. With no state, the header draws no button. |
+| "Agent i" (JP) or "LINE AI services" | Settings list | two rows in `eh5/t2.<clinit>` with the key of `eh5/a.AiSubscription` | The list getter drops the rows with that key. |
+| "Show Agent i in chat" switch | top of the + menu of a chat (`chat_ui_attach_menu_ai_talk_chip_switch`) | `sm1/f1.invoke()`: one boolean sets the view VISIBLE or GONE, then decides whether to build its content | The boolean goes through the switch right after the `check-cast` of the view. |
+
+**Wallet header.** `wallet/impl/v3/a` calls `o()` only if the Wallet uses the newer header
+(`c().G()`) and the server gives an Agent i URL. `o()` builds nothing but the Agent i state. The
+class name and the string `onAgentIButtonClick()V` are kept by R8 in all three versions.
+
+**Settings rows.** Both rows share the key `AiSubscription`. A predicate picks one of them by the
+Agent i branding (`fo0.s.a()`). The row key is a `String` field of the row base class (`ec5/k0.a`
+in 26.16.0). `andrewHideAgentIRows` reads the key the same way the builder does (the enum
+constant, then its key accessor) and calls `LineSettings.hideAgentI(List, String)`. The
+extension drops each row that has a `String` field equal to the key. "Andrew's Patch Setting"
+hooks the same getter. Both patches find it with `settingsListGetter`, which accepts the getter
+with or without the call of the other patch, so the order of the two patches does not matter.
+
+**+ menu switch.** LINE shows this switch when Agent i in chat is available and Agent i is hidden
+in this chat. The chat site of the patch keeps Agent i hidden in every chat, so without this site the
+switch shows in every chat and does nothing. The flag register is the one that the `if-eqz` after
+`setVisibility` tests (v2, v5 and v3 in the three versions).
+
+**Not covered.** The chat menu item "Manage account" (`lineai_assistant_title_lineai`, `d60/l`)
+shows only in the LINE AI chat itself (`ChatHistoryMenuFragment` compares the chat id with a
+server value) and opens the settings of that chat. The Commerce tab header icon
+(`commercetab_header_agent_i`) has no traced click path. Neither is an entry from elsewhere.
+
+**Verification of the switch (26.16.0, TW account, 2026-11-14).** The account shows none of these
+entries. A local probe forced the search bar flag, the "LINE AI services" row predicate
+(`eh5/t2$m0`) and the + menu flag to true. With the switch on, the search bar had no AI button,
+Settings had no "LINE AI services" row and the + menu of Keep Memo had no "Show Agent i in chat".
+With the switch off and LINE restarted, all three showed. No crash and no `VerifyError`. Three
+sites were not observed:
+
+- The Wallet site: the account uses the older Wallet header, so `o()` never runs. Forcing
+  `c().G()` switches the whole Wallet tab to the other design.
+- The Home header site: the account has the older Home header (see above).
+- The hidden-until getters: the "LINE AI services" row opens nothing on this account, and the
+  screen activity is not exported. The unconditional form of this site was device-confirmed
+  earlier (see "Agent i in chats").
+
+Only disassembly confirms the switch at these three sites.
 
 ---
 
@@ -1455,7 +1553,7 @@ belongs to before touching anything — conflating them cost a round of wrong co
 | LINE code | `jl0.t.a(...)` → `kl0.i` (`TYPE_GOOGLE_ID_TOKEN_CREDENTIAL`) | `ix4.a0.b(Context, Object)` |
 | Mechanism | `androidx.credentials.CredentialManager` | `AccountPicker.newChooseAccountIntent` + `GoogleAuthUtil` |
 | Who chooses the provider | **the system** (framework enumerates registered credential providers) | **LINE**, via a hardcoded `setPackage` |
-| Patchable | **No** | **Yes** — `gmscoreauth`, device-confirmed working 2026-08-12 |
+| Patchable | **Yes** — `fixgooglelogin`, MicroG-RE sign-in screen device-confirmed 2026-11-14 | **Yes** — `gmscoreauth`, device-confirmed working 2026-08-12 |
 
 Both fail on a re-signed build for the same underlying reason: an Android OAuth client is keyed to
 **(package name, signing certificate)**, so re-signing means no client matches and Google refuses
@@ -1466,13 +1564,12 @@ Path 1's callers: `settings/account/LineUserAccountSettingsFragment`,
 `registration/restore/ui/AccountRestoreEapLoginFragment`. The `kl0` package is LINE's third-party
 identity login (it also carries `apple_login_code_result_key`), shared by Google and Apple.
 
-### Path 1 is not patchable
+### Path 1 through the system Credential Manager (stock)
 
-LINE asks the platform for a credential. `system_server` enumerates registered providers and picks
-Google's `…credman.service.GoogleIdService`. LINE never names Play Services, so there is **no package,
-action or string in the APK to rewrite**, and MicroG-RE implements the *GMS* Credentials API but not
-`android.service.credentials.CredentialProviderService`, so it cannot be offered as a provider either.
-Device log:
+On Android 14 and later, androidx.credentials asks the platform for a credential. `system_server`
+enumerates registered providers and picks Google's `…credman.service.GoogleIdService`. MicroG-RE does
+not implement `android.service.credentials.CredentialProviderService`, so it cannot be offered as a
+provider there. Device log:
 
 ```
 CredentialManager(1527): Provider session created for:
@@ -1481,12 +1578,34 @@ Auth.Api.Credentials: [AccountReauth_flowRunner] Flow failed.
 colz: [8] Unknown error [status=UNREGISTERED_ON_API_CONSOLE].
 ```
 
-Reviving this needs a credential provider added to MicroG-RE plus per-user setup — a feature in
-someone else's project, not a patch.
+### Path 1 is patchable — what `fixgooglelogin` does
 
-Path 1's only workaround is install-side: a **Root Mount** install keeps the original signature, so
-both paths work; **Standard** re-signs. This limitation is also documented user-facing as a "Known
-limitation" in `README.md` — update both together. On a version bump, re-check by watching
+The earlier verdict ("not patchable") missed a second provider. LINE also carries androidx.credentials'
+Play Services provider (`CredentialProviderPlayServicesImpl`), which runs in LINE's process and is
+used before Android 14. Its legacy branch uses the Identity Sign-In client, and MicroG-RE publishes
+that service as `app.revanced.android.gms.auth.api.identity.service.signin.START`. The approach comes
+from the Linimal bundle (uta-a/linimal, ADR 0004). The patch changes three sites (26.16.0 names):
+
+| Site | Edit |
+|---|---|
+| Provider choice `t7.a0.a(a0, Object)` (TV and car feature strings) | For a request whose options are all `TYPE_GOOGLE_ID_TOKEN_CREDENTIAL`, return the Play Services provider from `t7.a0.b()` (built from `CREDENTIAL_PROVIDER_KEY`). |
+| `CredentialProviderPlayServicesImpl.onGetCredential` | The `isAvailableOnDevice(252400000)` result goes through a hook that returns false for that request, so the provider takes the Sign-In client branch. The hook also arms the redirect for 60 seconds. |
+| Sign-In client `ds.n` (action getter holds `…identity.service.signin.START`) | A new `E()` override, and `D()` and `F()`, ask the extension. The first connection after the arm binds to `app.revanced.android.gms` with MicroG-RE's action and no dynamic lookup. Dynamic lookup ignores the package and returns Play Services. |
+
+Passkey and password requests, and every other GMS client, keep their original values. Without
+MicroG-RE every hook returns the original value. The certificate comes from the manifest entry of
+`gmscoreauth`, so the patch depends on that manifest patch. The client names are `an.n` (26.14.0),
+`es.n` (26.15.1) and `ds.n` (26.16.0).
+
+**Verification (26.16.0, Android SDK 37, MicroG-RE 7.2.1, 2026-11-14).** Settings ▸ Account ▸ Google ▸
+Link opened MicroG-RE's `AssistedSignInActivity` and then `AuthSignInActivity` ("Choose an account
+to continue to LINE"). The log showed `clientPackageName:jp.naver.line.android`,
+`idTokenRequested=true` and LINE's server client ID `4586549225-quhf8ev7…`. The Play Services
+sign-in screen did not open. Back returned to Account settings with no crash. The account was not
+picked, so a completed link or login is not confirmed.
+
+A **Root Mount** install keeps the original signature and needs neither patch. On a version bump,
+re-check by watching
 `logcat | grep -iE "START u0|CredentialManager|Auth\.Api|SpoofUtils|UNREGISTERED_ON_API_CONSOLE"` at
 the account-selection tap — the obfuscated names (`ix4.a0`, `aq.a`, `kl0.i`, `u7.*`, `l18/d`,
 `hx4/i`) drift.
@@ -1588,8 +1707,8 @@ needs the same certificate UPPERCASE because LINE's `rl.h.b` uppercases for `X-A
 | Backup call sites | `hx4.d.invoke(String)` → `l18.d`; `hx4.i`, `hx4.l`, `hx4.z`, `backuprestore.data.b$c`, `AutomaticChatBackupWorker` | all consume the account **name** string. |
 | Auth service client | `com.google.android.gms.internal.auth.d` | `D()` → `com.google.android.gms.auth.service.START`. Inherits `E()`. |
 | GMS client base | `kl.d` | `E()` = service package, `public` not `final`. **Do not rewrite its literal.** |
-| Credential Manager path | `jl0.t` → `kl0.i`; wrapper `u7.*` | Path 1. Not interceptable. |
-| Classic sign-in (unused) | `al.g`, `SignInHubActivity`, `gm.n` | Present in the APK but referenced only from inside the GMS library — **no LINE code path uses them**, so there is no legacy route to force. `al.g.j()`'s `GOOGLE_SIGN_IN` intent is in-app (`setClass(SignInHubActivity)`) and must not be redirected. MicroG-RE publishes no `auth.api.identity.service.signin.START`, so `gm.n` has no target either. |
+| Credential Manager path | `jl0.t` → `kl0.i`; wrapper `u7.*` | Path 1. The system provider cannot be intercepted, but `fixgooglelogin` moves the request to LINE's own Play Services provider (see above). |
+| Classic sign-in (unused) | `al.g`, `SignInHubActivity`, `gm.n` | Present in the APK but referenced only from inside the GMS library — **no LINE code path uses them**, so there is no legacy route to force. `al.g.j()`'s `GOOGLE_SIGN_IN` intent is in-app (`setClass(SignInHubActivity)`) and must not be redirected. The Identity Sign-In client (`gm.n` in 26.11.0, `ds.n` in 26.16.0) is reachable through the Play Services provider of androidx.credentials, and MicroG-RE 7.2.1 does publish `app.revanced.android.gms.auth.api.identity.service.signin.START`: see "Path 1 is patchable". |
 
 If anyone ports the shared `gmsCoreSupportPatch` from morphe-patches, note two fingerprints it
 hard-requires do **not** resolve against LINE: `GooglePlayUtilityFingerprint` (needs a
@@ -1970,6 +2089,8 @@ Device findings (Xiaomi, Android 16):
 | Hide LINE GIFT / Transfer button | `hidegift`, `hidetransfer` | entry of `yi1/h.j` and `yi1/j.j`, `p0` |
 | Hide attach menu extra tools | `hideattachmenutools` | entry of `yi1/d.f`, `p2` |
 | Hide tips under messages | `hidechattips` | `hideChatTips(Z)Z` after the `instance-of v3, sm1/g$b` in `rm1/u.invokeSuspend` |
+| Hide LINE AI image editing | `hidelineaiimageedit` | `hideLineAiImageEdit(List)List` before the `return-object` of the entry point list getter (`ya5/d.e()` in 26.16.0, `.locals 0`) |
+| Hide Agent i | `hideagenti` | `hideAgentI(Z)Z` (range) after the `iget-boolean` of the Home header lambda. `hideAgentI(Z)Z` before the `return` of the search bar flag accessor. Entry of both hidden-until getters, the result register. `hideAgentI(Z)Z` after the `check-cast` of the + menu switch view in `sm1/f1.invoke()`. Entry of `WalletV3GrandDesignHeaderView.o()`, `v0`. `hideAgentI(List,String)List` in the added `andrewHideAgentIRows`, called by the Settings list getter |
 | Custom font | `customfont` | `customFont(Z)Z` after the sync `move v4, v12` in the Font list loader. The extension methods read `customFont()` themselves. Its "Close LINE" row ends the process, because a new task does not change LINE's Compose screens. |
 
 - A gate is one of two shapes. A branch gate is `invoke-static LineSettings-><x>()Z` +

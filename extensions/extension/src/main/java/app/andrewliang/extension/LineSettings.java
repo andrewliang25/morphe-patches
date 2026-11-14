@@ -4,7 +4,10 @@ import android.app.Application;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -43,6 +46,8 @@ public final class LineSettings {
     static final String HIDE_TRANSFER = "hide_transfer";
     static final String HIDE_ATTACH_TOOLS = "hide_attach_tools";
     static final String HIDE_CHAT_TIPS = "hide_chat_tips";
+    static final String HIDE_LINE_AI_IMAGE_EDIT = "hide_line_ai_image_edit";
+    static final String HIDE_AGENT_I = "hide_agent_i";
     static final String CUSTOM_FONT = "custom_font";
 
     /** The resource name of the row title. The settings patch adds it to strings.xml. */
@@ -119,6 +124,14 @@ public final class LineSettings {
         return isOn(HIDE_CHAT_TIPS);
     }
 
+    public static boolean hideLineAiImageEdit() {
+        return isOn(HIDE_LINE_AI_IMAGE_EDIT);
+    }
+
+    public static boolean hideAgentI() {
+        return isOn(HIDE_AGENT_I);
+    }
+
     public static boolean customFont() {
         return isOn(CUSTOM_FONT);
     }
@@ -140,6 +153,50 @@ public final class LineSettings {
 
     public static boolean hideChatTips(boolean shown) {
         return shown && !hideChatTips();
+    }
+
+    /** The LINE AI entry point list: empty while the switch is on. */
+    public static List<?> hideLineAiImageEdit(List<?> entries) {
+        return hideLineAiImageEdit() ? Collections.emptyList() : entries;
+    }
+
+    public static boolean hideAgentI(boolean shown) {
+        return shown && !hideAgentI();
+    }
+
+    /**
+     * The main Settings list without the rows that have the key {@code key} while the switch is
+     * on. The row key is a String field of the obfuscated row class, so each String field is
+     * compared. The original list is not changed.
+     */
+    public static List<?> hideAgentI(List<?> rows, String key) {
+        if (rows == null || key == null || !hideAgentI()) return rows;
+        ArrayList<Object> result = null;
+        for (int i = 0; i < rows.size(); i++) {
+            Object row = rows.get(i);
+            if (hasStringField(row, key)) {
+                if (result == null) result = new ArrayList<>(rows.subList(0, i));
+            } else if (result != null) {
+                result.add(row);
+            }
+        }
+        return result == null ? rows : result;
+    }
+
+    private static boolean hasStringField(Object row, String value) {
+        if (row == null) return false;
+        for (Class<?> type = row.getClass(); type != null && type != Object.class; type = type.getSuperclass()) {
+            for (Field field : type.getDeclaredFields()) {
+                if (field.getType() != String.class || Modifier.isStatic(field.getModifiers())) continue;
+                try {
+                    field.setAccessible(true);
+                    if (value.equals(field.get(row))) return true;
+                } catch (Throwable ignored) {
+                    // Keep the row if a field cannot be read.
+                }
+            }
+        }
+        return false;
     }
 
     /** The Font page list syncs from LINE's server only while the custom font switch is off. */
@@ -214,6 +271,14 @@ public final class LineSettings {
     }
 
     static boolean hideChatTipsIncluded() {
+        return false;
+    }
+
+    static boolean hideLineAiImageEditIncluded() {
+        return false;
+    }
+
+    static boolean hideAgentIIncluded() {
         return false;
     }
 

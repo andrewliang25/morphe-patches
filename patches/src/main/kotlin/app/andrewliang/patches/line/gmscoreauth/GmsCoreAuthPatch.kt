@@ -68,7 +68,7 @@ private const val LINE_ORIGINAL_CERT_SHA1 = "89396dc419292473972813922867e6973d6
  * Manifest half: package visibility for GmsCore, and the certificate override it reads back.
  * Nameless, so it stays an internal dependency rather than a separate entry in the Manager list.
  */
-private val gmsCoreAuthManifestPatch = resourcePatch {
+internal val gmsCoreAuthManifestPatch = resourcePatch {
     execute {
         document("AndroidManifest.xml").use { document ->
             val manifest = document.getElementsByTagName("manifest").item(0)
@@ -127,8 +127,7 @@ private val gmsCoreAuthManifestPatch = resourcePatch {
  * checks a wholesale GmsCore patch must defeat never fire here.
  *
  * **Does NOT fix Google account login/linking**, which goes through
- * `androidx.credentials.CredentialManager`: the *system* picks the provider, so no string in the APK
- * can redirect it. Only the backup picker — an activity intent LINE aims itself — is reachable.
+ * `androidx.credentials.CredentialManager`. The separate `fixgooglelogin` patch handles that path.
  *
  * Requires MicroG-RE installed, signed in, with device registration enabled. Safe on by default:
  * device-checked with GmsCore disabled, the redirected picker resolves to nothing and the account row

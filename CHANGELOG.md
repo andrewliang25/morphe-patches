@@ -1,3 +1,10 @@
+## [3.12.0-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v3.11.0...v3.12.0-dev.1) (2026-11-14)
+
+### ✨ New Features
+
+* **LINE - Hide LINE AI image editing:** hide the AI Edit buttons ([#227](https://github.com/andrewliang25/morphe-patches/issues/227)) ([8ddac22](https://github.com/andrewliang25/morphe-patches/commit/8ddac22932b91daed19028b4b6e3d686e465e391))
+* **LINE - Restore Google login via MicroG-RE:** send Google sign-in to MicroG-RE ([#228](https://github.com/andrewliang25/morphe-patches/issues/228)) ([c678898](https://github.com/andrewliang25/morphe-patches/commit/c6788985a48f6633cd963890bcbc9a90ad3116a5))
+
 ## [3.11.0](https://github.com/andrewliang25/morphe-patches/compare/v3.10.0...v3.11.0) (2026-11-07)
 
 ### ✨ New Features
