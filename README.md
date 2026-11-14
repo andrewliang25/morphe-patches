@@ -145,23 +145,6 @@ To build Andrew's Patches, obey the instructions in the
 
 ## ⚠️ Known limitations
 
-### LINE: Google account sign-in needs MicroG-RE (re-signed builds)
-
-**What:** On a patched **LINE** build without the fix, you cannot sign in with a Google account or
-link one.
-
-**Why:** Google accepts an account only for an OAuth client that is registered under LINE's package
-name **and** its original signing certificate. A re-signed build changes that certificate, so no
-client matches ([details](docs/line-patch-map.md)).
-
-**Fix:** the *[Fix] Restore Google login via MicroG-RE* patch sends "Continue with Google" to
-[MicroG-RE](https://github.com/MorpheApp/MicroG-RE), which reports LINE's original certificate.
-Install MicroG-RE and add your Google account to it. If the sign-in still fails, install with
-**Root Mount**, which keeps LINE's original signature.
-
-This limitation does not affect chat-history backup. The *[Fix] Restore chat backup sign-in via MicroG-RE*
-patch restores it through [MicroG-RE](https://github.com/MorpheApp/MicroG-RE).
-
 ### LINE: some merchants do not accept LINE Pay
 
 **What:** At some merchants, a LINE Pay payment from a website or an ordering system fails. LINE

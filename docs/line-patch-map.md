@@ -1549,8 +1549,8 @@ to continue to LINE"). The log showed `clientPackageName:jp.naver.line.android`,
 sign-in screen did not open. Back returned to Account settings with no crash. The account was not
 picked, so a completed link or login is not confirmed.
 
-A **Root Mount** install keeps the original signature and needs neither patch. This path is also
-documented user-facing as a "Known limitation" in `README.md`, so update both together. On a version bump, re-check by watching
+A **Root Mount** install keeps the original signature and needs neither patch. On a version bump,
+re-check by watching
 `logcat | grep -iE "START u0|CredentialManager|Auth\.Api|SpoofUtils|UNREGISTERED_ON_API_CONSOLE"` at
 the account-selection tap — the obfuscated names (`ix4.a0`, `aq.a`, `kl0.i`, `u7.*`, `l18/d`,
 `hx4/i`) drift.
