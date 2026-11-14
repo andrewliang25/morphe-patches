@@ -129,7 +129,7 @@ final class LineSettingsScreen {
                 || LineSettings.hideCalendarIncluded() || LineSettings.hideEventsIncluded()
                 || LineSettings.hideGiftIncluded() || LineSettings.hideTransferIncluded()
                 || LineSettings.hideAttachToolsIncluded() || LineSettings.hideChatTipsIncluded()
-                || LineSettings.hideLineAiImageEditIncluded();
+                || LineSettings.hideLineAiImageEditIncluded() || LineSettings.hideAgentIIncluded();
 
         if (!chats && !general && !tabs && !buttons) {
             content.addView(note(activity, "No patches in this build have a switch."));
@@ -190,6 +190,11 @@ final class LineSettingsScreen {
             if (LineSettings.hideLineAiImageEditIncluded()) {
                 content.addView(toggle(activity, LineSettings.HIDE_LINE_AI_IMAGE_EDIT, "Hide LINE AI image editing",
                         "\"AI Edit\" in chats and the AI button in photo viewers.", showRestart));
+            }
+            if (LineSettings.hideAgentIIncluded()) {
+                content.addView(toggle(activity, LineSettings.HIDE_AGENT_I, "Hide Agent i",
+                        "In the Home tab, the search bar, chats, the + menu, the Wallet tab and Settings.",
+                        showRestart));
             }
             content.addView(note(activity, "Some button changes show only after LINE restarts."));
             content.addView(restart);
