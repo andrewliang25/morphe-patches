@@ -1,3 +1,9 @@
+## [3.12.0-dev.3](https://github.com/andrewliang25/morphe-patches/compare/v3.12.0-dev.2...v3.12.0-dev.3) (2026-11-14)
+
+### ✨ New Features
+
+* **LINE - Enable themes on sub devices:** use themes and the Black theme on a sub device ([#232](https://github.com/andrewliang25/morphe-patches/issues/232)) ([c77279a](https://github.com/andrewliang25/morphe-patches/commit/c77279aca3ba378bc68fc8303d4227faf1f38b39)), closes [#221](https://github.com/andrewliang25/morphe-patches/issues/221)
+
 ## [3.12.0-dev.2](https://github.com/andrewliang25/morphe-patches/compare/v3.12.0-dev.1...v3.12.0-dev.2) (2026-11-14)
 
 ### ✨ New Features
