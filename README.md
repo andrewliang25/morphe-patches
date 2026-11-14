@@ -17,7 +17,7 @@ Morphe Manager to build a modified APK.
 ## 🩹 Patches list
 
 <!-- PATCHES_START EXPANDED -->
-> **[v3.11.0](https://github.com/andrewliang25/morphe-patches/releases/tag/v3.11.0)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;52 patches total
+> **[v3.12.0-dev.1](https://github.com/andrewliang25/morphe-patches/releases/tag/v3.12.0-dev.1)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;54 patches total
 <details open>
 <summary>📦 Facebook&nbsp;&nbsp;•&nbsp;&nbsp;20 patches</summary>
 <br>
@@ -53,7 +53,7 @@ Morphe Manager to build a modified APK.
 </details>
 
 <details open>
-<summary>📦 LINE&nbsp;&nbsp;•&nbsp;&nbsp;32 patches</summary>
+<summary>📦 LINE&nbsp;&nbsp;•&nbsp;&nbsp;34 patches</summary>
 <br>
 
 **🎯 Supported versions:**
@@ -75,6 +75,7 @@ Morphe Manager to build a modified APK.
 | [[Chat] Hide tips under messages](#chat-hide-tips-under-messages) | Hides the "CHECK" tips under some messages, such as a received video. |  |
 | [[Chat] Keep chats unread](#chat-keep-chats-unread) | When you open a chat, LINE does not mark it read or send a read receipt. "Mark as read" still works. |  |
 | [[Chat] Keep unsent messages](#chat-keep-unsent-messages) | Keeps messages that others unsend in 1:1 and group chats, with a red "Unsent" label next to the time. OpenChat is not covered. |  |
+| [[Fix] Restore Google login via MicroG-RE](#fix-restore-google-login-via-microg-re) | Makes "Continue with Google" work on a re-signed build, through MicroG-RE. Root Mount does not need it. |  |
 | [[Fix] Restore biometric login](#fix-restore-biometric-login) | Biometric login can be linked again on a re-signed build. A Root Mount install does not need this patch. |  |
 | [[Fix] Restore chat backup sign-in via MicroG-RE](#fix-restore-chat-backup-sign-in-via-microg-re) | Makes Google Drive chat backup and restore work on a re-signed build, through MicroG-RE. Root Mount does not need it. |  |
 | [[Fix] Restore location maps via MicroG-RE](#fix-restore-location-maps-via-microg-re) | Shows maps again on a re-signed build, with OpenFreeMap tiles. It needs MicroG-RE 7.0.0 or later. Root Mount does not need it. |  |
@@ -83,6 +84,7 @@ Morphe Manager to build a modified APK.
 | [[General] Custom font](#general-custom-font) | Adds a button to LINE's Font page to use a font file from your device. The page then no longer loads LINE's font list from the server. |  |
 | [[General] Disable VOOM](#general-disable-voom) | VOOM deep links, shares, and notifications do nothing. If you open the standalone VOOM feed, it closes. Messaging and the other tabs do not change. |  |
 | [[General] Hide Agent i buttons](#general-hide-agent-i-buttons) | Removes the Agent i button from the Home header and from the search bar, and hides Agent i in chats permanently. |  |
+| [[General] Hide LINE AI image editing](#general-hide-line-ai-image-editing) | Removes the LINE AI image editing buttons: "AI Edit" in the message long-press menu, the button next to an image message, and the button in the chat, album, Note and profile photo viewers. The normal photo editor stays. |  |
 | [[General] Hide new item badges](#general-hide-new-item-badges) | Hides the green dots and N badges that mark new items, on header buttons, tabs, menus, lists and settings rows. Unread message counts do not change. |  |
 | [[General] Open links in external browser](#general-open-links-in-external-browser) | Opens web links in your default browser instead of LINE's in-app browser. LIFF mini-apps and LINE links stay in LINE. |  |
 | [[General] Redirect LINE Pay](#general-redirect-line-pay) | Opens LINE Pay in the standalone LINE Pay app, so the integrity check that fails on a re-signed build never runs. |  |
