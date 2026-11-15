@@ -131,7 +131,7 @@ final class LineSettingsScreen {
                 || LineSettings.hideAttachToolsIncluded() || LineSettings.hideChatTipsIncluded()
                 || LineSettings.hideLineAiImageEditIncluded() || LineSettings.hideAgentIIncluded();
         boolean calls = LineSettings.autoRecordCallsIncluded() || LineSettings.silentCallRecordingIncluded()
-                || LineSettings.saveCallRecordingsToDeviceIncluded();
+                || LineSettings.saveCallRecordingsToDeviceIncluded() || LineSettings.removeCallRecordingLimitIncluded();
 
         if (!chats && !general && !tabs && !buttons && !calls) {
             content.addView(note(activity, "No patches in this build have a switch."));
@@ -238,6 +238,12 @@ final class LineSettingsScreen {
                 content.addView(toggle(activity, LineSettings.SAVE_CALL_RECORDINGS_TO_DEVICE, "Save recordings to device",
                         "On: saves each recording to Movies/LINE on your phone. Off: shares it to Keep Memo, "
                                 + "which refuses files over 1 GB. Each recording also stays in the chat's Call recordings list.",
+                        null));
+            }
+            if (LineSettings.removeCallRecordingLimitIncluded()) {
+                content.addView(toggle(activity, LineSettings.REMOVE_CALL_RECORDING_LIMIT, "Remove recording time limit",
+                        "Records a call until it ends. Without this, LINE stops voice recordings after 60 minutes "
+                                + "and video recordings after 20 or 50 minutes.",
                         null));
             }
         }

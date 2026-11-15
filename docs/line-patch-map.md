@@ -2398,7 +2398,7 @@ Recorded 2026-10-14 during the 26.15.1 bump.
 
 ## Call recording & the "[Call]" patches
 
-Three patches, all on by default, each with its own switch:
+Four patches, all on by default, each with its own switch:
 
 - **`[Call] Auto-record calls`** (switch `autoRecordCalls`): starts recording when a 1-to-1 call
   connects.
@@ -2407,10 +2407,12 @@ Three patches, all on by default, each with its own switch:
 - **`[Call] Save recordings to device`** (switch `saveCallRecordingsToDevice`): saves each finished
   recording to `Movies/LINE` instead of sharing it to Keep Memo. See
   [Where recordings are saved](#where-recordings-are-saved).
+- **`[Call] Remove recording time limit`** (switch `removeCallRecordingLimit`): records until the
+  call ends. See [Recording time limit](#recording-time-limit).
 
 The first two depend on an internal `callRecordingEnablePatch` that exposes the feature. LINE's own
 recorder does the capture and saves the file. The patches only trigger it, remove the outbound
-notice, and choose where the copy goes.
+notice, choose where the copy goes, and remove the time limit.
 
 **Version:** call recording is **26.16.0+ only**. The `premiumcall` / `recording` packages and
 every `callrecording_*` string are absent from 26.14.0 and 26.15.1 (measured 2026-11-15). The
@@ -2512,8 +2514,9 @@ After the call, LINE also exports the recording once, without asking:
 
 LINE has no setting for the destination. Its own Call recording settings page has three rows: a
 switch for Keep Memo shares on unmetered networks only, the video quality, and "Delete all call
-recordings". The Keep Memo 1 GiB limit is the reason for the patch. A 720p video recording
-(5 Mbps) passes it after about 27 minutes.
+recordings". The Keep Memo 1 GiB limit is the reason for the patch. At its 5 Mbps target bit rate,
+a 720p video recording reaches 1 GiB after about 27 minutes. The real bit rate is lower and depends
+on the picture: a 28-minute video call measured 129 MB.
 
 In `bu7/a.a()`, the Auto branch is
 `instance-of vX, p1, ut7/b$a` → `if-eqz` → `iget-object vX, p0, bu7/a.c` → `goto`. While the switch
@@ -2537,13 +2540,55 @@ list (`iu7/d`) treats a device save as complete only when no other destination i
 the same icon after its own manual "Save to device". Tapping it still shares a small file to Keep
 Memo.
 
+### Recording time limit
+
+LINE's help pages give the limits: 60 minutes for a voice recording, and 20 or 50 minutes for a
+video recording, by quality. All three are fixed numbers in the app, and a timer in LINE's own
+process enforces them. The server decides only whether a call can be recorded ("REC"), not for how
+long. The recording is saved on the phone, so no upload limit applies while it records.
+
+| Role | Anchor (26.16.0) |
+|---|---|
+| Limit timer (`PremiumCallRecordingEndByDurationAwaiter`). `emit()` checks each duration update | `au7/d`, `au7/d$d$b.emit()` |
+| Voice limit, a fixed 3600000 ms (`const v5, 0x36ee80`) | `au7/d$d$b.emit()` |
+| Video limit, passed in as `au7/d$a.a`. A value under 1 means no limit | `xt7/r.q(I)` ← `st7.d.c` from `au7/g` |
+| Video limits: 1200000 ms (720p, 5 Mbps) and 3000000 ms (lower quality, 2 Mbps) | `qt7/b$b` |
+| Race: the timer against recording off. On a limit it gives `eu7.a.b` ExceedLimit | `xt7/r.r()`, `xt7/z` |
+| Stop toast `callrecording_callscreen_toast_recordinglimitstop` | `iu7/v` |
+
+At the target bit rates, both video limits give about 750 MB. That keeps a recording under the
+1 GiB limit of Keep Memo. The target is a ceiling. A 28-minute video call measured 129 MB (about
+600 kbps), so the real size depends on the picture. Use `[Call] Save recordings to device` for
+long recordings. Voice recordings use AAC at 64 kbps, which
+is about 29 MB an hour.
+
+In `emit()`, the check starts at `check-cast p1, au7/d$c` (the limit state). While the switch is on,
+the patch jumps from there to the method's normal end (`sget-object` of `Unit`, then `return-object`).
+The check never emits, so the recording runs until the user stops it or the call ends. The switch
+value goes in `v5`, which the check writes with `const` before it reads it. The fingerprint uses
+the literal 3600000 and `MediaType.AUDIO` / `AUDIO_VIDEO` (`com.linecorp.andromeda`, not
+obfuscated).
+
+A probe on 26.16.0 (2026-11-15) set both limits to 20000 ms. A voice call and a video call each
+stopped at 20 seconds with the stop toast, and each file was 20.16 s long. The log showed
+`videoDurationInMillis=20000`, then `AUDIO_VIDEO`. So this timer is the gate.
+
+With the patch (26.16.0, 2026-11-15), a 28-minute video call at "Regular" quality recorded in full:
+the file in `Movies/LINE` is 28.43 minutes long. The stock limit for it is 20 minutes.
+
+Not tested: transcripts stop at one hour (`callrecording_sttviewer_desc_hourlimit`), and how a
+longer recording ends its transcript. Android's MP4 writer (`MediaMuxer`) can stop at 4 GB on
+some versions. At the 5 Mbps target that is about 1 h 45 min of 720p video, and longer at real bit
+rates.
+
 ### Values that drift on a version bump
 
 `premiumcall/a` and the `callrecording_*` strings are stable (package not obfuscated), but the
 Route B anchors are obfuscated and drift: `xt7/n0` (notify emitter), `xt7/r` (start/stop impl),
 `dy7/d` (button controller), `rt7/a` (`I()`/`v()` interface), `du7/a`/`du7/c` (the "record"
 StateShare activity and announcement player), `ro7/b` (enable enum). The save path drifts too:
-`bu7/a` (export router), `ut7/a` (destination enum), `xt7/x0`, `uu7/d` and `uu7/f`. Re-anchor them and re-confirm
+`bu7/a` (export router), `ut7/a` (destination enum), `xt7/x0`, `uu7/d` and `uu7/f`. The time limit
+drifts in `au7/d` (limit timer), `xt7/r.q()` and `qt7/b$b` (video limits). Re-anchor them and re-confirm
 on each LINE bump.
 
 ## Dead ends (investigated, not patchable)

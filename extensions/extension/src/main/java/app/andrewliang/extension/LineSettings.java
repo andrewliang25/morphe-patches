@@ -52,6 +52,7 @@ public final class LineSettings {
     static final String AUTO_RECORD_CALLS = "auto_record_calls";
     static final String SILENT_CALL_RECORDING = "silent_call_recording";
     static final String SAVE_CALL_RECORDINGS_TO_DEVICE = "save_call_recordings_to_device";
+    static final String REMOVE_CALL_RECORDING_LIMIT = "remove_call_recording_limit";
 
     /** The resource name of the row title. The settings patch adds it to strings.xml. */
     private static final String TITLE_RESOURCE = "andrew_patch_settings";
@@ -149,6 +150,10 @@ public final class LineSettings {
 
     public static boolean saveCallRecordingsToDevice() {
         return isOn(SAVE_CALL_RECORDINGS_TO_DEVICE);
+    }
+
+    public static boolean removeCallRecordingLimit() {
+        return isOn(REMOVE_CALL_RECORDING_LIMIT);
     }
 
     // The patches that clear a "shown" boolean in place call these: they give false while the
@@ -310,6 +315,10 @@ public final class LineSettings {
     }
 
     static boolean saveCallRecordingsToDeviceIncluded() {
+        return false;
+    }
+
+    static boolean removeCallRecordingLimitIncluded() {
         return false;
     }
 
