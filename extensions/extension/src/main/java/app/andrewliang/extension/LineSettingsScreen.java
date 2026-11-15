@@ -128,9 +128,12 @@ final class LineSettingsScreen {
         boolean buttons = LineSettings.hideAiFriendsIncluded() || LineSettings.hideCommunityButtonIncluded()
                 || LineSettings.hideCalendarIncluded() || LineSettings.hideEventsIncluded()
                 || LineSettings.hideGiftIncluded() || LineSettings.hideTransferIncluded()
-                || LineSettings.hideAttachToolsIncluded() || LineSettings.hideChatTipsIncluded();
+                || LineSettings.hideAttachToolsIncluded() || LineSettings.hideChatTipsIncluded()
+                || LineSettings.hideLineAiImageEditIncluded() || LineSettings.hideAgentIIncluded();
+        boolean calls = LineSettings.autoRecordCallsIncluded() || LineSettings.silentCallRecordingIncluded()
+                || LineSettings.saveCallRecordingsToDeviceIncluded() || LineSettings.removeCallRecordingLimitIncluded();
 
-        if (!chats && !general && !tabs && !buttons) {
+        if (!chats && !general && !tabs && !buttons && !calls) {
             content.addView(note(activity, "No patches in this build have a switch."));
             return;
         }
@@ -186,6 +189,15 @@ final class LineSettingsScreen {
                 content.addView(toggle(activity, LineSettings.HIDE_CHAT_TIPS, "Hide tips under messages",
                         "The \"CHECK\" tips under some messages.", showRestart));
             }
+            if (LineSettings.hideLineAiImageEditIncluded()) {
+                content.addView(toggle(activity, LineSettings.HIDE_LINE_AI_IMAGE_EDIT, "Hide LINE AI image editing",
+                        "\"AI Edit\" in chats and the AI button in photo viewers.", showRestart));
+            }
+            if (LineSettings.hideAgentIIncluded()) {
+                content.addView(toggle(activity, LineSettings.HIDE_AGENT_I, "Hide Agent i",
+                        "In the Home tab, the search bar, chats, the + menu, the Wallet tab and Settings.",
+                        showRestart));
+            }
             content.addView(note(activity, "Some button changes show only after LINE restarts."));
             content.addView(restart);
         }
@@ -209,6 +221,30 @@ final class LineSettingsScreen {
                         "Uses the font that you upload on LINE's Font page.",
                         () -> close.setVisibility(View.VISIBLE)));
                 content.addView(close);
+            }
+        }
+
+        if (calls) {
+            content.addView(section(activity, "Calls"));
+            if (LineSettings.autoRecordCallsIncluded()) {
+                content.addView(toggle(activity, LineSettings.AUTO_RECORD_CALLS, "Auto-record calls",
+                        "Starts recording a 1-to-1 call as soon as it connects.", null));
+            }
+            if (LineSettings.silentCallRecordingIncluded()) {
+                content.addView(toggle(activity, LineSettings.SILENT_CALL_RECORDING, "Record without notifying",
+                        "The other person is not told that you record, and hears no recording announcement.", null));
+            }
+            if (LineSettings.saveCallRecordingsToDeviceIncluded()) {
+                content.addView(toggle(activity, LineSettings.SAVE_CALL_RECORDINGS_TO_DEVICE, "Save recordings to device",
+                        "On: saves each recording to Movies/LINE on your phone. Off: shares it to Keep Memo, "
+                                + "which refuses files over 1 GB. Each recording also stays in the chat's Call recordings list.",
+                        null));
+            }
+            if (LineSettings.removeCallRecordingLimitIncluded()) {
+                content.addView(toggle(activity, LineSettings.REMOVE_CALL_RECORDING_LIMIT, "Remove recording time limit",
+                        "Records a call until it ends. Without this, LINE stops voice recordings after 60 minutes "
+                                + "and video recordings after 20 or 50 minutes.",
+                        null));
             }
         }
 

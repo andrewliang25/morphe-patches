@@ -17,7 +17,7 @@ Morphe Manager to build a modified APK.
 ## 🩹 Patches list
 
 <!-- PATCHES_START EXPANDED -->
-> **[v3.11.0](https://github.com/andrewliang25/morphe-patches/releases/tag/v3.11.0)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;52 patches total
+> **[v3.12.0-dev.7](https://github.com/andrewliang25/morphe-patches/releases/tag/v3.12.0-dev.7)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;59 patches total
 <details open>
 <summary>📦 Facebook&nbsp;&nbsp;•&nbsp;&nbsp;20 patches</summary>
 <br>
@@ -53,7 +53,7 @@ Morphe Manager to build a modified APK.
 </details>
 
 <details open>
-<summary>📦 LINE&nbsp;&nbsp;•&nbsp;&nbsp;32 patches</summary>
+<summary>📦 LINE&nbsp;&nbsp;•&nbsp;&nbsp;39 patches</summary>
 <br>
 
 **🎯 Supported versions:**
@@ -65,6 +65,10 @@ Morphe Manager to build a modified APK.
 |----------|----------------|-----------|
 | [[Ad] Hide ad views](#ad-hide-ad-views) | Hides LINE display ads: the LINE Ads banners, the Smart Channel banner in the chat list and Google AdManager ads. |  |
 | [[Ad] Remove banner ads](#ad-remove-banner-ads) | LINE no longer loads the Smart Channel banner ads. This patch makes the getBanners and getPrefetchableBanners responses null. |  |
+| [[Call] Auto-record calls](#call-auto-record-calls) | Starts recording a 1-to-1 LINE call as soon as it connects. LINE saves the recording. Recording a call without the other person's consent is illegal in some places. You are responsible for following the law where you are. |  |
+| [[Call] Record calls without notifying](#call-record-calls-without-notifying) | Records a 1-to-1 LINE call without telling the other party: no on-screen banner and no spoken recording announcement. Recording a call without the other person's consent is illegal in some places. You are responsible for following the law where you are. |  |
+| [[Call] Remove recording time limit](#call-remove-recording-time-limit) | Records a call until it ends. LINE stops voice recordings after 60 minutes and video recordings after 20 or 50 minutes. |  |
+| [[Call] Save recordings to device](#call-save-recordings-to-device) | Saves each call recording to the Movies/LINE folder on your phone instead of sharing it to Keep Memo, which refuses files over 1 GB. |  |
 | [[Chat] Hide AI Friends button](#chat-hide-ai-friends-button) | Removes the AI Friends button from the Chats tab header. The Album button shows in its place. |  |
 | [[Chat] Hide Events button](#chat-hide-events-button) | Removes the "Events" row from the slide-out menu in a chat room. Events is a different feature from LINE Calendar, and it opens a server-hosted page. |  |
 | [[Chat] Hide LINE GIFT button](#chat-hide-line-gift-button) | Removes the LINE GIFT tile from the + attach menu in a chat room. |  |
@@ -75,6 +79,7 @@ Morphe Manager to build a modified APK.
 | [[Chat] Hide tips under messages](#chat-hide-tips-under-messages) | Hides the "CHECK" tips under some messages, such as a received video. |  |
 | [[Chat] Keep chats unread](#chat-keep-chats-unread) | When you open a chat, LINE does not mark it read or send a read receipt. "Mark as read" still works. |  |
 | [[Chat] Keep unsent messages](#chat-keep-unsent-messages) | Keeps messages that others unsend in 1:1 and group chats, with a red "Unsent" label next to the time. OpenChat is not covered. |  |
+| [[Fix] Restore Google login via MicroG-RE](#fix-restore-google-login-via-microg-re) | Makes "Continue with Google" work on a re-signed build, through MicroG-RE. Root Mount does not need it. |  |
 | [[Fix] Restore biometric login](#fix-restore-biometric-login) | Biometric login can be linked again on a re-signed build. A Root Mount install does not need this patch. |  |
 | [[Fix] Restore chat backup sign-in via MicroG-RE](#fix-restore-chat-backup-sign-in-via-microg-re) | Makes Google Drive chat backup and restore work on a re-signed build, through MicroG-RE. Root Mount does not need it. |  |
 | [[Fix] Restore location maps via MicroG-RE](#fix-restore-location-maps-via-microg-re) | Shows maps again on a re-signed build, with OpenFreeMap tiles. It needs MicroG-RE 7.0.0 or later. Root Mount does not need it. |  |
@@ -82,7 +87,9 @@ Morphe Manager to build a modified APK.
 | [[General] Andrew's Patch Setting](#general-andrew-s-patch-setting) | Adds "Andrew's Patch Setting" to LINE Settings, below "Profile". There you can turn some patches on or off without patching again, and see the credits and licenses. |  |
 | [[General] Custom font](#general-custom-font) | Adds a button to LINE's Font page to use a font file from your device. The page then no longer loads LINE's font list from the server. |  |
 | [[General] Disable VOOM](#general-disable-voom) | VOOM deep links, shares, and notifications do nothing. If you open the standalone VOOM feed, it closes. Messaging and the other tabs do not change. |  |
-| [[General] Hide Agent i buttons](#general-hide-agent-i-buttons) | Removes the Agent i button from the Home header and from the search bar, and hides Agent i in chats permanently. |  |
+| [[General] Enable themes on sub devices](#general-enable-themes-on-sub-devices) | Lets a sub device (a tablet or second phone logged in to the same account) use themes and the Black theme in dark mode. Hides the Theme Shop button there, because LINE does not open the shop on a sub device. |  |
+| [[General] Hide Agent i buttons](#general-hide-agent-i-buttons) | Removes Agent i from the Home header, the search bar, the Wallet tab header and Settings, and hides Agent i in chats permanently, with its "Show Agent i in chat" switch in the + menu. |  |
+| [[General] Hide LINE AI image editing](#general-hide-line-ai-image-editing) | Removes the LINE AI image editing buttons: "AI Edit" in the message long-press menu, the button next to an image message, and the button in the chat, album, Note and profile photo viewers. The normal photo editor stays. |  |
 | [[General] Hide new item badges](#general-hide-new-item-badges) | Hides the green dots and N badges that mark new items, on header buttons, tabs, menus, lists and settings rows. Unread message counts do not change. |  |
 | [[General] Open links in external browser](#general-open-links-in-external-browser) | Opens web links in your default browser instead of LINE's in-app browser. LIFF mini-apps and LINE links stay in LINE. |  |
 | [[General] Redirect LINE Pay](#general-redirect-line-pay) | Opens LINE Pay in the standalone LINE Pay app, so the integrity check that fails on a re-signed build never runs. |  |
@@ -143,21 +150,6 @@ To build Andrew's Patches, obey the instructions in the
 
 ## ⚠️ Known limitations
 
-### LINE: Google account sign-in fails (re-signed builds)
-
-**What:** On a patched **LINE** build, you cannot sign in with a Google account or link one.
-
-**Why:** Google accepts an account only for an OAuth client that is registered under LINE's package
-name **and** its original signing certificate. A re-signed build changes that certificate, so no
-client matches. LINE asks Android's Credential Manager for the account, so the *system* picks
-Google Play Services. No patch can change this ([details](docs/line-patch-map.md)).
-
-**Workaround:** install with **Root Mount**, which keeps LINE's original signature. Do not use the
-**Standard** install.
-
-This limitation does not affect chat-history backup. The *[Fix] Restore chat backup sign-in via MicroG-RE*
-patch restores it through [MicroG-RE](https://github.com/MorpheApp/MicroG-RE).
-
 ### LINE: some merchants do not accept LINE Pay
 
 **What:** At some merchants, a LINE Pay payment from a website or an ordering system fails. LINE
@@ -193,6 +185,7 @@ signature. Or keep only one app of the two.
 ## 🙏 Special thanks
 
 - [@f870103](https://github.com/f870103) — lent a LINE account for tests, and found the redirect URL of the LINE Pay app.
+- [@uta-a](https://github.com/uta-a) — the Google login fix and some Agent i entries of "Hide Agent i buttons" take their idea from [linimal](https://github.com/uta-a/linimal).
 - [@SapitoSucio](https://github.com/SapitoSucio) — some features and implementations here take their idea from [FroggoMorphePatches](https://github.com/SapitoSucio/FroggoMorphePatches).
 - [@SysAdminDoc](https://github.com/SysAdminDoc) — found in [Hushfacebook](https://github.com/SysAdminDoc/Hushfacebook) that some story and reel downloads saved with no sound.
 

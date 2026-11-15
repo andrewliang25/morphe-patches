@@ -39,6 +39,18 @@ object Constants {
     )
 
     /**
+     * LINE for the call recording patches. Call recording exists only from 26.16.0, so these
+     * patches list only the versions that have it. Add each new LINE version here too.
+     */
+    val COMPATIBILITY_LINE_CALL_RECORDING = Compatibility(
+        name = "LINE",
+        packageName = "jp.naver.line.android",
+        apkFileType = ApkFileType.APKM,
+        appIconColor = 0x06C755, // LINE brand green.
+        targets = COMPATIBILITY_LINE.targets.filter { it.version == "26.16.0" },
+    )
+
+    /**
      * Facebook (com.facebook.katana).
      *
      * Facebook ships as a split app bundle, so it uses [ApkFileType.APKM]; all app code is in

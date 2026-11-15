@@ -602,10 +602,13 @@ starting point, so no one needs to sweep the APK again.
 | [Tab] Hide Shopping tab | `line.hideshoppingtab` | `COMMERCE` + `COMMERCE_TW` in `b68/g.a()` (see above) |
 | [General] Andrew's Patch Setting | `line.settings` | a row below "Profile" in Settings, via `ka5/o2.a()` (see below) |
 | [Fix] Restore location maps via MicroG-RE | `line.fixlocationmaps` | `fo/p.b` — the maps module context (see below) |
+| [Fix] Restore Google login via MicroG-RE | `line.fixgooglelogin` | the androidx.credentials provider choice, the Play Services provider's version check and the Identity Sign-In client (see "Google account access") |
 | [Chat] Hide tips under messages | `line.hidechattips` | `rm1.u.invokeSuspend` — the "CHECK" tip under a bubble (see below) |
-| [General] Hide Agent i buttons | `line.hideagenti` | `wm2.j` Home header icon + `function.search.line_ai_entry.enabled` + the two `CHATROOM_AI_BUTTON_SHOWN_AFTER_MILLIS` getters (see below) |
+| [General] Hide Agent i buttons | `line.hideagenti` | `wm2.j` Home header icon + `function.search.line_ai_entry.enabled` + the two `CHATROOM_AI_BUTTON_SHOWN_AFTER_MILLIS` getters + `WalletV3GrandDesignHeaderView.o()` + the `AiSubscription` Settings rows + the + menu "Show Agent i in chat" switch (see below) |
+| [General] Hide LINE AI image editing | `line.hidelineaiimageedit` | the getter of `function.ai.lineai.enabled_entry_points` (see below) |
 | [Chat] Hide AI Friends button | `line.chatheaderbuttons` | `function.ai.character.display_button` (see below) |
 | [General] Custom font | `line.customfont` | LINE's premium font path: `PremiumFontProvider`, the androidx certificate check, the Font page (see below) |
+| [General] Enable themes on sub devices | `line.subdevicethemes` | the dark-mode check, the Settings Themes row and the My Themes Theme Shop button (see below) |
 
 Each is an independent, `default = true`, user-facing `bytecodePatch` — one feature (or one
 feature's full set of entry points) per patch. Most are instruction-level edits. *Redirect LINE
@@ -1051,13 +1054,16 @@ flags in the config classes `g45.c` and `g45.i2`, and each of these flags has a 
 **One parse pattern finds both accessors.** The parser `g45.e` reads each flag as
 `const-string "<key>"`, then the accessor for its default value, then `h45.a.a(key, map, default)`.
 R8 renames the accessor but keeps the key. `line/shared/ServerFlag.kt` matches the key and the
-`()Z` call right after it, then makes that accessor return false. Every reader then sees the value
+`()Z` call right after it. The patches then make that accessor return false: "Hide Agent i buttons"
+and "Hide AI Friends button" pass its value through their switch before the return. Every reader then sees the value
 that LINE gets when the server turns the flag off.
 
 **Why the Home header is hidden at the view, not at a flag.** The Home header value comes from
 `b3.hb.b()` → `g45.c.z()`, the master Agent i flag. The APK reads it 24 times, for example in the
 AI talk suggestions settings. A false value there changes much more than one button. Thus the patch
-replaces only the `iget-boolean wm2.j.a` in the header lambda with `const 0`.
+passes only the `iget-boolean wm2.j.a` in the header lambda through `hideAgentI(Z)Z`. The register
+is `p1`, which can be above v15, so the call is `invoke-static/range`. The `if-eqz` that tests it
+follows the read directly, with no label between them, in all three versions.
 
 **AI Friends and Album share one slot.** The header builder in `qz1.f` adds `AI_FRIEND` if `t()`
 is true, and `ALBUM` if it is false. `qy1.j0` reads `t()` too, for the Album button and its green
@@ -1096,8 +1102,10 @@ hidden (26.16.0 names):
 **The patch.** Both getters (`s81.c.v()`, `r21.b.a()`) are the same four instructions: `sget-object`
 of the key, `invoke-static` of the long getter of the store, `move-result-wide`, `return-wide`. The
 store class is `dao/d` in 26.14.0 and `dao/c` later, so the patch does not anchor on it. The patch
-finds them by this shape and the key name (R8 keeps enum constant names), and makes them return
-`Long.MAX_VALUE`. It fails unless it finds exactly two. Both readers only compare the value with the
+finds them by this shape and the key name (R8 keeps enum constant names). While the switch "Hide
+Agent i" is on, they return `Long.MAX_VALUE`. The result register is written only by the
+`move-result-wide`, so the switch value goes into it at entry. With the switch off, LINE's own
+"Show" and "Hide temporarily" work again. It fails unless it finds exactly two. Both readers only compare the value with the
 current time, so the large value is safe. The writer is left alone: what it stores no longer matters.
 
 **Side effects.** The Settings screen always shows "Hide temporarily". Tapping "Show" writes 0, the
@@ -1113,6 +1121,97 @@ never picked it. Tapping "Show" showed the toast `Set to "Show"`, but the check 
 temporarily", also after the screen was opened again. No crash and no `VerifyError`. The chat
 reader (`s81.c.v()`) cannot be observed on this account, because it shows no AI chips. Only
 disassembly confirms that site.
+
+### LINE AI image editing & the "[General] Hide LINE AI image editing" patch
+
+LINE AI image editing ("AI Edit") has no gate of its own at each button. Every entry reads one
+server list, `function.ai.lineai.enabled_entry_points`, and shows only if its name is in the list.
+The getter of the list is `g45.c.d()` (26.14.0), `ta5.d.e()` (26.15.1) and `ya5.d.e()` (26.16.0).
+
+| Entry name | Surface | Reader (26.16.0) |
+|---|---|---|
+| `chatroom_context_menu` | "AI Edit" in the message long-press menu | `fm1.e1$k` → `kq1.a.a` |
+| `chatroom_side_menu` | LINE AI button next to an image message (26.15.1 and later) | `lq1.i` → `kq1.a.a` |
+| `chatroom_image_viewer` | LINE AI button in the header of the chat photo viewer | `ChatVisualEndPageViewModel$a` |
+| `album_image_viewer` | Album photo viewer | `qo0.n` |
+| `note_post_image_viewer` | Note photo viewer (`NoteMediaViewerActivity`) | `nr3.p` |
+| `myprofile_photo_endpage` | Your own profile photo viewer | `eg8.r` |
+
+`kq1.a.a(messageType, flag, source)` is the chat gate. It is true only for the types `SINGLE`,
+`ROOM`, `GROUP` and `MEMO`, so OpenChat (`SQUARE_GROUP`) never shows the chat entries. The chat
+photo viewer has the same type check. The names `aitalk_ask_ai` and `aitalk_ai_search` are entry
+sources of the AI talk suggestions, and no reader looks for them in this list.
+
+**The patch.** The parser reads the key, then `Map.get`, then the getter for the default value. The
+fingerprint matches that order. The patch refuses a getter that is not a plain `iget-object` +
+`return-object`. The getter has `.locals 0`, so the list it read goes through
+`LineSettings.hideLineAiImageEdit(List)List` before the return. While the switch "Hide LINE AI
+image editing" is on, that call gives `Collections.emptyList()`. Every reader then sees the state
+of an account where the server turns on no entries. While the switch is off, the call gives the
+same list back. The normal photo editor
+(`chat_gallery_image_edit_button`, "Edit photo") and the text scan button are not in the list, so
+they stay.
+
+**Verification (26.16.0, TW account, 2026-11-14).** The server list on this account is empty, so
+no entry shows there, with or without the patch. A local probe filled the list. Then the side
+button (robot icon above Share), "AI Edit" in the long-press menu and the viewer header button
+(`chat_gallery_line_ai_button`) showed on a Keep Memo image. The probe logged `kq1.a.a` with
+`type=MEMO … result=true` for `CONTEXT_MENU` and `IMAGE_MESSAGE_SIDE_MENU`, and the viewer read
+the list from `ChatVisualEndPageViewModel$a`. A second test build filled the list field in the
+constructor of the configuration class and also applied the patch. All three buttons were then
+gone, while "Edit photo" and the text scan button stayed. No crash and no `VerifyError`. The album, Note and profile photo
+viewers could not be opened on this account (no album or Note in Keep Memo, no profile photo).
+Only disassembly confirms those three.
+
+### More Agent i entries in the "[General] Hide Agent i buttons" patch
+
+Besides the Home header, the search bar and Agent i in chats, the patch covers three more entries.
+uta-a/linimal (`docs/analysis/agent-i-entry-points.md`) listed them first. All six sites read the
+one switch "Hide Agent i".
+
+| Entry | Where | Site (26.16.0) | What the patch does |
+|---|---|---|---|
+| Agent i button | Wallet tab header, newer design only | `WalletV3GrandDesignHeaderView.o()`: builds the button state with `onAgentIButtonClick` | Returns at entry. With no state, the header draws no button. |
+| "Agent i" (JP) or "LINE AI services" | Settings list | two rows in `eh5/t2.<clinit>` with the key of `eh5/a.AiSubscription` | The list getter drops the rows with that key. |
+| "Show Agent i in chat" switch | top of the + menu of a chat (`chat_ui_attach_menu_ai_talk_chip_switch`) | `sm1/f1.invoke()`: one boolean sets the view VISIBLE or GONE, then decides whether to build its content | The boolean goes through the switch right after the `check-cast` of the view. |
+
+**Wallet header.** `wallet/impl/v3/a` calls `o()` only if the Wallet uses the newer header
+(`c().G()`) and the server gives an Agent i URL. `o()` builds nothing but the Agent i state. The
+class name and the string `onAgentIButtonClick()V` are kept by R8 in all three versions.
+
+**Settings rows.** Both rows share the key `AiSubscription`. A predicate picks one of them by the
+Agent i branding (`fo0.s.a()`). The row key is a `String` field of the row base class (`ec5/k0.a`
+in 26.16.0). `andrewHideAgentIRows` reads the key the same way the builder does (the enum
+constant, then its key accessor) and calls `LineSettings.hideAgentI(List, String)`. The
+extension drops each row that has a `String` field equal to the key. "Andrew's Patch Setting"
+hooks the same getter. Both patches find it with `settingsListGetter`, which accepts the getter
+with or without the call of the other patch, so the order of the two patches does not matter.
+
+**+ menu switch.** LINE shows this switch when Agent i in chat is available and Agent i is hidden
+in this chat. The chat site of the patch keeps Agent i hidden in every chat, so without this site the
+switch shows in every chat and does nothing. The flag register is the one that the `if-eqz` after
+`setVisibility` tests (v2, v5 and v3 in the three versions).
+
+**Not covered.** The chat menu item "Manage account" (`lineai_assistant_title_lineai`, `d60/l`)
+shows only in the LINE AI chat itself (`ChatHistoryMenuFragment` compares the chat id with a
+server value) and opens the settings of that chat. The Commerce tab header icon
+(`commercetab_header_agent_i`) has no traced click path. Neither is an entry from elsewhere.
+
+**Verification of the switch (26.16.0, TW account, 2026-11-14).** The account shows none of these
+entries. A local probe forced the search bar flag, the "LINE AI services" row predicate
+(`eh5/t2$m0`) and the + menu flag to true. With the switch on, the search bar had no AI button,
+Settings had no "LINE AI services" row and the + menu of Keep Memo had no "Show Agent i in chat".
+With the switch off and LINE restarted, all three showed. No crash and no `VerifyError`. Three
+sites were not observed:
+
+- The Wallet site: the account uses the older Wallet header, so `o()` never runs. Forcing
+  `c().G()` switches the whole Wallet tab to the other design.
+- The Home header site: the account has the older Home header (see above).
+- The hidden-until getters: the "LINE AI services" row opens nothing on this account, and the
+  screen activity is not exported. The unconditional form of this site was device-confirmed
+  earlier (see "Agent i in chats").
+
+Only disassembly confirms the switch at these three sites.
 
 ---
 
@@ -1455,7 +1554,7 @@ belongs to before touching anything — conflating them cost a round of wrong co
 | LINE code | `jl0.t.a(...)` → `kl0.i` (`TYPE_GOOGLE_ID_TOKEN_CREDENTIAL`) | `ix4.a0.b(Context, Object)` |
 | Mechanism | `androidx.credentials.CredentialManager` | `AccountPicker.newChooseAccountIntent` + `GoogleAuthUtil` |
 | Who chooses the provider | **the system** (framework enumerates registered credential providers) | **LINE**, via a hardcoded `setPackage` |
-| Patchable | **No** | **Yes** — `gmscoreauth`, device-confirmed working 2026-08-12 |
+| Patchable | **Yes** — `fixgooglelogin`, MicroG-RE sign-in screen device-confirmed 2026-11-14 | **Yes** — `gmscoreauth`, device-confirmed working 2026-08-12 |
 
 Both fail on a re-signed build for the same underlying reason: an Android OAuth client is keyed to
 **(package name, signing certificate)**, so re-signing means no client matches and Google refuses
@@ -1466,13 +1565,12 @@ Path 1's callers: `settings/account/LineUserAccountSettingsFragment`,
 `registration/restore/ui/AccountRestoreEapLoginFragment`. The `kl0` package is LINE's third-party
 identity login (it also carries `apple_login_code_result_key`), shared by Google and Apple.
 
-### Path 1 is not patchable
+### Path 1 through the system Credential Manager (stock)
 
-LINE asks the platform for a credential. `system_server` enumerates registered providers and picks
-Google's `…credman.service.GoogleIdService`. LINE never names Play Services, so there is **no package,
-action or string in the APK to rewrite**, and MicroG-RE implements the *GMS* Credentials API but not
-`android.service.credentials.CredentialProviderService`, so it cannot be offered as a provider either.
-Device log:
+On Android 14 and later, androidx.credentials asks the platform for a credential. `system_server`
+enumerates registered providers and picks Google's `…credman.service.GoogleIdService`. MicroG-RE does
+not implement `android.service.credentials.CredentialProviderService`, so it cannot be offered as a
+provider there. Device log:
 
 ```
 CredentialManager(1527): Provider session created for:
@@ -1481,12 +1579,34 @@ Auth.Api.Credentials: [AccountReauth_flowRunner] Flow failed.
 colz: [8] Unknown error [status=UNREGISTERED_ON_API_CONSOLE].
 ```
 
-Reviving this needs a credential provider added to MicroG-RE plus per-user setup — a feature in
-someone else's project, not a patch.
+### Path 1 is patchable — what `fixgooglelogin` does
 
-Path 1's only workaround is install-side: a **Root Mount** install keeps the original signature, so
-both paths work; **Standard** re-signs. This limitation is also documented user-facing as a "Known
-limitation" in `README.md` — update both together. On a version bump, re-check by watching
+The earlier verdict ("not patchable") missed a second provider. LINE also carries androidx.credentials'
+Play Services provider (`CredentialProviderPlayServicesImpl`), which runs in LINE's process and is
+used before Android 14. Its legacy branch uses the Identity Sign-In client, and MicroG-RE publishes
+that service as `app.revanced.android.gms.auth.api.identity.service.signin.START`. The approach comes
+from the Linimal bundle (uta-a/linimal, ADR 0004). The patch changes three sites (26.16.0 names):
+
+| Site | Edit |
+|---|---|
+| Provider choice `t7.a0.a(a0, Object)` (TV and car feature strings) | For a request whose options are all `TYPE_GOOGLE_ID_TOKEN_CREDENTIAL`, return the Play Services provider from `t7.a0.b()` (built from `CREDENTIAL_PROVIDER_KEY`). |
+| `CredentialProviderPlayServicesImpl.onGetCredential` | The `isAvailableOnDevice(252400000)` result goes through a hook that returns false for that request, so the provider takes the Sign-In client branch. The hook also arms the redirect for 60 seconds. |
+| Sign-In client `ds.n` (action getter holds `…identity.service.signin.START`) | A new `E()` override, and `D()` and `F()`, ask the extension. The first connection after the arm binds to `app.revanced.android.gms` with MicroG-RE's action and no dynamic lookup. Dynamic lookup ignores the package and returns Play Services. |
+
+Passkey and password requests, and every other GMS client, keep their original values. Without
+MicroG-RE every hook returns the original value. The certificate comes from the manifest entry of
+`gmscoreauth`, so the patch depends on that manifest patch. The client names are `an.n` (26.14.0),
+`es.n` (26.15.1) and `ds.n` (26.16.0).
+
+**Verification (26.16.0, Android SDK 37, MicroG-RE 7.2.1, 2026-11-14).** Settings ▸ Account ▸ Google ▸
+Link opened MicroG-RE's `AssistedSignInActivity` and then `AuthSignInActivity` ("Choose an account
+to continue to LINE"). The log showed `clientPackageName:jp.naver.line.android`,
+`idTokenRequested=true` and LINE's server client ID `4586549225-quhf8ev7…`. The Play Services
+sign-in screen did not open. Back returned to Account settings with no crash. The account was not
+picked, so a completed link or login is not confirmed.
+
+A **Root Mount** install keeps the original signature and needs neither patch. On a version bump,
+re-check by watching
 `logcat | grep -iE "START u0|CredentialManager|Auth\.Api|SpoofUtils|UNREGISTERED_ON_API_CONSOLE"` at
 the account-selection tap — the obfuscated names (`ix4.a0`, `aq.a`, `kl0.i`, `u7.*`, `l18/d`,
 `hx4/i`) drift.
@@ -1588,8 +1708,8 @@ needs the same certificate UPPERCASE because LINE's `rl.h.b` uppercases for `X-A
 | Backup call sites | `hx4.d.invoke(String)` → `l18.d`; `hx4.i`, `hx4.l`, `hx4.z`, `backuprestore.data.b$c`, `AutomaticChatBackupWorker` | all consume the account **name** string. |
 | Auth service client | `com.google.android.gms.internal.auth.d` | `D()` → `com.google.android.gms.auth.service.START`. Inherits `E()`. |
 | GMS client base | `kl.d` | `E()` = service package, `public` not `final`. **Do not rewrite its literal.** |
-| Credential Manager path | `jl0.t` → `kl0.i`; wrapper `u7.*` | Path 1. Not interceptable. |
-| Classic sign-in (unused) | `al.g`, `SignInHubActivity`, `gm.n` | Present in the APK but referenced only from inside the GMS library — **no LINE code path uses them**, so there is no legacy route to force. `al.g.j()`'s `GOOGLE_SIGN_IN` intent is in-app (`setClass(SignInHubActivity)`) and must not be redirected. MicroG-RE publishes no `auth.api.identity.service.signin.START`, so `gm.n` has no target either. |
+| Credential Manager path | `jl0.t` → `kl0.i`; wrapper `u7.*` | Path 1. The system provider cannot be intercepted, but `fixgooglelogin` moves the request to LINE's own Play Services provider (see above). |
+| Classic sign-in (unused) | `al.g`, `SignInHubActivity`, `gm.n` | Present in the APK but referenced only from inside the GMS library — **no LINE code path uses them**, so there is no legacy route to force. `al.g.j()`'s `GOOGLE_SIGN_IN` intent is in-app (`setClass(SignInHubActivity)`) and must not be redirected. The Identity Sign-In client (`gm.n` in 26.11.0, `ds.n` in 26.16.0) is reachable through the Play Services provider of androidx.credentials, and MicroG-RE 7.2.1 does publish `app.revanced.android.gms.auth.api.identity.service.signin.START`: see "Path 1 is patchable". |
 
 If anyone ports the shared `gmsCoreSupportPatch` from morphe-patches, note two fingerprints it
 hard-requires do **not** resolve against LINE: `GooglePlayUtilityFingerprint` (needs a
@@ -1970,6 +2090,8 @@ Device findings (Xiaomi, Android 16):
 | Hide LINE GIFT / Transfer button | `hidegift`, `hidetransfer` | entry of `yi1/h.j` and `yi1/j.j`, `p0` |
 | Hide attach menu extra tools | `hideattachmenutools` | entry of `yi1/d.f`, `p2` |
 | Hide tips under messages | `hidechattips` | `hideChatTips(Z)Z` after the `instance-of v3, sm1/g$b` in `rm1/u.invokeSuspend` |
+| Hide LINE AI image editing | `hidelineaiimageedit` | `hideLineAiImageEdit(List)List` before the `return-object` of the entry point list getter (`ya5/d.e()` in 26.16.0, `.locals 0`) |
+| Hide Agent i | `hideagenti` | `hideAgentI(Z)Z` (range) after the `iget-boolean` of the Home header lambda. `hideAgentI(Z)Z` before the `return` of the search bar flag accessor. Entry of both hidden-until getters, the result register. `hideAgentI(Z)Z` after the `check-cast` of the + menu switch view in `sm1/f1.invoke()`. Entry of `WalletV3GrandDesignHeaderView.o()`, `v0`. `hideAgentI(List,String)List` in the added `andrewHideAgentIRows`, called by the Settings list getter |
 | Custom font | `customfont` | `customFont(Z)Z` after the sync `move v4, v12` in the Font list loader. The extension methods read `customFont()` themselves. Its "Close LINE" row ends the process, because a new task does not change LINE's Compose screens. |
 
 - A gate is one of two shapes. A branch gate is `invoke-static LineSettings-><x>()Z` +
@@ -2110,6 +2232,84 @@ fonts back on a re-signed build too.
 `er4/f`/`qx4/f` (the list loader) and its registers `v4`, `v10`, `v12`. The patch finds each one
 by shape or by string, not by name.
 
+## Themes on a sub device & the "[General] Enable themes on sub devices" patch
+
+A sub device is a second phone or a tablet that logs in to an account whose main device is
+another phone (LINE's `SECONDARY` device type). On a sub device LINE hides Settings ▸ Themes,
+keeps the app in light mode and blocks the Theme Shop (issue #221).
+
+### The sub-device flag
+
+The flag is an interface method that LINE gets from its service locator. The patch reads it
+through this sequence in every version: `sget-object key`, `invoke-static lookup(Context, key)`,
+`move-result-object`, `check-cast`, `invoke-interface …()Z`.
+
+| | 26.14.0 | 26.15.1 | 26.16.0 |
+|---|---|---|---|
+| Flag | `c50/e0.t()` | `fa0/d0.s()` | `fa0/d0.q()` |
+| Dark-mode check | `v98/n.b(Context)Z` | `ug8/o.b(Context)Z` | `gk8/o.b()Z` (no parameter) |
+| Night-mode setter (called by `LineApplication`) | `u10/a.b(Z)` | `z60/a.a(Z)` | `z60/a.a(Z)` |
+| Settings builder (Themes row) | `ka5/o2` | `xg5/h2` | `eh5/t2` |
+| Row visibility → always-true | `m55/z.u` → `m55/z.m` | `zb5/y.u` → `zb5/y.m` | `ec5/k0.u` → `ec5/k0.m` |
+| My Themes adapter (Theme Shop footer) | `xa7/j` | `wh7/j` | `si7/j` |
+| Shared shop opener | not mapped | not mapped | `dl7/a.d(…, yf7/f, …)V` |
+
+Do not hook the flag itself. It has about 95 callers, and it also sets the app type that LINE
+sends to the server (`ANDROIDSECONDARY`), E2EE key handling, FullSync and backup restore.
+
+### The theme gates
+
+- **Dark mode.** At start, `LineApplication` calls the dark-mode check and passes the result to
+  the night-mode setter. The check returns false at once on a sub device. Otherwise it reads the
+  "Use Black theme when in dark mode" setting (`THEME_AUTO_DARK_MODE`).
+- **Settings ▸ Themes.** The row constructor takes a visibility predicate. For Themes it is
+  `!isSubDevice` (the static field `u` of the base row class). The field `m` of the same class
+  always gives `true`.
+- **Theme Shop.** The "Theme Shop" button under My Themes calls the shared shop opener
+  `dl7/a.d`. On a sub device it shows `secondary_invalidscheme` ("Your device doesn't support this
+  type of URL"). The opener also serves `STICKER_SHOP`, `STICKER_PREMIUM_*` and `STICON_SHOP`.
+  `dl7/a.e`, `dl7/a.g`, the theme LIFF opener `dg7/j.g` and seven deep-link handlers (for example
+  `nr8/l1.d`, `line://shop/theme/…`) check the flag too.
+
+### Theme downloads are not gated
+
+A theme downloads and applies on a sub device. The "To use this, please update the app to the
+latest version" dialog (`shop_need_update_application`) is a version check, not a sub-device
+check. My Themes (`qi7/u0` on 26.16.0) sets `isCurrentAppVersionSupported` from the theme's
+`appVersionRange` (`gk8/o.a`). On 2026-11-14 the server gave Black, Cony and Brown a minimum of
+26.17.0, so a main device on 26.16.0 gets the same dialog. The dark-mode path does not check the
+range, so Black still downloads.
+
+### What the patch does
+
+1. Clears the flag after its `move-result` in the dark-mode check. The check then goes on to the
+   user's setting.
+2. Adds `isSubDevice(Context)Z` to the class of the dark-mode check. It copies the flag sequence
+   from that check.
+3. Passes the always-true predicate (`m`) to the Themes row constructor.
+4. In the My Themes adapter, after the null check of the `shop_button` TextView, calls
+   `isSubDevice` and `SubDeviceThemes.hideThemeShop(Z, View)`. On a sub device the button is
+   `GONE`. A main device keeps the button.
+
+The patch does not open the shop. On a main device the patch changes nothing, because the flag is
+already false there.
+
+### Verification (26.16.0, sub device, 2026-11-14)
+
+A probe logged `isSecondary=true`, then `result=true` and `MODE_NIGHT_YES` with the check forced.
+With the patch, Settings ▸ Themes showed My Themes, Purchase history, Gift Box and the Black
+switch. With Original selected and the switch on, a cold start in system dark mode showed Black,
+and in system light mode Original. My Themes had no Theme Shop button. Cony downloaded and applied
+(probe with the version check forced). Applying a theme by hand in dark mode turns the Black switch
+off. This is LINE's own behavior. No crash and no `VerifyError`. Nobody tested a main device with
+the patch.
+
+### Values that drift on a version bump
+
+Everything in the table above. The patch finds the dark-mode check by `THEME_AUTO_DARK_MODE` and
+return type `Z`, the Settings builder by `MORETAB_SETTINGS_THEMES` and `settings_theme_title`, and
+the adapter by the footer layout, the `shop_button` id and a `check-cast` to `TextView`.
+
 ## Watch list — surfaced in 26.14.0, not yet actionable
 
 Recorded 2026-09-03 during the 26.14.0 re-anchor, so nobody has to sweep the APK again.
@@ -2195,6 +2395,203 @@ Recorded 2026-10-14 during the 26.15.1 bump.
   red dot, and Wallet service tiles show green dots.
 
 ---
+
+## Call recording & the "[Call]" patches
+
+Four patches, all on by default, each with its own switch:
+
+- **`[Call] Auto-record calls`** (switch `autoRecordCalls`): starts recording when a 1-to-1 call
+  connects.
+- **`[Call] Record calls without notifying`** (switch `silentCallRecording`): records without the
+  peer banner and without the spoken announcement.
+- **`[Call] Save recordings to device`** (switch `saveCallRecordingsToDevice`): saves each finished
+  recording to `Movies/LINE` instead of sharing it to Keep Memo. See
+  [Where recordings are saved](#where-recordings-are-saved).
+- **`[Call] Remove recording time limit`** (switch `removeCallRecordingLimit`): records until the
+  call ends. See [Recording time limit](#recording-time-limit).
+
+The first two depend on an internal `callRecordingEnablePatch` that exposes the feature. LINE's own
+recorder does the capture and saves the file. The patches only trigger it, remove the outbound
+notice, choose where the copy goes, and remove the time limit.
+
+**Version:** call recording is **26.16.0+ only**. The `premiumcall` / `recording` packages and
+every `callrecording_*` string are absent from 26.14.0 and 26.15.1 (measured 2026-11-15). The
+`[Call]` patches use `COMPATIBILITY_LINE_CALL_RECORDING`, which lists 26.16.0 only, so Manager does
+not offer them for the older versions. Their sites stay `methodOrNull`-guarded, because a forced
+build (`-f`) still applies them to an older version, where they change nothing.
+
+LINE's call recording is a **LINE Labs** feature (`linemain_labs_desc_callrecording`
+"Record voice and video calls in a one-to-one chat") that is also **LYP-Premium / eligible
+LINE-Music gated** (`callrecording_callscreen_desc_nonlypmember` / `liteplanmember` /
+`linemusicmember`). The other party is notified on start
+(`chat_entry_desc_callrecordings` "The other party will be notified when you start recording
+the call" → their screen shows `callrecording_callscreen_desc_otherpartyrecording`).
+
+### Recording the audio ourselves is not viable (Route A, rejected)
+
+Call audio runs entirely in native `libandromeda.so` (`com.linecorp.andromeda`). There is
+**no Java `AudioRecord`/`AudioTrack`** in the call path (only an unrelated mic-test
+self-check). The OS blocks every external capture route. `AudioSource.VOICE_CALL` needs
+privileged `CAPTURE_AUDIO_OUTPUT` (blocked since Android 10). `AudioPlaybackCapture` cannot
+capture `USAGE_VOICE_COMMUNICATION`. A second `AudioRecord` gets only your own mic. The one
+Java-reachable PCM bridge (`com/linecorp/andromeda/jni/AudioJNIImpl`
+`nAudioSessionDirectRead(J)[B` / `nAudioSessionDirectWrite(J,[B)`, toggled by
+`nAudioControlDirectRead/WriteEnabled`) is **dormant, with zero Java callers** in 26.16.0. Its
+"direct read/write **enabled**" naming implies a driver-takeover mode (Java drives the
+audio device), not a passive tap. Turning it on can break live call audio.
+
+### How the patch works (Route B)
+
+Recording-start and peer-notify are **separate parallel consumers** of the same
+recording-state flow, so cutting the notify leaves the recorder running (device-confirmed).
+
+| Role | Anchor (26.16.0, obfuscated, re-anchor on bump) |
+|---|---|
+| Start/stop button controller | `dy7/d.java` `m0(kq7.a, iu7.u)` → `((rt7.a) d.i(rt7.a.class)).I()` / `.v()` |
+| Start/stop impl | `xt7/r.java` (`PremiumCallSessionExtensionImpl`): `I()`/`v()` set recording flow `f399456g` |
+| Record pipeline (native capture + save) | `xt7/r.java` inner class `b` (`nu7.d, vw7.k`), fed by `w0.f399525f` (`eu7.e`) |
+| **Peer-notify send (the cut)** | `xt7/e0.java` collector → `xt7/n0.java`: recording → `fVar.L(du7.a.f129545b)` ("record" state), else `O("record")` |
+| "record" payload | `du7/a.java` (`getName()="record"`) |
+| StateShare serialize + send | `dv7/g.java` `L`/`i0()` → `gq7/d.java` `a(e,str)` → `z30.b.I0(l40.c)` = FeatureShare **SET** over Andromeda session |
+| Peer receives → renders alert | inbound SET → `dv7/g.java g0()` → `ju7/g.java` ("record" present) → `ju7/h.java` `iu7.x.c(data, true)` → `FreeCallRecordingProgressViewHolder.updateRecordingProgress` |
+| Enable gate | `com/linecorp/voip2/feature/premiumcall/a.java` `d()` = `st7.e.l() != ro7.b.INACTIVE`. Enum `ro7/b` = `{INACTIVE, LAB, OFFICIAL}` |
+| "Recordable" capability | `a.a(d, set)` releases the extension unless `set.contains("REC")`. `"STT"` adds transcription. The set comes from server connect info (`hy7/g.java` → `((xo7.b)…).f397475s`) |
+| Connected ("picked up") state | `hy7.f.f187605k.f144905s == com.linecorp.andromeda.a.b.CONNECTED`. Recording is set up on connect in `hy7/g.java invokeSuspend()` |
+
+The peer alert exists **only because our client sends the SET**. Not sending it is a
+client-side cut, and is patchable. (This corrects the first read that the alert was
+unsuppressable. That holds for LINE's own on-screen banner, not for the outbound signal we control.)
+
+**The alert is also a local audio announcement.** On a connected call both devices play a spoken
+"開始紀錄"/"結束紀錄" (region files `recording_{tw,jp,th}_{start,end}.m4a`, chosen by SIM country in
+`du7/c`). `du7/c` plays them with a **local `MediaPlayer`** on `VOICE_COMMUNICATION`, not mixed
+into the call stream. It is driven entirely by the StateShare "record" activity (`du7/a$a` →
+`du7/c`, and `du7/c.a()` has no other caller). A plays off its own `L()` registration, and B
+plays and shows the banner off the inbound SET. So the single `L()` cut removes both.
+
+### What the patches do
+
+- `callRecordingEnablePatch` (internal) forces the two feature gates true so the record button
+  appears without LINE Labs or a paid plan: `premiumcall/a.d()` (enable) and `.e()` (plan). The
+  server still grants the `"REC"` capability per call, so a region that withholds it is not
+  unlocked. Both `[Call]` patches depend on it.
+- `[Call] Auto-record calls`: after `st7.b.z(st7.b$a)` sets up the recording extension in
+  `premiumcall/a.a()`, calls `rt7.a.I()` on the same object. The `z()` receiver is the object, and
+  its argument register is dead right after the call and carries the switch value.
+- `[Call] Record calls without notifying`: skips the `dv7.f.L(dv7.a)` send in `xt7/n0.emit()` while
+  the switch is on. The `O("record")` stop branch is kept. That one send drives both the peer
+  banner and the local announcement on both devices, so skipping it removes all of them.
+
+Both patches are on by default, and each switch is on by default. The legal warning is in each
+patch description.
+
+Device-confirmed (26.16.0, 2026-11-15):
+
+- With auto-record on, recording starts on connect and the Keep Memo file is complete and playable.
+- With silent on, there is no announcement on either device and no banner on the stock peer.
+- With both off, the record button is present and manual recording announces as normal.
+
+The capture is independent of the notify and the announcement.
+
+**Legal:** covert recording with the consent notice removed is unlawful in two-party-consent
+jurisdictions. Each patch description carries a warning.
+
+### Where recordings are saved
+
+LINE keeps every recording in its private storage,
+`/data/data/jp.naver.line.android/files/voip/recording/<hash>/[Voice call]<name>_<date>.mp4` (or
+`[Video call]…`) (`qu7/h0`, `tq7/c`). The chat's Call recordings list plays this copy. Other apps
+cannot read it, and it is lost when LINE is uninstalled or its data is cleared.
+
+After the call, LINE also exports the recording once, without asking:
+
+| Role | Anchor (26.16.0) |
+|---|---|
+| Sends the automatic export request (`ut7.b$a` "Auto") after the call | `xt7/x0.c()` |
+| Export router. Auto uses field `c`, which `<init>` sets to `ut7.a.KEEP_MEMO`. Manual (`ut7.b$b`) carries its own destination | `bu7/a.a(ut7.b)` |
+| Destinations still open for a recording (empty after a Keep Memo share) | `xt7/b.q(callId)` |
+| Exporter: checks the destination set, then runs DeviceStorage (`nu7.h$a`) or KeepMemo (`nu7.h$b`) | `uu7/f.a(nu7.h)` |
+| Device export: MediaStore save through LINE's `te6` saver, type MP4 → `Movies/LINE` | `uu7/d` (`CallRecordingDeviceStorageExporter`) |
+| Keep Memo export: refuses files over 1 GiB (`maxFileSizeInBytes=1073741824`) | `ou7/g`, `uu7/g` |
+
+LINE has no setting for the destination. Its own Call recording settings page has three rows: a
+switch for Keep Memo shares on unmetered networks only, the video quality, and "Delete all call
+recordings". The Keep Memo 1 GiB limit is the reason for the patch. At its 5 Mbps target bit rate,
+a 720p video recording reaches 1 GiB after about 27 minutes. The real bit rate is lower and depends
+on the picture: a 28-minute video call measured 129 MB.
+
+In `bu7/a.a()`, the Auto branch is
+`instance-of vX, p1, ut7/b$a` → `if-eqz` → `iget-object vX, p0, bu7/a.c` → `goto`. While the switch
+is on, the patch loads `ut7.a.DEVICE_STORAGE` into `vX` instead of the `iget-object`. `vX` holds only
+the dead `instance-of` result there. This is the same path as LINE's own "Save to device" menu item.
+The fingerprint finds the router class from `b()`, which reads `UNMETERED` and `CONNECTED` of the
+unobfuscated enum `com/linecorp/voip2/feature/recording/upload/b$a`. It finds `ut7.a` from the
+constructor's `sget-object …->KEEP_MEMO`.
+
+A probe on 26.16.0 (2026-11-15) forced `DEVICE_STORAGE` for a voice call and a video call. Each
+call saved one file: `/sdcard/Movies/LINE/[Voice call]<name>_<date>.mp4` and `[Video call]…mp4`.
+The export gave a MediaStore video URI and returned `true`. The exporter allowed set was
+`[DEVICE_STORAGE]`.
+Nothing went to Keep Memo, and there was no crash. Voice recordings are MP4 files in `Movies`, not
+in `Music`.
+
+The "!" icon in the Call recordings list is stock behaviour. An item that was saved to the device
+shows "!", with the label "File not shared to Keep Memo, tap to share to Keep Memo or save to
+device". The
+list (`iu7/d`) treats a device save as complete only when no other destination is open. LINE shows
+the same icon after its own manual "Save to device". Tapping it still shares a small file to Keep
+Memo.
+
+### Recording time limit
+
+LINE's help pages give the limits: 60 minutes for a voice recording, and 20 or 50 minutes for a
+video recording, by quality. All three are fixed numbers in the app, and a timer in LINE's own
+process enforces them. The server decides only whether a call can be recorded ("REC"), not for how
+long. The recording is saved on the phone, so no upload limit applies while it records.
+
+| Role | Anchor (26.16.0) |
+|---|---|
+| Limit timer (`PremiumCallRecordingEndByDurationAwaiter`). `emit()` checks each duration update | `au7/d`, `au7/d$d$b.emit()` |
+| Voice limit, a fixed 3600000 ms (`const v5, 0x36ee80`) | `au7/d$d$b.emit()` |
+| Video limit, passed in as `au7/d$a.a`. A value under 1 means no limit | `xt7/r.q(I)` ← `st7.d.c` from `au7/g` |
+| Video limits: 1200000 ms (720p, 5 Mbps) and 3000000 ms (lower quality, 2 Mbps) | `qt7/b$b` |
+| Race: the timer against recording off. On a limit it gives `eu7.a.b` ExceedLimit | `xt7/r.r()`, `xt7/z` |
+| Stop toast `callrecording_callscreen_toast_recordinglimitstop` | `iu7/v` |
+
+At the target bit rates, both video limits give about 750 MB. That keeps a recording under the
+1 GiB limit of Keep Memo. The target is a ceiling. A 28-minute video call measured 129 MB (about
+600 kbps), so the real size depends on the picture. Use `[Call] Save recordings to device` for
+long recordings. Voice recordings use AAC at 64 kbps, which
+is about 29 MB an hour.
+
+In `emit()`, the check starts at `check-cast p1, au7/d$c` (the limit state). While the switch is on,
+the patch jumps from there to the method's normal end (`sget-object` of `Unit`, then `return-object`).
+The check never emits, so the recording runs until the user stops it or the call ends. The switch
+value goes in `v5`, which the check writes with `const` before it reads it. The fingerprint uses
+the literal 3600000 and `MediaType.AUDIO` / `AUDIO_VIDEO` (`com.linecorp.andromeda`, not
+obfuscated).
+
+A probe on 26.16.0 (2026-11-15) set both limits to 20000 ms. A voice call and a video call each
+stopped at 20 seconds with the stop toast, and each file was 20.16 s long. The log showed
+`videoDurationInMillis=20000`, then `AUDIO_VIDEO`. So this timer is the gate.
+
+With the patch (26.16.0, 2026-11-15), a 28-minute video call at "Regular" quality recorded in full:
+the file in `Movies/LINE` is 28.43 minutes long. The stock limit for it is 20 minutes.
+
+Not tested: transcripts stop at one hour (`callrecording_sttviewer_desc_hourlimit`), and how a
+longer recording ends its transcript. Android's MP4 writer (`MediaMuxer`) can stop at 4 GB on
+some versions. At the 5 Mbps target that is about 1 h 45 min of 720p video, and longer at real bit
+rates.
+
+### Values that drift on a version bump
+
+`premiumcall/a` and the `callrecording_*` strings are stable (package not obfuscated), but the
+Route B anchors are obfuscated and drift: `xt7/n0` (notify emitter), `xt7/r` (start/stop impl),
+`dy7/d` (button controller), `rt7/a` (`I()`/`v()` interface), `du7/a`/`du7/c` (the "record"
+StateShare activity and announcement player), `ro7/b` (enable enum). The save path drifts too:
+`bu7/a` (export router), `ut7/a` (destination enum), `xt7/x0`, `uu7/d` and `uu7/f`. The time limit
+drifts in `au7/d` (limit timer), `xt7/r.q()` and `qt7/b$b` (video limits). Re-anchor them and re-confirm
+on each LINE bump.
 
 ## Dead ends (investigated, not patchable)
 

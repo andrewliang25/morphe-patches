@@ -1,3 +1,46 @@
+## [3.12.0-dev.7](https://github.com/andrewliang25/morphe-patches/compare/v3.12.0-dev.6...v3.12.0-dev.7) (2026-11-15)
+
+### 🐛 Bug Fixes
+
+* **LINE:** list the call recording patches for 26.16.0 only ([#238](https://github.com/andrewliang25/morphe-patches/issues/238)) ([9d3ea0f](https://github.com/andrewliang25/morphe-patches/commit/9d3ea0f2cf46ea03321d1216dd7fc5cb26cee0cf))
+
+## [3.12.0-dev.6](https://github.com/andrewliang25/morphe-patches/compare/v3.12.0-dev.5...v3.12.0-dev.6) (2026-11-15)
+
+### ✨ New Features
+
+* **LINE - Remove recording time limit:** record calls until they end ([#237](https://github.com/andrewliang25/morphe-patches/issues/237)) ([f9046a3](https://github.com/andrewliang25/morphe-patches/commit/f9046a37ba630d27a4519e71d11c1f3adb383f23))
+
+## [3.12.0-dev.5](https://github.com/andrewliang25/morphe-patches/compare/v3.12.0-dev.4...v3.12.0-dev.5) (2026-11-15)
+
+### ✨ New Features
+
+* **LINE - Save recordings to device:** save call recordings to the phone instead of Keep Memo ([#236](https://github.com/andrewliang25/morphe-patches/issues/236)) ([977a46b](https://github.com/andrewliang25/morphe-patches/commit/977a46b1d5750f62fc254dbd62f81e3f2183f65d))
+
+## [3.12.0-dev.4](https://github.com/andrewliang25/morphe-patches/compare/v3.12.0-dev.3...v3.12.0-dev.4) (2026-11-15)
+
+### ✨ New Features
+
+* **LINE:** add call recording with auto-record and silent-record switches ([#235](https://github.com/andrewliang25/morphe-patches/issues/235)) ([4f8b46c](https://github.com/andrewliang25/morphe-patches/commit/4f8b46c9b551dfc3f4004154804529eaffdabdfe))
+
+## [3.12.0-dev.3](https://github.com/andrewliang25/morphe-patches/compare/v3.12.0-dev.2...v3.12.0-dev.3) (2026-11-14)
+
+### ✨ New Features
+
+* **LINE - Enable themes on sub devices:** use themes and the Black theme on a sub device ([#232](https://github.com/andrewliang25/morphe-patches/issues/232)) ([c77279a](https://github.com/andrewliang25/morphe-patches/commit/c77279aca3ba378bc68fc8303d4227faf1f38b39)), closes [#221](https://github.com/andrewliang25/morphe-patches/issues/221)
+
+## [3.12.0-dev.2](https://github.com/andrewliang25/morphe-patches/compare/v3.12.0-dev.1...v3.12.0-dev.2) (2026-11-14)
+
+### ✨ New Features
+
+* **LINE - Hide Agent i buttons:** hide Agent i in Wallet, Settings and the + menu, and add a switch ([#229](https://github.com/andrewliang25/morphe-patches/issues/229)) ([496c8d2](https://github.com/andrewliang25/morphe-patches/commit/496c8d26a6c310cc24120236ec698cf592924c14))
+
+## [3.12.0-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v3.11.0...v3.12.0-dev.1) (2026-11-14)
+
+### ✨ New Features
+
+* **LINE - Hide LINE AI image editing:** hide the AI Edit buttons ([#227](https://github.com/andrewliang25/morphe-patches/issues/227)) ([8ddac22](https://github.com/andrewliang25/morphe-patches/commit/8ddac22932b91daed19028b4b6e3d686e465e391))
+* **LINE - Restore Google login via MicroG-RE:** send Google sign-in to MicroG-RE ([#228](https://github.com/andrewliang25/morphe-patches/issues/228)) ([c678898](https://github.com/andrewliang25/morphe-patches/commit/c6788985a48f6633cd963890bcbc9a90ad3116a5))
+
 ## [3.11.0](https://github.com/andrewliang25/morphe-patches/compare/v3.10.0...v3.11.0) (2026-11-07)
 
 ### ✨ New Features
