@@ -15,7 +15,7 @@ import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 
 /**
  * Starts recording a 1-to-1 call as soon as it connects. LINE's own recorder does the capture and
- * saves the file to Keep Memo. Use the "Auto-record calls" switch to turn it off.
+ * saves the file. Use the "Auto-record calls" switch to turn it off.
  *
  * After the recording extension is set up in `premiumcall/a.a()` (`st7.b.z(st7.b$a)`), the patch
  * calls `rt7.a.I()` on the same object to start recording. The `z()` receiver is the object, which
@@ -29,7 +29,7 @@ import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 val autoRecordCallsPatch = bytecodePatch(
     name = "[Call] Auto-record calls",
     description = "Starts recording a 1-to-1 LINE call as soon as it connects. LINE saves the " +
-        "recording to Keep Memo. Recording a call without the other person's consent is illegal " +
+        "recording. Recording a call without the other person's consent is illegal " +
         "in some places. You are responsible for following the law where you are.",
     default = true,
 ) {

@@ -130,7 +130,8 @@ final class LineSettingsScreen {
                 || LineSettings.hideGiftIncluded() || LineSettings.hideTransferIncluded()
                 || LineSettings.hideAttachToolsIncluded() || LineSettings.hideChatTipsIncluded()
                 || LineSettings.hideLineAiImageEditIncluded() || LineSettings.hideAgentIIncluded();
-        boolean calls = LineSettings.autoRecordCallsIncluded() || LineSettings.silentCallRecordingIncluded();
+        boolean calls = LineSettings.autoRecordCallsIncluded() || LineSettings.silentCallRecordingIncluded()
+                || LineSettings.saveCallRecordingsToDeviceIncluded();
 
         if (!chats && !general && !tabs && !buttons && !calls) {
             content.addView(note(activity, "No patches in this build have a switch."));
@@ -232,6 +233,12 @@ final class LineSettingsScreen {
             if (LineSettings.silentCallRecordingIncluded()) {
                 content.addView(toggle(activity, LineSettings.SILENT_CALL_RECORDING, "Record without notifying",
                         "The other person is not told that you record, and hears no recording announcement.", null));
+            }
+            if (LineSettings.saveCallRecordingsToDeviceIncluded()) {
+                content.addView(toggle(activity, LineSettings.SAVE_CALL_RECORDINGS_TO_DEVICE, "Save recordings to device",
+                        "On: saves each recording to Movies/LINE on your phone. Off: shares it to Keep Memo, "
+                                + "which refuses files over 1 GB. Each recording also stays in the chat's Call recordings list.",
+                        null));
             }
         }
 
