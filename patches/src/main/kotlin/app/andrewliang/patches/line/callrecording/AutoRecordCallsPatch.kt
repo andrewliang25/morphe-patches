@@ -3,7 +3,7 @@ package app.andrewliang.patches.line.callrecording
 import app.andrewliang.patches.line.shared.lineSettingsExtensionPatch
 import app.andrewliang.patches.line.shared.markLineSettingIncluded
 import app.andrewliang.patches.line.shared.readLineSetting
-import app.andrewliang.patches.shared.Constants.COMPATIBILITY_LINE
+import app.andrewliang.patches.shared.Constants.COMPATIBILITY_LINE_CALL_RECORDING
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.patch.bytecodePatch
@@ -22,8 +22,8 @@ import com.android.tools.smali.dexlib2.iface.reference.MethodReference
  * also implements `rt7.a`. Its argument register (the `st7.b$a`) is dead right after the call, so
  * it carries the switch value.
  *
- * Call recording is a 26.16.0+ feature, so the site is guarded and the patch no-ops on older
- * versions.
+ * Call recording is a 26.16.0+ feature, so the patch lists only those versions. The site stays
+ * guarded, because a forced build (`-f`) can still apply it to an older version.
  */
 @Suppress("unused")
 val autoRecordCallsPatch = bytecodePatch(
@@ -33,7 +33,7 @@ val autoRecordCallsPatch = bytecodePatch(
         "in some places. You are responsible for following the law where you are.",
     default = true,
 ) {
-    compatibleWith(COMPATIBILITY_LINE)
+    compatibleWith(COMPATIBILITY_LINE_CALL_RECORDING)
 
     dependsOn(callRecordingEnablePatch, lineSettingsExtensionPatch)
 

@@ -3,7 +3,7 @@ package app.andrewliang.patches.line.callrecording
 import app.andrewliang.patches.line.shared.lineSettingsExtensionPatch
 import app.andrewliang.patches.line.shared.markLineSettingIncluded
 import app.andrewliang.patches.line.shared.readLineSetting
-import app.andrewliang.patches.shared.Constants.COMPATIBILITY_LINE
+import app.andrewliang.patches.shared.Constants.COMPATIBILITY_LINE_CALL_RECORDING
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.patch.bytecodePatch
@@ -21,8 +21,8 @@ import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
  * the method's normal end, so it never reports that a limit was reached. The register is the
  * one that holds the voice limit, which the check writes before it reads it.
  *
- * Call recording is a 26.16.0+ feature, so the site is guarded and the patch no-ops on older
- * versions.
+ * Call recording is a 26.16.0+ feature, so the patch lists only those versions. The site stays
+ * guarded, because a forced build (`-f`) can still apply it to an older version.
  */
 @Suppress("unused")
 val removeRecordingLimitPatch = bytecodePatch(
@@ -31,7 +31,7 @@ val removeRecordingLimitPatch = bytecodePatch(
         "video recordings after 20 or 50 minutes.",
     default = true,
 ) {
-    compatibleWith(COMPATIBILITY_LINE)
+    compatibleWith(COMPATIBILITY_LINE_CALL_RECORDING)
 
     dependsOn(lineSettingsExtensionPatch)
 
