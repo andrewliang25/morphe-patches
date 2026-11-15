@@ -1,3 +1,9 @@
+## [3.12.0-dev.6](https://github.com/andrewliang25/morphe-patches/compare/v3.12.0-dev.5...v3.12.0-dev.6) (2026-11-15)
+
+### ✨ New Features
+
+* **LINE - Remove recording time limit:** record calls until they end ([#237](https://github.com/andrewliang25/morphe-patches/issues/237)) ([f9046a3](https://github.com/andrewliang25/morphe-patches/commit/f9046a37ba630d27a4519e71d11c1f3adb383f23))
+
 ## [3.12.0-dev.5](https://github.com/andrewliang25/morphe-patches/compare/v3.12.0-dev.4...v3.12.0-dev.5) (2026-11-15)
 
 ### ✨ New Features

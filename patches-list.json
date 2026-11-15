@@ -1,6 +1,6 @@
 {
   "NOTE": "Do NOT manually edit this file. This file is automatically updated when semantic release (release.yml) runs. Manually editing this file can break your releases and break third party tools that use this file.",
-  "version": "3.12.0-dev.5",
+  "version": "3.12.0-dev.6",
   "patches": [
     {
       "name": "[Ad] Block ad telemetry",
@@ -217,6 +217,48 @@
       "default": true,
       "dependencies": [
         "BytecodePatch",
+        "BytecodePatch"
+      ],
+      "compatiblePackages": [
+        {
+          "packageName": "jp.naver.line.android",
+          "name": "LINE",
+          "description": null,
+          "apkFileType": "APKM",
+          "appIconColor": "#06C755",
+          "signatures": null,
+          "targets": [
+            {
+              "version": "26.14.0",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 30,
+              "description": null
+            },
+            {
+              "version": "26.15.1",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 32,
+              "description": null
+            },
+            {
+              "version": "26.16.0",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 30,
+              "description": null
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "[Call] Remove recording time limit",
+      "description": "Records a call until it ends. LINE stops voice recordings after 60 minutes and video recordings after 20 or 50 minutes.",
+      "default": true,
+      "dependencies": [
         "BytecodePatch"
       ],
       "compatiblePackages": [
