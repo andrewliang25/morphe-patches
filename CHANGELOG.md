@@ -1,3 +1,9 @@
+## [3.12.0-dev.7](https://github.com/andrewliang25/morphe-patches/compare/v3.12.0-dev.6...v3.12.0-dev.7) (2026-11-15)
+
+### 🐛 Bug Fixes
+
+* **LINE:** list the call recording patches for 26.16.0 only ([#238](https://github.com/andrewliang25/morphe-patches/issues/238)) ([9d3ea0f](https://github.com/andrewliang25/morphe-patches/commit/9d3ea0f2cf46ea03321d1216dd7fc5cb26cee0cf))
+
 ## [3.12.0-dev.6](https://github.com/andrewliang25/morphe-patches/compare/v3.12.0-dev.5...v3.12.0-dev.6) (2026-11-15)
 
 ### ✨ New Features
