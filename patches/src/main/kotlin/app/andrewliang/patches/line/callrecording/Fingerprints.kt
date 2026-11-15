@@ -2,6 +2,7 @@ package app.andrewliang.patches.line.callrecording
 
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.fieldAccess
+import app.morphe.patcher.literal
 import com.android.tools.smali.dexlib2.Opcode
 
 private const val PREMIUMCALL_GATE = "Lcom/linecorp/voip2/feature/premiumcall/a;"
@@ -65,5 +66,22 @@ internal object CallRecordingExportNetworkFingerprint : Fingerprint(
     filters = listOf(
         fieldAccess(definingClass = UPLOAD_NETWORK, name = "UNMETERED", opcode = Opcode.SGET_OBJECT),
         fieldAccess(definingClass = UPLOAD_NETWORK, name = "CONNECTED", opcode = Opcode.SGET_OBJECT),
+    ),
+)
+
+private const val MEDIA_TYPE = "Lcom/linecorp/andromeda/core/session/constant/MediaType;"
+
+/**
+ * The time-limit check of a call recording (`au7/d$d$b.emit()` in 26.16.0). On each recording
+ * duration update it compares the voice time with 3600000 ms and the video time with the video
+ * limit. When one is reached, it emits `MediaType.AUDIO` or `AUDIO_VIDEO`, and LINE stops the
+ * recording. The literal and the `MediaType` constants are not obfuscated.
+ */
+internal object CallRecordingLimitFingerprint : Fingerprint(
+    name = "emit",
+    filters = listOf(
+        literal(3600000),
+        fieldAccess(definingClass = MEDIA_TYPE, name = "AUDIO", opcode = Opcode.SGET_OBJECT),
+        fieldAccess(definingClass = MEDIA_TYPE, name = "AUDIO_VIDEO", opcode = Opcode.SGET_OBJECT),
     ),
 )
