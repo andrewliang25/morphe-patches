@@ -1,3 +1,9 @@
+## [3.12.0-dev.5](https://github.com/andrewliang25/morphe-patches/compare/v3.12.0-dev.4...v3.12.0-dev.5) (2026-11-15)
+
+### ✨ New Features
+
+* **LINE - Save recordings to device:** save call recordings to the phone instead of Keep Memo ([#236](https://github.com/andrewliang25/morphe-patches/issues/236)) ([977a46b](https://github.com/andrewliang25/morphe-patches/commit/977a46b1d5750f62fc254dbd62f81e3f2183f65d))
+
 ## [3.12.0-dev.4](https://github.com/andrewliang25/morphe-patches/compare/v3.12.0-dev.3...v3.12.0-dev.4) (2026-11-15)
 
 ### ✨ New Features
