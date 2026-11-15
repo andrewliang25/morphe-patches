@@ -1,6 +1,8 @@
 package app.andrewliang.patches.line.callrecording
 
 import app.morphe.patcher.Fingerprint
+import app.morphe.patcher.fieldAccess
+import com.android.tools.smali.dexlib2.Opcode
 
 private const val PREMIUMCALL_GATE = "Lcom/linecorp/voip2/feature/premiumcall/a;"
 
@@ -48,4 +50,20 @@ internal object CallRecordingNotifyFingerprint : Fingerprint(
     custom = { method, classDef ->
         classDef.type == "Lxt7/n0;" && method.name == "emit"
     },
+)
+
+private const val UPLOAD_NETWORK = "Lcom/linecorp/voip2/feature/recording/upload/b\$a;"
+
+/**
+ * A method of the export router (`bu7/a` in 26.16.0), which sends each finished recording to Keep
+ * Memo or to device storage. Its method `b()` picks the upload network type from the enum
+ * `recording.upload.b$a`, whose package and constant names are not obfuscated. No other method
+ * reads both constants. The patch finds the router class from this match.
+ */
+internal object CallRecordingExportNetworkFingerprint : Fingerprint(
+    returnType = "Ljava/lang/Enum;",
+    filters = listOf(
+        fieldAccess(definingClass = UPLOAD_NETWORK, name = "UNMETERED", opcode = Opcode.SGET_OBJECT),
+        fieldAccess(definingClass = UPLOAD_NETWORK, name = "CONNECTED", opcode = Opcode.SGET_OBJECT),
+    ),
 )

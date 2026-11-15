@@ -2396,18 +2396,21 @@ Recorded 2026-10-14 during the 26.15.1 bump.
 
 ---
 
-## Call recording & the two "[Call]" patches
+## Call recording & the "[Call]" patches
 
-Two patches, both on by default, each with its own switch:
+Three patches, all on by default, each with its own switch:
 
 - **`[Call] Auto-record calls`** (switch `autoRecordCalls`): starts recording when a 1-to-1 call
   connects.
 - **`[Call] Record calls without notifying`** (switch `silentCallRecording`): records without the
   peer banner and without the spoken announcement.
+- **`[Call] Save recordings to device`** (switch `saveCallRecordingsToDevice`): saves each finished
+  recording to `Movies/LINE` instead of sharing it to Keep Memo. See
+  [Where recordings are saved](#where-recordings-are-saved).
 
-Both depend on an internal `callRecordingEnablePatch` that exposes the feature. LINE's own recorder
-does the capture and saves the file to Keep Memo. The patches only trigger it and remove the
-outbound notice.
+The first two depend on an internal `callRecordingEnablePatch` that exposes the feature. LINE's own
+recorder does the capture and saves the file. The patches only trigger it, remove the outbound
+notice, and choose where the copy goes.
 
 **Version:** call recording is **26.16.0+ only**. The `premiumcall` / `recording` packages and
 every `callrecording_*` string are absent from 26.14.0 and 26.15.1 (measured 2026-11-15). The
@@ -2489,12 +2492,58 @@ The capture is independent of the notify and the announcement.
 **Legal:** covert recording with the consent notice removed is unlawful in two-party-consent
 jurisdictions. Each patch description carries a warning.
 
+### Where recordings are saved
+
+LINE keeps every recording in its private storage,
+`/data/data/jp.naver.line.android/files/voip/recording/<hash>/[Voice call]<name>_<date>.mp4` (or
+`[Video call]…`) (`qu7/h0`, `tq7/c`). The chat's Call recordings list plays this copy. Other apps
+cannot read it, and it is lost when LINE is uninstalled or its data is cleared.
+
+After the call, LINE also exports the recording once, without asking:
+
+| Role | Anchor (26.16.0) |
+|---|---|
+| Sends the automatic export request (`ut7.b$a` "Auto") after the call | `xt7/x0.c()` |
+| Export router. Auto uses field `c`, which `<init>` sets to `ut7.a.KEEP_MEMO`. Manual (`ut7.b$b`) carries its own destination | `bu7/a.a(ut7.b)` |
+| Destinations still open for a recording (empty after a Keep Memo share) | `xt7/b.q(callId)` |
+| Exporter: checks the destination set, then runs DeviceStorage (`nu7.h$a`) or KeepMemo (`nu7.h$b`) | `uu7/f.a(nu7.h)` |
+| Device export: MediaStore save through LINE's `te6` saver, type MP4 → `Movies/LINE` | `uu7/d` (`CallRecordingDeviceStorageExporter`) |
+| Keep Memo export: refuses files over 1 GiB (`maxFileSizeInBytes=1073741824`) | `ou7/g`, `uu7/g` |
+
+LINE has no setting for the destination. Its own Call recording settings page has three rows: a
+switch for Keep Memo shares on unmetered networks only, the video quality, and "Delete all call
+recordings". The Keep Memo 1 GiB limit is the reason for the patch. A 720p video recording
+(5 Mbps) passes it after about 27 minutes.
+
+In `bu7/a.a()`, the Auto branch is
+`instance-of vX, p1, ut7/b$a` → `if-eqz` → `iget-object vX, p0, bu7/a.c` → `goto`. While the switch
+is on, the patch loads `ut7.a.DEVICE_STORAGE` into `vX` instead of the `iget-object`. `vX` holds only
+the dead `instance-of` result there. This is the same path as LINE's own "Save to device" menu item.
+The fingerprint finds the router class from `b()`, which reads `UNMETERED` and `CONNECTED` of the
+unobfuscated enum `com/linecorp/voip2/feature/recording/upload/b$a`. It finds `ut7.a` from the
+constructor's `sget-object …->KEEP_MEMO`.
+
+A probe on 26.16.0 (2026-11-15) forced `DEVICE_STORAGE` for a voice call and a video call. Each
+call saved one file: `/sdcard/Movies/LINE/[Voice call]<name>_<date>.mp4` and `[Video call]…mp4`.
+The export gave a MediaStore video URI and returned `true`. The exporter allowed set was
+`[DEVICE_STORAGE]`.
+Nothing went to Keep Memo, and there was no crash. Voice recordings are MP4 files in `Movies`, not
+in `Music`.
+
+The "!" icon in the Call recordings list is stock behaviour. An item that was saved to the device
+shows "!", with the label "File not shared to Keep Memo, tap to share to Keep Memo or save to
+device". The
+list (`iu7/d`) treats a device save as complete only when no other destination is open. LINE shows
+the same icon after its own manual "Save to device". Tapping it still shares a small file to Keep
+Memo.
+
 ### Values that drift on a version bump
 
 `premiumcall/a` and the `callrecording_*` strings are stable (package not obfuscated), but the
 Route B anchors are obfuscated and drift: `xt7/n0` (notify emitter), `xt7/r` (start/stop impl),
 `dy7/d` (button controller), `rt7/a` (`I()`/`v()` interface), `du7/a`/`du7/c` (the "record"
-StateShare activity and announcement player), `ro7/b` (enable enum). Re-anchor them and re-confirm
+StateShare activity and announcement player), `ro7/b` (enable enum). The save path drifts too:
+`bu7/a` (export router), `ut7/a` (destination enum), `xt7/x0`, `uu7/d` and `uu7/f`. Re-anchor them and re-confirm
 on each LINE bump.
 
 ## Dead ends (investigated, not patchable)
