@@ -2416,7 +2416,9 @@ notice, choose where the copy goes, and remove the time limit.
 
 **Version:** call recording is **26.16.0+ only**. The `premiumcall` / `recording` packages and
 every `callrecording_*` string are absent from 26.14.0 and 26.15.1 (measured 2026-11-15). The
-patches `methodOrNull`-guard their sites and no-op on the older pinned versions.
+`[Call]` patches use `COMPATIBILITY_LINE_CALL_RECORDING`, which lists 26.16.0 only, so Manager does
+not offer them for the older versions. Their sites stay `methodOrNull`-guarded, because a forced
+build (`-f`) still applies them to an older version, where they change nothing.
 
 LINE's call recording is a **LINE Labs** feature (`linemain_labs_desc_callrecording`
 "Record voice and video calls in a one-to-one chat") that is also **LYP-Premium / eligible

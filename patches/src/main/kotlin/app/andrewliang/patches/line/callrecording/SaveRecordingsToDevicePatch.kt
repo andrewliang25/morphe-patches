@@ -3,7 +3,7 @@ package app.andrewliang.patches.line.callrecording
 import app.andrewliang.patches.line.shared.lineSettingsExtensionPatch
 import app.andrewliang.patches.line.shared.markLineSettingIncluded
 import app.andrewliang.patches.line.shared.readLineSetting
-import app.andrewliang.patches.shared.Constants.COMPATIBILITY_LINE
+import app.andrewliang.patches.shared.Constants.COMPATIBILITY_LINE_CALL_RECORDING
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.patch.bytecodePatch
@@ -24,8 +24,8 @@ import com.android.tools.smali.dexlib2.iface.reference.FieldReference
  * instead. That is the path of LINE's own "Save to device" menu item. The register is the
  * `instance-of` result that selected the automatic request, so it is dead at this point.
  *
- * Call recording is a 26.16.0+ feature, so the site is guarded and the patch no-ops on older
- * versions.
+ * Call recording is a 26.16.0+ feature, so the patch lists only those versions. The site stays
+ * guarded, because a forced build (`-f`) can still apply it to an older version.
  */
 @Suppress("unused")
 val saveRecordingsToDevicePatch = bytecodePatch(
@@ -34,7 +34,7 @@ val saveRecordingsToDevicePatch = bytecodePatch(
         "sharing it to Keep Memo, which refuses files over 1 GB.",
     default = true,
 ) {
-    compatibleWith(COMPATIBILITY_LINE)
+    compatibleWith(COMPATIBILITY_LINE_CALL_RECORDING)
 
     dependsOn(lineSettingsExtensionPatch)
 

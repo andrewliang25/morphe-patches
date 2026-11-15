@@ -37,6 +37,14 @@ with open(json_path, encoding="utf-8") as f:
     data = json.load(f)
 
 
+def version_key(target):
+    """Sort key for a target: its version as numbers, with null (any version) last."""
+    ver = target.get("version")
+    if ver is None:
+        return (1, ())
+    return (0, tuple(int(p) if p.isdigit() else 0 for p in re.split(r"[.\-]", ver)))
+
+
 def pkg_emoji(pkg):
     """Return a standard package emoji regardless of the package name."""
     return "📦"
@@ -62,8 +70,16 @@ for patch in data["patches"]:
                 "name":    name,
                 "emoji":   pkg_emoji(pkg),
                 "patches": {},
-                "targets": pkg_entry.get("targets", []),
+                "targets": list(pkg_entry.get("targets", [])),
             }
+        # A patch can list fewer versions than the app (a feature that only newer versions
+        # have). Show every version that any patch supports, oldest first.
+        known = {t["version"] for t in by_pkg[pkg]["targets"]}
+        for t in pkg_entry.get("targets", []):
+            if t["version"] not in known:
+                by_pkg[pkg]["targets"].append(t)
+                known.add(t["version"])
+        by_pkg[pkg]["targets"].sort(key=version_key)
         # Deduplicate patches that appear across multiple packages
         if patch["name"] not in by_pkg[pkg]["patches"]:
             by_pkg[pkg]["patches"][patch["name"]] = patch

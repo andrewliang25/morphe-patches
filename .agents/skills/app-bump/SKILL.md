@@ -48,8 +48,9 @@ notes for your app at the end of this file before step 1.
 7. **Pin the version.** Add an `AppTarget` with the new version to `COMPATIBILITY_<APP>` in
    `Constants.kt`. Keep the `targets` list in ascending version order (oldest to newest, so append
    the new version at the end). Ask the user whether to keep the old version, and say why it matters
-   (a minSdk increase drops older Android devices). Done when `verify.sh --app <APP> --all` applies
-   with no `--force`.
+   (a minSdk increase drops older Android devices). If the new version keeps a feature that has its
+   own list (for LINE, `COMPATIBILITY_LINE_CALL_RECORDING`), add the version to that filter too.
+   Done when `verify.sh --app <APP> --all` applies with no `--force`.
 8. **Device test** each version that the phone can run, with the `device-test` skill: the default
    set, and each surface that a re-anchored patch touches. Done when each re-anchored surface shows
    its change on the phone, with no crash.
