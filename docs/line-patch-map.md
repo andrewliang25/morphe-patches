@@ -2396,6 +2396,107 @@ Recorded 2026-10-14 during the 26.15.1 bump.
 
 ---
 
+## Call recording & the two "[Call]" patches
+
+Two patches, both on by default, each with its own switch:
+
+- **`[Call] Auto-record calls`** (switch `autoRecordCalls`): starts recording when a 1-to-1 call
+  connects.
+- **`[Call] Record calls without notifying`** (switch `silentCallRecording`): records without the
+  peer banner and without the spoken announcement.
+
+Both depend on an internal `callRecordingEnablePatch` that exposes the feature. LINE's own recorder
+does the capture and saves the file to Keep Memo. The patches only trigger it and remove the
+outbound notice.
+
+**Version:** call recording is **26.16.0+ only**. The `premiumcall` / `recording` packages and
+every `callrecording_*` string are absent from 26.14.0 and 26.15.1 (measured 2026-11-15). The
+patches `methodOrNull`-guard their sites and no-op on the older pinned versions.
+
+LINE's call recording is a **LINE Labs** feature (`linemain_labs_desc_callrecording`
+"Record voice and video calls in a one-to-one chat") that is also **LYP-Premium / eligible
+LINE-Music gated** (`callrecording_callscreen_desc_nonlypmember` / `liteplanmember` /
+`linemusicmember`). The other party is notified on start
+(`chat_entry_desc_callrecordings` "The other party will be notified when you start recording
+the call" → their screen shows `callrecording_callscreen_desc_otherpartyrecording`).
+
+### Recording the audio ourselves is not viable (Route A, rejected)
+
+Call audio runs entirely in native `libandromeda.so` (`com.linecorp.andromeda`). There is
+**no Java `AudioRecord`/`AudioTrack`** in the call path (only an unrelated mic-test
+self-check). The OS blocks every external capture route. `AudioSource.VOICE_CALL` needs
+privileged `CAPTURE_AUDIO_OUTPUT` (blocked since Android 10). `AudioPlaybackCapture` cannot
+capture `USAGE_VOICE_COMMUNICATION`. A second `AudioRecord` gets only your own mic. The one
+Java-reachable PCM bridge (`com/linecorp/andromeda/jni/AudioJNIImpl`
+`nAudioSessionDirectRead(J)[B` / `nAudioSessionDirectWrite(J,[B)`, toggled by
+`nAudioControlDirectRead/WriteEnabled`) is **dormant, with zero Java callers** in 26.16.0. Its
+"direct read/write **enabled**" naming implies a driver-takeover mode (Java drives the
+audio device), not a passive tap. Turning it on can break live call audio.
+
+### How the patch works (Route B)
+
+Recording-start and peer-notify are **separate parallel consumers** of the same
+recording-state flow, so cutting the notify leaves the recorder running (device-confirmed).
+
+| Role | Anchor (26.16.0, obfuscated, re-anchor on bump) |
+|---|---|
+| Start/stop button controller | `dy7/d.java` `m0(kq7.a, iu7.u)` → `((rt7.a) d.i(rt7.a.class)).I()` / `.v()` |
+| Start/stop impl | `xt7/r.java` (`PremiumCallSessionExtensionImpl`): `I()`/`v()` set recording flow `f399456g` |
+| Record pipeline (native capture + save) | `xt7/r.java` inner class `b` (`nu7.d, vw7.k`), fed by `w0.f399525f` (`eu7.e`) |
+| **Peer-notify send (the cut)** | `xt7/e0.java` collector → `xt7/n0.java`: recording → `fVar.L(du7.a.f129545b)` ("record" state), else `O("record")` |
+| "record" payload | `du7/a.java` (`getName()="record"`) |
+| StateShare serialize + send | `dv7/g.java` `L`/`i0()` → `gq7/d.java` `a(e,str)` → `z30.b.I0(l40.c)` = FeatureShare **SET** over Andromeda session |
+| Peer receives → renders alert | inbound SET → `dv7/g.java g0()` → `ju7/g.java` ("record" present) → `ju7/h.java` `iu7.x.c(data, true)` → `FreeCallRecordingProgressViewHolder.updateRecordingProgress` |
+| Enable gate | `com/linecorp/voip2/feature/premiumcall/a.java` `d()` = `st7.e.l() != ro7.b.INACTIVE`. Enum `ro7/b` = `{INACTIVE, LAB, OFFICIAL}` |
+| "Recordable" capability | `a.a(d, set)` releases the extension unless `set.contains("REC")`. `"STT"` adds transcription. The set comes from server connect info (`hy7/g.java` → `((xo7.b)…).f397475s`) |
+| Connected ("picked up") state | `hy7.f.f187605k.f144905s == com.linecorp.andromeda.a.b.CONNECTED`. Recording is set up on connect in `hy7/g.java invokeSuspend()` |
+
+The peer alert exists **only because our client sends the SET**. Not sending it is a
+client-side cut, and is patchable. (This corrects the first read that the alert was
+unsuppressable. That holds for LINE's own on-screen banner, not for the outbound signal we control.)
+
+**The alert is also a local audio announcement.** On a connected call both devices play a spoken
+"開始紀錄"/"結束紀錄" (region files `recording_{tw,jp,th}_{start,end}.m4a`, chosen by SIM country in
+`du7/c`). `du7/c` plays them with a **local `MediaPlayer`** on `VOICE_COMMUNICATION`, not mixed
+into the call stream. It is driven entirely by the StateShare "record" activity (`du7/a$a` →
+`du7/c`, and `du7/c.a()` has no other caller). A plays off its own `L()` registration, and B
+plays and shows the banner off the inbound SET. So the single `L()` cut removes both.
+
+### What the patches do
+
+- `callRecordingEnablePatch` (internal) forces the two feature gates true so the record button
+  appears without LINE Labs or a paid plan: `premiumcall/a.d()` (enable) and `.e()` (plan). The
+  server still grants the `"REC"` capability per call, so a region that withholds it is not
+  unlocked. Both `[Call]` patches depend on it.
+- `[Call] Auto-record calls`: after `st7.b.z(st7.b$a)` sets up the recording extension in
+  `premiumcall/a.a()`, calls `rt7.a.I()` on the same object. The `z()` receiver is the object, and
+  its argument register is dead right after the call and carries the switch value.
+- `[Call] Record calls without notifying`: skips the `dv7.f.L(dv7.a)` send in `xt7/n0.emit()` while
+  the switch is on. The `O("record")` stop branch is kept. That one send drives both the peer
+  banner and the local announcement on both devices, so skipping it removes all of them.
+
+Both patches are on by default, and each switch is on by default. The legal warning is in each
+patch description.
+
+Device-confirmed (26.16.0, 2026-11-15):
+
+- With auto-record on, recording starts on connect and the Keep Memo file is complete and playable.
+- With silent on, there is no announcement on either device and no banner on the stock peer.
+- With both off, the record button is present and manual recording announces as normal.
+
+The capture is independent of the notify and the announcement.
+
+**Legal:** covert recording with the consent notice removed is unlawful in two-party-consent
+jurisdictions. Each patch description carries a warning.
+
+### Values that drift on a version bump
+
+`premiumcall/a` and the `callrecording_*` strings are stable (package not obfuscated), but the
+Route B anchors are obfuscated and drift: `xt7/n0` (notify emitter), `xt7/r` (start/stop impl),
+`dy7/d` (button controller), `rt7/a` (`I()`/`v()` interface), `du7/a`/`du7/c` (the "record"
+StateShare activity and announcement player), `ro7/b` (enable enum). Re-anchor them and re-confirm
+on each LINE bump.
+
 ## Dead ends (investigated, not patchable)
 
 **Extend the unsend window.** The client windows (`c81.a.o` free, `.p` premium) are UX pre-filters fed

@@ -130,8 +130,9 @@ final class LineSettingsScreen {
                 || LineSettings.hideGiftIncluded() || LineSettings.hideTransferIncluded()
                 || LineSettings.hideAttachToolsIncluded() || LineSettings.hideChatTipsIncluded()
                 || LineSettings.hideLineAiImageEditIncluded() || LineSettings.hideAgentIIncluded();
+        boolean calls = LineSettings.autoRecordCallsIncluded() || LineSettings.silentCallRecordingIncluded();
 
-        if (!chats && !general && !tabs && !buttons) {
+        if (!chats && !general && !tabs && !buttons && !calls) {
             content.addView(note(activity, "No patches in this build have a switch."));
             return;
         }
@@ -219,6 +220,18 @@ final class LineSettingsScreen {
                         "Uses the font that you upload on LINE's Font page.",
                         () -> close.setVisibility(View.VISIBLE)));
                 content.addView(close);
+            }
+        }
+
+        if (calls) {
+            content.addView(section(activity, "Calls"));
+            if (LineSettings.autoRecordCallsIncluded()) {
+                content.addView(toggle(activity, LineSettings.AUTO_RECORD_CALLS, "Auto-record calls",
+                        "Starts recording a 1-to-1 call as soon as it connects.", null));
+            }
+            if (LineSettings.silentCallRecordingIncluded()) {
+                content.addView(toggle(activity, LineSettings.SILENT_CALL_RECORDING, "Record without notifying",
+                        "The other person is not told that you record, and hears no recording announcement.", null));
             }
         }
 
