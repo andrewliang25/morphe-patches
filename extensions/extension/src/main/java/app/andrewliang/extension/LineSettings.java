@@ -49,6 +49,8 @@ public final class LineSettings {
     static final String HIDE_LINE_AI_IMAGE_EDIT = "hide_line_ai_image_edit";
     static final String HIDE_AGENT_I = "hide_agent_i";
     static final String CUSTOM_FONT = "custom_font";
+    static final String AUTO_RECORD_CALLS = "auto_record_calls";
+    static final String SILENT_CALL_RECORDING = "silent_call_recording";
 
     /** The resource name of the row title. The settings patch adds it to strings.xml. */
     private static final String TITLE_RESOURCE = "andrew_patch_settings";
@@ -134,6 +136,14 @@ public final class LineSettings {
 
     public static boolean customFont() {
         return isOn(CUSTOM_FONT);
+    }
+
+    public static boolean autoRecordCalls() {
+        return isOn(AUTO_RECORD_CALLS);
+    }
+
+    public static boolean silentCallRecording() {
+        return isOn(SILENT_CALL_RECORDING);
     }
 
     // The patches that clear a "shown" boolean in place call these: they give false while the
@@ -283,6 +293,14 @@ public final class LineSettings {
     }
 
     static boolean customFontIncluded() {
+        return false;
+    }
+
+    static boolean autoRecordCallsIncluded() {
+        return false;
+    }
+
+    static boolean silentCallRecordingIncluded() {
         return false;
     }
 
