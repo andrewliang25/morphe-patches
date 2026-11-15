@@ -1,3 +1,9 @@
+## [3.12.0-dev.4](https://github.com/andrewliang25/morphe-patches/compare/v3.12.0-dev.3...v3.12.0-dev.4) (2026-11-15)
+
+### ✨ New Features
+
+* **LINE:** add call recording with auto-record and silent-record switches ([#235](https://github.com/andrewliang25/morphe-patches/issues/235)) ([4f8b46c](https://github.com/andrewliang25/morphe-patches/commit/4f8b46c9b551dfc3f4004154804529eaffdabdfe))
+
 ## [3.12.0-dev.3](https://github.com/andrewliang25/morphe-patches/compare/v3.12.0-dev.2...v3.12.0-dev.3) (2026-11-14)
 
 ### ✨ New Features

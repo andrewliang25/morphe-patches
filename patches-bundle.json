@@ -1,7 +1,7 @@
 {
-  "created_at": "2026-11-14T14:22:02",
-  "description": "## [3.12.0-dev.3](https://github.com/andrewliang25/morphe-patches/compare/v3.12.0-dev.2...v3.12.0-dev.3) (2026-11-14)\n\n### ✨ New Features\n\n* **LINE - Enable themes on sub devices:** use themes and the Black theme on a sub device ([#232](https://github.com/andrewliang25/morphe-patches/issues/232)) ([c77279a](https://github.com/andrewliang25/morphe-patches/commit/c77279aca3ba378bc68fc8303d4227faf1f38b39)), closes [#221](https://github.com/andrewliang25/morphe-patches/issues/221)",
-  "download_url": "https://github.com/andrewliang25/morphe-patches/releases/download/v3.12.0-dev.3/patches-3.12.0-dev.3.mpp",
+  "created_at": "2026-11-15T08:19:25",
+  "description": "## [3.12.0-dev.4](https://github.com/andrewliang25/morphe-patches/compare/v3.12.0-dev.3...v3.12.0-dev.4) (2026-11-15)\n\n### ✨ New Features\n\n* **LINE:** add call recording with auto-record and silent-record switches ([#235](https://github.com/andrewliang25/morphe-patches/issues/235)) ([4f8b46c](https://github.com/andrewliang25/morphe-patches/commit/4f8b46c9b551dfc3f4004154804529eaffdabdfe))",
+  "download_url": "https://github.com/andrewliang25/morphe-patches/releases/download/v3.12.0-dev.4/patches-3.12.0-dev.4.mpp",
   "signature_download_url": "",
-  "version": "3.12.0-dev.3"
+  "version": "3.12.0-dev.4"
 }
