@@ -1,6 +1,6 @@
 package app.andrewliang.patches.line.callrecording
 
-import app.andrewliang.patches.shared.Constants.COMPATIBILITY_LINE_CALL_RECORDING
+import app.andrewliang.patches.shared.Constants.COMPATIBILITY_LINE
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.bytecodePatch
 
@@ -10,18 +10,13 @@ import app.morphe.patcher.patch.bytecodePatch
  *
  * Call recording is gated behind LINE Labs (`premiumcall.a.d()`) and a paid plan (`.e()`). This
  * forces both gates true. The server still decides the "REC" capability per call, so a region that
- * withholds it is not unlocked here. The feature is 26.16.0+, so this lists only
- * those versions. The sites stay guarded, because a forced build (`-f`) can still apply it to an
- * older version.
+ * withholds it is not unlocked here.
  */
 internal val callRecordingEnablePatch = bytecodePatch {
-    compatibleWith(COMPATIBILITY_LINE_CALL_RECORDING)
+    compatibleWith(COMPATIBILITY_LINE)
 
     execute {
-        // 26.16.0+ only: the premiumcall package is absent from older versions.
-        if (CallRecordingGateFingerprint.methodOrNull == null) return@execute
-
-        CallRecordingEnabledFingerprint.methodOrNull?.addInstructions(0, "const/4 v0, 0x1\nreturn v0")
-        CallRecordingPremiumFingerprint.methodOrNull?.addInstructions(0, "const/4 v0, 0x1\nreturn v0")
+        CallRecordingEnabledFingerprint.method.addInstructions(0, "const/4 v0, 0x1\nreturn v0")
+        CallRecordingPremiumFingerprint.method.addInstructions(0, "const/4 v0, 0x1\nreturn v0")
     }
 }

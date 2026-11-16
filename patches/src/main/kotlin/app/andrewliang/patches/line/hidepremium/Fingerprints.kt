@@ -77,7 +77,6 @@ internal fun isPremiumBackupGate(method: Method): Boolean =
 internal object PremiumFontConfigToStringFingerprint : Fingerprint(
     name = "toString",
     returnType = "Ljava/lang/String;",
-    // One filter only: the two versions load the labels in a different order.
     filters = listOf(string("PremiumFontConfiguration(isPremiumFontAvailable=")),
 )
 

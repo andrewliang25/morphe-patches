@@ -3,7 +3,7 @@ package app.andrewliang.patches.line.callrecording
 import app.andrewliang.patches.line.shared.lineSettingsExtensionPatch
 import app.andrewliang.patches.line.shared.markLineSettingIncluded
 import app.andrewliang.patches.line.shared.skipIfLineSetting
-import app.andrewliang.patches.shared.Constants.COMPATIBILITY_LINE_CALL_RECORDING
+import app.andrewliang.patches.shared.Constants.COMPATIBILITY_LINE
 import app.morphe.patcher.patch.bytecodePatch
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
@@ -20,9 +20,6 @@ import com.android.tools.smali.dexlib2.iface.reference.MethodReference
  * stays, and LINE's own recorder keeps
  * working, because the capture is a separate consumer of the recording state. v2 is the Continuation
  * parameter, dead at this point in `emit()`.
- *
- * Call recording is a 26.16.0+ feature, so the patch lists only those versions. The site stays
- * guarded, because a forced build (`-f`) can still apply it to an older version.
  */
 @Suppress("unused")
 val silentCallRecordingPatch = bytecodePatch(
@@ -32,13 +29,12 @@ val silentCallRecordingPatch = bytecodePatch(
         "is illegal in some places. You are responsible for following the law where you are.",
     default = true,
 ) {
-    compatibleWith(COMPATIBILITY_LINE_CALL_RECORDING)
+    compatibleWith(COMPATIBILITY_LINE)
 
     dependsOn(callRecordingEnablePatch, lineSettingsExtensionPatch)
 
     execute {
-        // 26.16.0+ feature. Without it the notify emitter is absent: no-op on older versions.
-        val emit = CallRecordingNotifyFingerprint.methodOrNull ?: return@execute
+        val emit = CallRecordingNotifyFingerprint.method
 
         val instructions = emit.implementation!!.instructions.toList()
         // The send is the one-argument interface call that does not take the "record" string.

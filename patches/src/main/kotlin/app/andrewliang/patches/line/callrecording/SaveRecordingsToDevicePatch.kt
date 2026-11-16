@@ -3,7 +3,7 @@ package app.andrewliang.patches.line.callrecording
 import app.andrewliang.patches.line.shared.lineSettingsExtensionPatch
 import app.andrewliang.patches.line.shared.markLineSettingIncluded
 import app.andrewliang.patches.line.shared.readLineSetting
-import app.andrewliang.patches.shared.Constants.COMPATIBILITY_LINE_CALL_RECORDING
+import app.andrewliang.patches.shared.Constants.COMPATIBILITY_LINE
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.patch.bytecodePatch
@@ -23,9 +23,6 @@ import com.android.tools.smali.dexlib2.iface.reference.FieldReference
  * constructor sets to `KEEP_MEMO`. While the switch is on, the patch gives `DEVICE_STORAGE`
  * instead. That is the path of LINE's own "Save to device" menu item. The register is the
  * `instance-of` result that selected the automatic request, so it is dead at this point.
- *
- * Call recording is a 26.16.0+ feature, so the patch lists only those versions. The site stays
- * guarded, because a forced build (`-f`) can still apply it to an older version.
  */
 @Suppress("unused")
 val saveRecordingsToDevicePatch = bytecodePatch(
@@ -34,14 +31,12 @@ val saveRecordingsToDevicePatch = bytecodePatch(
         "sharing it to Keep Memo, which refuses files over 1 GB.",
     default = true,
 ) {
-    compatibleWith(COMPATIBILITY_LINE_CALL_RECORDING)
+    compatibleWith(COMPATIBILITY_LINE)
 
     dependsOn(lineSettingsExtensionPatch)
 
     execute {
-        // 26.16.0+ feature. Without it the export router is absent: no-op on older versions.
-        val routerClass = CallRecordingExportNetworkFingerprint.methodOrNull?.definingClass
-            ?: return@execute
+        val routerClass = CallRecordingExportNetworkFingerprint.method.definingClass
         val router = mutableClassDefBy(routerClass)
 
         // The destination enum (`ut7.a`): the constructor stores its KEEP_MEMO default.

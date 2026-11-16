@@ -3,7 +3,7 @@ package app.andrewliang.patches.line.callrecording
 import app.andrewliang.patches.line.shared.lineSettingsExtensionPatch
 import app.andrewliang.patches.line.shared.markLineSettingIncluded
 import app.andrewliang.patches.line.shared.readLineSetting
-import app.andrewliang.patches.shared.Constants.COMPATIBILITY_LINE_CALL_RECORDING
+import app.andrewliang.patches.shared.Constants.COMPATIBILITY_LINE
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.patch.BytecodePatchContext
@@ -24,9 +24,6 @@ import com.android.tools.smali.dexlib2.iface.reference.MethodReference
  * `instance-of`. The setup call is the first call on the `instance-of` type. The start method is the
  * `()V` method whose implementation writes `Boolean.TRUE` (stop writes `FALSE`). The setup argument
  * register is dead right after the call, so it carries the switch value.
- *
- * Call recording is a 26.16.0+ feature, so the patch lists only those versions. The site stays
- * guarded, because a forced build (`-f`) can still apply it to an older version.
  */
 @Suppress("unused")
 val autoRecordCallsPatch = bytecodePatch(
@@ -36,13 +33,12 @@ val autoRecordCallsPatch = bytecodePatch(
         "in some places. You are responsible for following the law where you are.",
     default = true,
 ) {
-    compatibleWith(COMPATIBILITY_LINE_CALL_RECORDING)
+    compatibleWith(COMPATIBILITY_LINE)
 
     dependsOn(callRecordingEnablePatch, lineSettingsExtensionPatch)
 
     execute {
-        // 26.16.0+ feature. Without it the premiumcall package is absent: no-op on older versions.
-        val gate = CallRecordingGateFingerprint.methodOrNull ?: return@execute
+        val gate = CallRecordingGateFingerprint.method
 
         val instructions = gate.implementation!!.instructions.toList()
         val instanceOfIndex = instructions.indexOfFirst { it.opcode == Opcode.INSTANCE_OF }

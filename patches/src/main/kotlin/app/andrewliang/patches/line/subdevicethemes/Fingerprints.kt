@@ -9,11 +9,11 @@ import com.android.tools.smali.dexlib2.Opcode
 
 /**
  * LINE's "use the Black theme in dark mode" check (`gk8/o.b()Z` on 26.16.0). On a sub device it
- * returns false before it reads the `THEME_AUTO_DARK_MODE` setting. The method takes a `Context`
- * on 26.14.0 and 26.15.1 and no parameter on 26.16.0, so the fingerprint does not pin parameters.
+ * returns false before it reads the `THEME_AUTO_DARK_MODE` setting.
  */
 internal object DarkModeGateFingerprint : Fingerprint(
     returnType = "Z",
+    parameters = listOf(),
     filters = listOf(fieldAccess(name = "THEME_AUTO_DARK_MODE", opcode = Opcode.SGET_OBJECT)),
 )
 

@@ -3,7 +3,7 @@ package app.andrewliang.patches.line.callrecording
 import app.andrewliang.patches.line.shared.lineSettingsExtensionPatch
 import app.andrewliang.patches.line.shared.markLineSettingIncluded
 import app.andrewliang.patches.line.shared.readLineSetting
-import app.andrewliang.patches.shared.Constants.COMPATIBILITY_LINE_CALL_RECORDING
+import app.andrewliang.patches.shared.Constants.COMPATIBILITY_LINE
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.patch.bytecodePatch
@@ -20,9 +20,6 @@ import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
  * that runs on each duration update. While the switch is on, the patch skips the check and goes to
  * the method's normal end, so it never reports that a limit was reached. The register is the
  * one that holds the voice limit, which the check writes before it reads it.
- *
- * Call recording is a 26.16.0+ feature, so the patch lists only those versions. The site stays
- * guarded, because a forced build (`-f`) can still apply it to an older version.
  */
 @Suppress("unused")
 val removeRecordingLimitPatch = bytecodePatch(
@@ -31,13 +28,12 @@ val removeRecordingLimitPatch = bytecodePatch(
         "video recordings after 20 or 50 minutes.",
     default = true,
 ) {
-    compatibleWith(COMPATIBILITY_LINE_CALL_RECORDING)
+    compatibleWith(COMPATIBILITY_LINE)
 
     dependsOn(lineSettingsExtensionPatch)
 
     execute {
-        // 26.16.0+ feature. Without it the limit check is absent: no-op on older versions.
-        val method = CallRecordingLimitFingerprint.methodOrNull ?: return@execute
+        val method = CallRecordingLimitFingerprint.method
         val instructions = method.implementation!!.instructions.toList()
 
         // `const vX, 0x36ee80`: vX is written here before any read, so it is free above it.
