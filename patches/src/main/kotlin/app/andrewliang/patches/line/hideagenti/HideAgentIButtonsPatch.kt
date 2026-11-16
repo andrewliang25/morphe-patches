@@ -98,7 +98,42 @@ val hideAgentIButtonsPatch = bytecodePatch(
                 getters += "${classDef.type}->${match.name}()J"
             }
         }
-        check(getters.size == 2) { "Expected 2 Agent i in chat hidden-until getters, found $getters" }
+
+        // From 26.17.1 one boxed function reference replaces both getters. While the switch is
+        // on, the value read from the store becomes Long.MAX_VALUE before it is boxed. The key
+        // register is free after the store read, because the box call takes only the result pair.
+        val boxedReads = mutableListOf<String>()
+        classDefForEach { classDef ->
+            val matches = classDef.methods.mapNotNull { method ->
+                agentIInChatHiddenUntilBoxedRead(method)?.let { method to it }
+            }
+            if (matches.isEmpty()) return@classDefForEach
+
+            val mutableClass = mutableClassDefBy(classDef.type)
+            matches.forEach { (match, moveIndex) ->
+                val read = mutableClass.methods.first {
+                    it.name == match.name && it.returnType == match.returnType && it.parameterTypes.isEmpty()
+                }
+                val keyRegister = (read.getInstruction(moveIndex - 2) as OneRegisterInstruction).registerA
+                val result = (read.getInstruction(moveIndex) as OneRegisterInstruction).registerA
+                if (keyRegister > 15 || keyRegister == result || keyRegister == result + 1) {
+                    throw PatchException("Agent i hidden-until key register v$keyRegister is not free")
+                }
+                read.addInstructionsWithLabels(
+                    moveIndex + 1,
+                    readLineSetting(SWITCH, "v$keyRegister") +
+                        """
+                            if-eqz v$keyRegister, :stock
+                            const-wide v$result, 0x7fffffffffffffffL
+                        """,
+                    ExternalLabel("stock", read.getInstruction(moveIndex + 1)),
+                )
+                boxedReads += "${classDef.type}->${match.name}()"
+            }
+        }
+        check((getters.size == 2 && boxedReads.isEmpty()) || (getters.isEmpty() && boxedReads.size == 1)) {
+            "Expected 2 Agent i in chat hidden-until getters or 1 boxed read, found $getters $boxedReads"
+        }
 
         // + menu: the "Show Agent i in chat" switch gets the value "hidden" while the switch is on.
         // LINE then sets the view GONE and builds no content. The call goes right after the

@@ -160,7 +160,9 @@ val andrewPatchSettingPatch = bytecodePatch(
 
         // The new row: v4 = the row, v5 .. are its arguments. Each argument that has no role of
         // its own (the subtitle, the providers, the analytics function) is copied from the field
-        // where "About LINE" keeps it. v3 holds "About LINE".
+        // where "About LINE" keeps it. v3 holds "About LINE". `iget` and `const/4` reach only
+        // v0-v15, so an argument above v15 is read into v4 (free until the row is created after
+        // the arguments) and moved up with `move*/from16`.
         val argumentSmali = types.indices.joinToString("\n") { index ->
             val register = 5 + index
             when (index) {
@@ -170,7 +172,7 @@ val andrewPatchSettingPatch = bytecodePatch(
                     move-result-object v$register
                 """
                 2 -> "" // v7 already holds the title id.
-                eventIndex -> "const/4 v$register, 0x0"
+                eventIndex -> "const/16 v$register, 0x0"
                 clickIndex -> """
                     new-instance v$register, $CLICK
                     invoke-direct {v$register}, $CLICK-><init>()V
@@ -182,15 +184,18 @@ val andrewPatchSettingPatch = bytecodePatch(
                 maskIndex -> "const v$register, $mask"
                 else -> {
                     val field = fieldOfArgument(rowCtor, index)
-                    if (register > 15) throw PatchException("Row argument $index needs register v$register")
+                    val high = register > 15
+                    val target = if (high) 4 else register
                     when (field.type) {
-                        "I", "Z" -> "iget v$register, v3, $field"
+                        "I", "Z" -> "iget v$target, v3, $field" +
+                            (if (high) "\nmove/from16 v$register, v4" else "")
                         "J", "D" -> throw PatchException("Wide row argument $index is not supported")
-                        types[index] -> "iget-object v$register, v3, $field"
+                        types[index] -> "iget-object v$target, v3, $field" +
+                            (if (high) "\nmove-object/from16 v$register, v4" else "")
                         // The field has another type than the argument: it holds the default
                         // that the constructor builds when the mask marks the argument unused.
                         // "About LINE" leaves such an argument unset, so pass null.
-                        else -> "const/4 v$register, 0x0"
+                        else -> "const/16 v$register, 0x0"
                     }
                 }
             }
@@ -279,8 +284,8 @@ val andrewPatchSettingPatch = bytecodePatch(
                 invoke-static {}, $LINE_SETTINGS->titleId()I
                 move-result v7
                 if-eqz v7, :done
-                new-instance v4, $rowClass
             """ + argumentSmali + """
+                new-instance v4, $rowClass
                 invoke-direct/range {v4 .. v$lastRegister}, $rowClass-><init>(${types.joinToString("")})V
                 sget-object v5, $profileConstant
                 invoke-virtual {v5}, $keyAccessor

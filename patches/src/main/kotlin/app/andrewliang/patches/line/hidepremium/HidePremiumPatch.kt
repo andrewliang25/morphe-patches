@@ -94,21 +94,7 @@ val hidePremiumPatch = bytecodePatch(
         // backup entry point rather than leaving a hole.
         val backupFacade = mutableClassDefBy(PremiumBackupFacadeFingerprint.method.definingClass)
 
-        // The facade has three ()Z methods. Select on shape rather than the drift-prone name: the
-        // gate is the only one that opens with an `iget-object` of its lambda field, then calls
-        // that lambda's `invoke()Object` by invoke-virtual. One sibling opens with
-        // invoke-virtual. The other reads a lazy field, and the lazy's getter is not `invoke`.
-        val backupGate = backupFacade.methods.single { method ->
-            method.returnType == "Z" &&
-                method.parameterTypes.isEmpty() &&
-                method.implementation?.instructions?.toList()?.let { instructions ->
-                    instructions.size > 1 &&
-                        instructions[0].opcode == Opcode.IGET_OBJECT &&
-                        instructions[1].opcode == Opcode.INVOKE_VIRTUAL &&
-                        ((instructions[1] as ReferenceInstruction).reference as MethodReference)
-                            .let { it.name == "invoke" && it.returnType == "Ljava/lang/Object;" }
-                } == true
-        }
+        val backupGate = backupFacade.methods.single(::isPremiumBackupGate)
 
         // Third lever: the Home tab upsell module. The Home tab shows one server-driven list of
         // typed modules. The LYP recommendation is the module of type "HomeTabLypRecommendation".

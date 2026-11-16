@@ -1,17 +1,20 @@
 package app.andrewliang.patches.line.callrecording
 
 import app.morphe.patcher.Fingerprint
+import app.morphe.patcher.checkCast
 import app.morphe.patcher.fieldAccess
 import app.morphe.patcher.literal
+import app.morphe.patcher.string
 import com.android.tools.smali.dexlib2.Opcode
 
 private const val PREMIUMCALL_GATE = "Lcom/linecorp/voip2/feature/premiumcall/a;"
 
 /**
- * `com.linecorp.voip2.feature.premiumcall.a.a(aq7.d, Set)` runs on every call connect. When the
+ * `com.linecorp.voip2.feature.premiumcall.a.a(qr7.c, Set)` runs on every call connect. When the
  * call advertises the "REC" capability it sets up the recording extension with
- * `st7.b.z(st7.b$a)`. The auto-start injection goes right after that `z()` call. The package name
- * is not obfuscated, so this anchors on every version that has the feature (26.16.0+).
+ * `iv7.b.M(iv7.b$a)` (26.17.1 names). The auto-start injection goes right after that setup call.
+ * The package name is not obfuscated, so this anchors on every version that has the feature
+ * (26.16.0+).
  */
 internal object CallRecordingGateFingerprint : Fingerprint(
     custom = { method, classDef ->
@@ -43,14 +46,17 @@ internal object CallRecordingPremiumFingerprint : Fingerprint(
 )
 
 /**
- * `xt7.n0.emit(Object, Continuation)` is the peer-notify emitter. On a `true` value it sends the
- * "record" FeatureShare SET (`dv7.f.L(dv7.a)`) that tells the other party. On `false` it clears it
- * (`O("record")`). The silent switch skips the `L` send. Obfuscated name is stable on 26.16.0.
+ * The peer-notify emitter (`nv7.n0.emit(Object, Continuation)` in 26.17.1). On a `true` value it
+ * sends the "record" FeatureShare SET (`tw7.f.H(tw7.a)`) that tells the other party. On `false` it
+ * clears it (`R("record")`). The silent switch skips the send. R8 renames the class, so the match is
+ * the one `emit` that casts its value to `Boolean` and holds the "record" string.
  */
 internal object CallRecordingNotifyFingerprint : Fingerprint(
-    custom = { method, classDef ->
-        classDef.type == "Lxt7/n0;" && method.name == "emit"
-    },
+    name = "emit",
+    filters = listOf(
+        checkCast("Ljava/lang/Boolean;"),
+        string("record"),
+    ),
 )
 
 private const val UPLOAD_NETWORK = "Lcom/linecorp/voip2/feature/recording/upload/b\$a;"

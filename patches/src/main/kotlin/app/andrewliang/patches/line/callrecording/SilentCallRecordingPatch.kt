@@ -13,10 +13,11 @@ import com.android.tools.smali.dexlib2.iface.reference.MethodReference
  * Records a call without telling the other party: no "is recording" banner and no spoken
  * "recording started/ended" announcement. Use the "Record without notifying" switch to turn it off.
  *
- * When recording starts, `xt7/n0.emit()` sends a "record" FeatureShare SET (`dv7.f.L(dv7.a)`) over
- * the call session. That one send drives both the peer banner and the local announcement on both
- * devices (a `MediaPlayer` in `du7/c`, played off the shared "record" state). The patch skips the
- * send while the switch is on. The `O("record")` stop branch stays, and LINE's own recorder keeps
+ * When recording starts, the notify emitter (`nv7.n0.emit()` in 26.17.1) sends a "record"
+ * FeatureShare SET (`tw7.f.H(tw7.a)`) over the call session. That one send drives both the peer
+ * banner and the local announcement on both devices (a `MediaPlayer` that plays off the shared
+ * "record" state). The patch skips the send while the switch is on. The `R("record")` stop branch
+ * stays, and LINE's own recorder keeps
  * working, because the capture is a separate consumer of the recording state. v2 is the Continuation
  * parameter, dead at this point in `emit()`.
  *
@@ -40,14 +41,17 @@ val silentCallRecordingPatch = bytecodePatch(
         val emit = CallRecordingNotifyFingerprint.methodOrNull ?: return@execute
 
         val instructions = emit.implementation!!.instructions.toList()
-        val lIndex = instructions.indexOfFirst {
+        // The send is the one-argument interface call that does not take the "record" string.
+        val sendIndex = instructions.indexOfFirst {
             it.opcode == Opcode.INVOKE_INTERFACE &&
                 ((it as? ReferenceInstruction)?.reference as? MethodReference).let { ref ->
-                    ref?.name == "L" && ref.returnType == "V"
+                    ref?.returnType == "V" &&
+                        ref.parameterTypes.size == 1 &&
+                        ref.parameterTypes[0] != "Ljava/lang/String;"
                 }
         }
-        check(lIndex >= 0) { "could not find dv7.f.L() send in xt7.n0.emit()" }
-        emit.skipIfLineSetting(lIndex, 1, "silentCallRecording", "v2")
+        check(sendIndex >= 0) { "could not find the record send in the notify emitter" }
+        emit.skipIfLineSetting(sendIndex, 1, "silentCallRecording", "v2")
 
         markLineSettingIncluded("silentCallRecording")
     }

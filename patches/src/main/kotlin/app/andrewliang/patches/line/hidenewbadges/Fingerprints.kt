@@ -9,7 +9,6 @@ import app.morphe.patcher.methodCall
 import com.android.tools.smali.dexlib2.Opcode
 
 private const val HEADER_BUTTON = "Ljp/naver/line/android/common/view/header/HeaderButton;"
-private const val HEADER_STATE_N = "Ljp/naver/line/android/common/view/header/a\$c;"
 
 /**
  * `HeaderButton.c(I, Z)V` — the **only** method in the whole APK that makes a header "new item"
@@ -35,15 +34,13 @@ internal object HeaderDotFingerprint : Fingerprint(
 )
 
 /**
- * The chat-room header badge renderer (`ag1.t1.i` in 26.14.0), matched on its **"N" badge branch**.
+ * The chat-room header badge renderer (`nl1.o0.i` in 26.17.1), matched on its **"N" badge branch**.
  *
  * The renderer switches over a sealed state with four cases — numeric count, dot, "N", and none —
- * and only the "N" case reads `HeaderButton.g` (the `header_n_badge` view). Pairing the read of the
- * non-obfuscated singleton `header/a$c` with the read of the non-obfuscated field
- * `HeaderButton.g` lands on that method and nowhere else: `HeaderButton`'s own reads of `g` sit in
- * a colour-filter helper and its constructor, neither of which mentions `a$c`.
- *
- * Both anchors are non-obfuscated, so this does not drift.
+ * and only the "N" case reads `HeaderButton.g` (the `header_n_badge` view). The branch compares the
+ * state with the "N" singleton (`equals`), reads `HeaderButton.g` and calls `setVisibility`. No
+ * other class outside `HeaderButton` reads `g`. From 26.17.1 R8 moves the state classes out of the
+ * `header` package, so the singleton is no longer an anchor.
  *
  * The patch rewrites only the visibility argument of the following `setVisibility` call. It must
  * NOT neuter the whole method — the numeric-count branch lives in the same method.
@@ -51,9 +48,11 @@ internal object HeaderDotFingerprint : Fingerprint(
 internal object HeaderNBadgeFingerprint : Fingerprint(
     returnType = "V",
     filters = listOf(
-        fieldAccess(definingClass = HEADER_STATE_N, name = "a"),
+        methodCall(definingClass = "Ljava/lang/Object;", name = "equals"),
         fieldAccess(definingClass = HEADER_BUTTON, name = "g"),
+        methodCall(name = "setVisibility"),
     ),
+    custom = { _, classDef -> classDef.type != HEADER_BUTTON },
 )
 
 /**
