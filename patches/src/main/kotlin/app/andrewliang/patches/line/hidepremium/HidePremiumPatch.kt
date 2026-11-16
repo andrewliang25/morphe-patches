@@ -22,7 +22,8 @@ val hidePremiumPatch = bytecodePatch(
 ) {
     compatibleWith(COMPATIBILITY_LINE)
 
-    // The class names in these comments are from 26.14.0. R8 renames them on each version.
+    // The class names in these comments are from 26.14.0, as in `docs/line-premium-map.md`. R8
+    // renames them on each version, so the patch finds each one by shape.
     //
     // LINE gates every LYP premium surface on one market-availability config flag, a83.a.d() ==
     // g45.i1.Z(). The facade z73.k reads it three ways that all cascade from d():
@@ -114,8 +115,8 @@ val hidePremiumPatch = bytecodePatch(
         // Fourth lever: the promo sheet for new fonts on the Font page. Its text and image come
         // from the server. The Font page view model shows it only while the configuration flag
         // `isPremiumFontCmsPopupEnabled` is true. The flag is the last field of the data class, so
-        // it is the last `iget-boolean` of `toString`. 26.14.0 has one more field before it. The
-        // getter of the flag is the `()Z` method that reads that field.
+        // it is the last `iget-boolean` of `toString`. The getter of the flag is the `()Z` method
+        // that reads that field.
         val fontConfigToString = PremiumFontConfigToStringFingerprint.method
         val hasCmsPopupLabel = fontConfigToString.implementation!!.instructions.any { instruction ->
             ((instruction as? ReferenceInstruction)?.reference as? StringReference)?.string ==

@@ -13,7 +13,7 @@ private const val HEADER_BUTTON = "Ljp/naver/line/android/common/view/header/Hea
 /**
  * `HeaderButton.c(I, Z)V` — the **only** method in the whole APK that makes a header "new item"
  * dot visible. The `Z` picks which of the two dot views to show, and it is a *theme* predicate
- * (`o96.m.k()` in 26.14.0 = "custom theme applied || dark"), not a semantic distinction: green
+ * ("custom theme applied || dark"), not a semantic distinction: green
  * under a dark/custom theme, red otherwise. So one edit here removes the dot in both colours.
  *
  * Verified exhaustive: the dot views `header_new_badge_img` / `header_new_badge_img_green` are resolved to a view and
@@ -22,7 +22,7 @@ private const val HEADER_BUTTON = "Ljp/naver/line/android/common/view/header/Hea
  * Official Account list and Nearby (two).
  *
  * The numeric count badge is untouched: it is a different field, written directly by the count
- * branch of the header badge renderer (`ag1.t1.i` in 26.14.0) without ever calling this method.
+ * branch of the header badge renderer (`nl1.o0.i` in 26.17.1) without ever calling this method.
  *
  * Non-obfuscated class and method, so this anchor does not drift.
  */

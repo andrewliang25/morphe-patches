@@ -8,7 +8,7 @@ import app.morphe.patcher.opcode
 import com.android.tools.smali.dexlib2.Opcode
 
 /**
- * The bind coroutine of `ChatBubbleEntryBannerViewBinder` (`rm1.u` in 26.14.0). It shows the tip
+ * The bind coroutine of `ChatBubbleEntryBannerViewBinder` (`os1.t` in 26.17.1). It shows the tip
  * under a message bubble, for example "CHECK 探索如何收藏好友傳來的影片 >" under a video. The tip
  * is a ComposeView that inflates from the `chat_ui_entry_banner_stub` ViewStub.
  *

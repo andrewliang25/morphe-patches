@@ -18,7 +18,7 @@ private const val FONT_SETTING_CLASS = "Lcom/linecorp/line/premiumfont/ui/settin
  * in the request. It returns `null` when no certificate matches.
  *
  * Anchored on its own failure message. R8 obfuscates androidx together with LINE, so the class
- * drifts (`f7/e` in 26.14.0, `j7/e` in 26.15.1), but the message does not.
+ * drifts (`j7/e` in 26.16.0, `i7/e` in 26.17.1), but the message does not.
  */
 internal object FontProviderCheckFingerprint : Fingerprint(
     returnType = "Landroid/content/pm/ProviderInfo;",
@@ -26,7 +26,7 @@ internal object FontProviderCheckFingerprint : Fingerprint(
 )
 
 /**
- * The loader of the Font page list (`er4/f.b` in 26.14.0, `qx4/f.b` in 26.15.1). It decides with
+ * The loader of the Font page list (`sx4/f.b` in 26.16.0, `uz4/f.b` in 26.17.1). It decides with
  * a 0/1 flag whether to sync the font list from LINE's server first. Then it reads the fonts from
  * the local database and puts the "Default" row first.
  *

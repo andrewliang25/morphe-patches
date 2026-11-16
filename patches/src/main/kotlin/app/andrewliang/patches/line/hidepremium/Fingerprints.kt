@@ -44,7 +44,7 @@ internal object PremiumFacadeFingerprint : Fingerprint(
  * We do NOT patch this method. We only need its `definingClass` to reach the premium-backup
  * availability gate (see the patch). The facade, its gate lambda and the interface are all
  * obfuscated and drift between versions, so none of them is hardcoded. Do not anchor on
- * `kotlin.Unit` either: from LINE 26.15.1, R8 also renames the Kotlin stdlib.
+ * `kotlin.Unit` either: R8 also renames the Kotlin stdlib.
  */
 internal object PremiumBackupFacadeFingerprint : Fingerprint(
     filters = listOf(string("InitialBackupRestore")),
@@ -69,7 +69,7 @@ internal fun isPremiumBackupGate(method: Method): Boolean =
         } == true
 
 /**
- * `toString` of LINE's premium font configuration (`g45/c2` in 26.14.0, `ta5/f2` in 26.15.1), a
+ * `toString` of LINE's premium font configuration (`dc5/j2` in 26.17.1), a
  * Kotlin data class. Its last field, `isPremiumFontCmsPopupEnabled`, comes from the server setting
  * `function.premium.common.font.cms_popup.enabled`. The Font page shows a server-made promo sheet
  * for new fonts ("Change to new fonts…") only while it is true.
@@ -81,7 +81,7 @@ internal object PremiumFontConfigToStringFingerprint : Fingerprint(
 )
 
 /**
- * `toString` of the state of the Font page banner (`dr4/a$b$b` in 26.14.0, `px4/a$b$b` in 26.15.1).
+ * `toString` of the state of the Font page banner (`tz4/a$b$b` in 26.17.1).
  * The banners are "A new font is available!" and the premium font banners. A banner shows only
  * while its first field, `isVisible`, is true.
  */
@@ -92,7 +92,7 @@ internal object FontBannerStateToStringFingerprint : Fingerprint(
 )
 
 /**
- * `toString` of LINE's CMS popup configuration (`g45/u` in 26.14.0, `ta5/a0` in 26.15.1). Its one
+ * `toString` of LINE's CMS popup configuration (`dc5/a0` in 26.17.1). Its one
  * field comes from the server setting `function.premium.common.cms_popup`. While it is false, the
  * CMS popup module (`com.linecorp.line.cms.popup`) fetches and shows no server-made promo popup.
  */

@@ -86,7 +86,7 @@ internal fun BytecodePatchContext.markIncluded(name: String) {
 }
 
 /**
- * In LINE's main tab-list builder (`b68/g.a()` in 26.14.0), skips the `sget-object` +
+ * In LINE's main tab-list builder (`di8/f.a()` in 26.17.1), skips the `sget-object` +
  * `ArrayList.add` pair at [index] while the switch [feature] is on. The pair stays in the method, so
  * the fingerprints of the other tab patches still find their constants.
  *
