@@ -109,7 +109,7 @@ top of the state constructor. A filter with a switch returns the input list whil
 
 ### How to check a bump
 
-A clean apply does not prove that each site changed. Eight sites of *Hide new item badges* are
+A clean apply does not prove that each site changed. Nine sites of *Hide new item badges* are
 best-effort (`methodOrNull`), so a drifted anchor skips its site with no error. Compare the patched
 dex with the original dex method by method:
 
@@ -2447,9 +2447,14 @@ Recorded 2026-10-14 during the 26.15.1 bump.
 - **`MANUAL_READ_RECEIPT` is staged.** A new enum constant, with no code that reads it yet. If it
   goes live, examine it against *[Chat] Keep chats unread*.
 - **Badges that *[General] Hide new item badges* does not reach.** Seen on the device on both
-  versions: the "N" on the LINE Labs row in Settings, and the green dots on Edit, Unsend and Keep
-  Memo in the message long-press menu. With the tabs shown, the TODAY and Wallet tabs also show a
-  red dot, and Wallet service tiles show green dots.
+  versions: the green dots on Edit, Unsend and Keep Memo in the message long-press menu. With the
+  tabs shown, the TODAY and Wallet tabs also show a red dot, and Wallet service tiles show green
+  dots.
+- **The LINE Labs "N" is hidden since 26.17.1 support.** The LINE Labs row in Settings and in
+  Settings > Chats draws `new_mark` from the suspend predicate `hasNewLabFeature`, not from the
+  settings item views. Its body (`ji5/s2` in 26.17.1, `eh5/x2` in 26.16.0) is found by its Kotlin
+  debug annotation, `LineUserMainSettingsCategory$hasNewLabFeature$2`, and returns false at entry.
+  Device-confirmed on 26.17.1 (2026-11-20): no "N" on either row.
 
 ---
 

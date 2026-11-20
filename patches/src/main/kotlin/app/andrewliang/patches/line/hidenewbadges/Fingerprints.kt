@@ -7,6 +7,7 @@ import app.morphe.patcher.fieldAccess
 import app.morphe.patcher.literal
 import app.morphe.patcher.methodCall
 import com.android.tools.smali.dexlib2.Opcode
+import com.android.tools.smali.dexlib2.iface.value.StringEncodedValue
 
 private const val HEADER_BUTTON = "Ljp/naver/line/android/common/view/header/HeaderButton;"
 
@@ -205,4 +206,25 @@ internal object BottomNavBadgeHolderFingerprint : Fingerprint(
     filters = listOf(
         literal({ resourceId("id", "bnb_button_badge_new") }),
     ),
+)
+
+private const val LAB_FEATURE_BODY =
+    "com.linecorp.line.settings.main.LineUserMainSettingsCategory\$hasNewLabFeature\$2"
+
+/**
+ * The body of `hasNewLabFeature`, the predicate behind the green "N" on the LINE Labs row of
+ * Settings and of Settings > Chats. Both rows call it, and it returns the `Boolean` that shows the
+ * row's `new_mark`. The rows use their own view holders, not the settings item views above. R8
+ * renames the class, but keeps its Kotlin debug annotation, which names the source function.
+ */
+internal object LabFeatureNewMarkFingerprint : Fingerprint(
+    name = "invokeSuspend",
+    returnType = "Ljava/lang/Object;",
+    custom = { _, classDef ->
+        classDef.annotations.any { annotation ->
+            annotation.elements.any { element ->
+                (element.value as? StringEncodedValue)?.value == LAB_FEATURE_BODY
+            }
+        }
+    },
 )
