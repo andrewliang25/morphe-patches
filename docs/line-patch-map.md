@@ -533,6 +533,31 @@ LINE adds a wanted module under that prefix.
 
 ---
 
+## Analytics & the "[General] Block analytics" patch
+
+LINE logs usage events (screens, taps, page views) through one shared logger. About 970 classes call
+its interface `mk8.c` (26.17.1), for example `p(jk8.c)`. They get the logger from the shared reference
+`ek8.u.b` (`AtomicReference<mk8.c>`) through `ek8.u.x()`. The SDK sends to
+`uts-front.line-apps.com` (UTS).
+
+- The reference starts with `mk8.i`, a logger that drops every event.
+- The startup task `"TrackingManagerTask"` (`xp8.d.f()` on 26.17.1, `ho8.d.f()` on 26.16.0) builds
+  the UTS client `ek8.z` and the real logger `mk8.h`, then puts it in with `compareAndSet(mk8.i, h)`.
+  Nothing else creates `mk8.h` or reads `ek8.z`.
+- The patch returns at the start of that task while the switch `block_analytics` is on. The
+  reference keeps `mk8.i`, so every event is dropped.
+
+The task runs only when the process starts, so the switch has a "Close LINE" row, not "Restart
+LINE". The Restart row starts a new task in the same process.
+
+Device result on 26.17.1, with a logging build that logged the creation of `mk8.h` and each
+`mk8.h.p` call: with the switch on, `mk8.h` was not created and no event was logged. With the switch
+off and a new process, `mk8.h` was created and logged 3 `jk8.c$g` events in 2 seconds.
+
+Not covered: the crash reporters (Sentry, `io.sentry`, and Firebase Crashlytics) are separate SDKs.
+They send crash reports, not usage events. `com.linecorp.trackingservice` is a 1-class native adapter
+for LINE GAME (`line-game-growthy-android`).
+
 ## Ads — bundled SDKs, display coverage, and the parts not patched
 
 Audited on LINE 26.11.0, 2026-08-24. Issue #69 showed that a Taiwan account does not render
