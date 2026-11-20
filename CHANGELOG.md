@@ -1,3 +1,9 @@
+## [3.13.0-dev.3](https://github.com/andrewliang25/morphe-patches/compare/v3.13.0-dev.2...v3.13.0-dev.3) (2026-11-20)
+
+### ✨ New Features
+
+* **LINE - Block analytics:** stop LINE's usage events ([4c231ea](https://github.com/andrewliang25/morphe-patches/commit/4c231ea22159b952e8fab9f862f5e566ca1d0dc2))
+
 ## [3.13.0-dev.2](https://github.com/andrewliang25/morphe-patches/compare/v3.13.0-dev.1...v3.13.0-dev.2) (2026-11-20)
 
 ### ✨ New Features

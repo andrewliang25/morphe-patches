@@ -1,6 +1,6 @@
 {
   "NOTE": "Do NOT manually edit this file. This file is automatically updated when semantic release (release.yml) runs. Manually editing this file can break your releases and break third party tools that use this file.",
-  "version": "3.13.0-dev.2",
+  "version": "3.13.0-dev.3",
   "patches": [
     {
       "name": "[Ad] Block ad telemetry",
@@ -1247,6 +1247,51 @@
       "default": true,
       "dependencies": [
         "ResourcePatch",
+        "BytecodePatch"
+      ],
+      "compatiblePackages": [
+        {
+          "packageName": "jp.naver.line.android",
+          "name": "LINE",
+          "description": null,
+          "apkFileType": "APKM",
+          "appIconColor": "#06C755",
+          "signatures": null,
+          "targets": [
+            {
+              "version": "26.16.0",
+              "versionCodes": {
+                "ARM64_V8A": 261600106,
+                "ARMEABI_V7A": 261600106,
+                "X86_64": 261600106,
+                "X86": 261600106
+              },
+              "isExperimental": false,
+              "minSdk": 30,
+              "description": null
+            },
+            {
+              "version": "26.17.1",
+              "versionCodes": {
+                "ARM64_V8A": 261710173,
+                "ARMEABI_V7A": 261710173,
+                "X86_64": 261710173,
+                "X86": 261710173
+              },
+              "isExperimental": false,
+              "minSdk": 32,
+              "description": null
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "[General] Block analytics",
+      "description": "Stops LINE from sending usage events to its analytics service, such as the screens you open and the buttons you tap. Crash reports are not changed.",
+      "default": true,
+      "dependencies": [
         "BytecodePatch"
       ],
       "compatiblePackages": [
