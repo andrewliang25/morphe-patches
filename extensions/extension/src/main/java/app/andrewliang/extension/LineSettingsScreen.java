@@ -132,8 +132,9 @@ final class LineSettingsScreen {
                 || LineSettings.hideLineAiImageEditIncluded() || LineSettings.hideAgentIIncluded();
         boolean calls = LineSettings.autoRecordCallsIncluded() || LineSettings.silentCallRecordingIncluded()
                 || LineSettings.saveCallRecordingsToDeviceIncluded() || LineSettings.removeCallRecordingLimitIncluded();
+        boolean premium = LineSettings.disablePremiumIncluded();
 
-        if (!chats && !general && !tabs && !buttons && !calls) {
+        if (!chats && !general && !tabs && !buttons && !calls && !premium) {
             content.addView(note(activity, "No patches in this build have a switch."));
             return;
         }
@@ -268,6 +269,18 @@ final class LineSettingsScreen {
                 content.addView(toggle(activity, LineSettings.HIDE_WALLET_TAB, "Hide Wallet tab", null, showRestart));
             }
             content.addView(note(activity, "Tab changes show after LINE restarts."));
+            content.addView(restart);
+        }
+
+        if (premium) {
+            content.addView(section(activity, "Premium"));
+            View restart = row(activity, "Restart LINE", "Applies your Premium change.", true);
+            restart.setVisibility(View.GONE);
+            restart.setOnClickListener(v -> restart(activity));
+            content.addView(toggle(activity, LineSettings.DISABLE_PREMIUM, "Disable LINE Premium",
+                    "Hides LINE Premium upsells, badges and pages.",
+                    () -> restart.setVisibility(View.VISIBLE)));
+            content.addView(note(activity, "This change shows after LINE restarts."));
             content.addView(restart);
         }
     }

@@ -1,11 +1,17 @@
 package app.andrewliang.patches.line.hidepremium
 
+import app.andrewliang.patches.line.shared.hideIfLineSetting
+import app.andrewliang.patches.line.shared.lineSettingsExtensionPatch
+import app.andrewliang.patches.line.shared.markLineSettingIncluded
 import app.andrewliang.patches.line.shared.resolveHomeState
 import app.andrewliang.patches.shared.Constants.COMPATIBILITY_LINE
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.bytecodePatch
+import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
 import com.android.tools.smali.dexlib2.Opcode
+import com.android.tools.smali.dexlib2.iface.instruction.OffsetInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
@@ -21,6 +27,8 @@ val hidePremiumPatch = bytecodePatch(
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_LINE)
+
+    dependsOn(lineSettingsExtensionPatch)
 
     // The class names in these comments are from 26.14.0, as in `docs/line-premium-map.md`. R8
     // renames them on each version, so the patch finds each one by shape.
@@ -104,8 +112,8 @@ val hidePremiumPatch = bytecodePatch(
         // whenever the server sends it, and a false market gate changes nothing.
         //
         // Thus this patch removes the module from the list (see HomeState). It does not flip
-        // another gate. One literal comparison needs no extension code, so this
-        // patch declares no extension.
+        // another gate. One literal comparison is enough, so the filter needs no extension
+        // method of its own.
         //
         // "[Home] Hide Home modules" and "[Home] Hide Home content feed" prepend the same call shape at the
         // same index. All three are pure List -> List filters on p1. Thus the patch that applies
@@ -148,43 +156,23 @@ val hidePremiumPatch = bytecodePatch(
         val cmsPopupModuleGetter = mutableClassDefBy(CmsPopupConfigToStringFingerprint.method.definingClass)
             .methods.single { method -> method.returnType == "Z" && method.parameterTypes.isEmpty() }
 
-        // Every lookup is resolved. The patch mutates from this point.
-        marketGate.addInstructions(
-            0,
-            """
-                const/4 v0, 0x0
-                return v0
-            """,
-        )
+        val gates = listOf(marketGate, backupGate, cmsPopupGetter, cmsPopupModuleGetter)
+            .map { gate -> gate to gate.gateReturns() }
 
-        // `.locals 0`, so p0 is the only register — and it is dead after the immediate return.
-        backupGate.addInstructions(
-            0,
-            """
-                const/4 p0, 0x0
-                return p0
-            """,
-        )
-
-        // `.locals 0`: p0 is dead after the immediate return.
-        cmsPopupGetter.addInstructions(
-            0,
-            """
-                const/4 p0, 0x0
-                return p0
-            """,
-        )
+        // Every lookup is resolved. The patch mutates from this point. Each lever reads the
+        // switch, so with the switch off LINE runs as stock.
+        //
+        // The gates have `.locals 0`, so the only register is `this`, which the body reads. Thus
+        // the switch is applied to the result, just before each `return`. The highest index goes
+        // first, so the lower indices stay valid.
+        gates.forEach { (gate, returns) ->
+            returns.sortedByDescending { it.first }.forEach { (index, register) ->
+                gate.addInstructions(index, hideIfLineSetting("disablePremium", "v$register"))
+            }
+        }
 
         // p1 is `isVisible`. The constructor stores it, and the other constructors call this one.
-        bannerConstructor.addInstructions(0, "const/4 p1, 0x0")
-
-        cmsPopupModuleGetter.addInstructions(
-            0,
-            """
-                const/4 p0, 0x0
-                return p0
-            """,
-        )
+        bannerConstructor.addInstructions(0, hideIfLineSetting("disablePremium", "p1"))
 
         // The literal is the receiver of equals(), so a null type is safe.
         with(homeState) {
@@ -195,7 +183,29 @@ val hidePremiumPatch = bytecodePatch(
                     invoke-virtual {v4, v3}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
                     move-result v3
                 """,
+                feature = "disablePremium",
             )
         }
+        markLineSettingIncluded("disablePremium")
     }
+}
+
+/**
+ * The index and register of each `return` of the `()Z` gate. Code inserted before a `return` that
+ * a branch or a catch handler jumps to does not run on that path, so such a gate fails.
+ */
+private fun MutableMethod.gateReturns(): List<Pair<Int, Int>> {
+    val implementation = implementation!!
+    val instructions = implementation.instructions.toList()
+    val addresses = instructions.runningFold(0) { address, instruction -> address + instruction.codeUnits }
+    val targets = instructions.indices.mapNotNull { index ->
+        (instructions[index] as? OffsetInstruction)?.let { addresses[index] + it.codeOffset }
+    } + implementation.tryBlocks.flatMap { block -> block.exceptionHandlers.map { it.handlerCodeAddress } }
+
+    val returns = instructions.indices.filter { instructions[it].opcode == Opcode.RETURN }
+    if (returns.isEmpty()) throw PatchException("premium: the gate $definingClass->$name has no return")
+    if (returns.any { addresses[it] in targets }) {
+        throw PatchException("premium: a branch in $definingClass->$name jumps straight to a return")
+    }
+    return returns.map { it to (instructions[it] as OneRegisterInstruction).registerA }
 }
