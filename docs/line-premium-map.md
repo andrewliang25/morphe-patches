@@ -226,10 +226,56 @@ reads it, so with the switch off LINE runs as stock after a restart:
 
 The App icon row is a premium surface (issue #234). The Settings row
 `shouldShowCustomAppIconSettings` (`hf5.t.c()` on 26.17.1) checks `z()` first, then the server flag
-`function.premium.common.appicon.enabled`, then the profile region (`JP`, `TH`, `TW`). So the patch
-hides it in every region. This is device-confirmed on 26.17.1 with a TW account. With the switch off, the
-row and the full icon list (Collaboration and Design) show. Selecting an icon shows **Apply** with no
-Premium prompt. Whether a non-premium account can apply an icon was not tested.
+`function.premium.common.appicon.enabled`, then the profile region (`JP`, `TH`, `TW`). So this patch
+hides the row in every region. `[Premium] Unlock app icons` shows it again (see below).
+
+## App icons (`[Premium] Unlock app icons`)
+
+Every icon is in the APK as a launcher `activity-alias` with its own `@mipmap`. LINE applies an icon
+on the phone: `rf5.a` enables the alias with `PackageManager.setComponentEnabledSetting`, then LINE
+restarts. The server sends only the list that the App icon page shows (LEGY `GET /app-icons`, model
+`of5.i`). Thus a Premium icon is a client-side lock.
+
+The list is JSON with one object for each section (`collaboration`, `design`, `special`, `event`,
+`basic`), each with `category` and `items`. An item is `WcuAppIconData`: only `name` and `type`
+are required, and the decoder ignores keys it does not know. On 26.17.1 a TW account got 5
+collaboration items, 24 design items and 2 basic items. The APK has about 100 collaboration aliases.
+
+The patch has three levers, and all read the switch `unlock_app_icons` (default on):
+
+| Lever | 26.17.1 / 26.16.0 | Change |
+|---|---|---|
+| App icon gate | `hf5.t.c()` / `ce5.s.c()` | The result of the first `()Z` interface call (the Premium market flag `z()`) becomes `z() \|\| switch`. The server flag and the region check stay. |
+| Eligibility check | `bg3.m.A(sg3.c, Continuation)` / `be3.k.j(se3.b, Continuation)` | At entry, for `APP_ICON` only, it returns the `Eligible` object (`sg3.i$b.a`). Other features keep LINE's answer. |
+| List parse | `pf5.i.invoke` / `ke5.i.invoke` | After `check-cast p1, String`, `AppIcons.addBundledIcons` adds one `collaboration` item for each launcher alias named `collaboration_*` that no section lists. Its `iconUrl` is `android.resource://<package>/<icon id of the alias>`, which Coil (`jl.g$a`) draws. |
+
+The gate also decides the startup rollback (`hf5.t$b`): while it returns false, LINE puts the
+default icon back. The eligibility check decides the Premium lock on Apply, and the early end date
+for non-subscribers (`nonSubscriberEndTime`) in the same rollback.
+
+Anchors: the gate is the only `()Z` method with `getProfile`, `String.toUpperCase`, `Set.contains`
+and an interface `()Z` call. The eligibility check is the only two-argument method of the LYP facade
+that reads `NOT_SUBSCRIBED`. `Eligible` is the `toString` "Eligible" of a class that holds its own
+instance in a static field. The feature enum keeps its constant name `APP_ICON`. The list parse is
+the `invoke` method with the strings "RELEASE", "beta" and "CustomAppIcon". The extension reads the
+aliases from `PackageManager` (`GET_ACTIVITIES | MATCH_DISABLED_COMPONENTS`, entries with a
+`targetActivity`), so it needs no list of names.
+
+Device result on 26.17.1, TW account without Premium, with `[Premium] Disable LINE Premium` on:
+
+- Both switches on: the App icon row shows. The page lists Collaboration and Design (Premium) and
+  Basic (marked Free). A Design icon applied with no Premium prompt, and the launcher alias
+  `design_purple_glitter` was enabled. It stayed after two cold starts.
+- Unlock switch off: the App icon row is hidden.
+- Both switches off (stock): Apply on a Design icon opens "Use LINE Premium exclusive app icons"
+  with a Join prompt, and the icon does not change.
+- Not observed: the startup rollback. With the Unlock switch off, the applied icon stayed after a
+  restart.
+- Bundled collaboration icons: the Collaboration section shows the 5 server icons, then the bundled
+  ones (Stranger Things, Squid Game, Pokémon, Dragon Ball and more), drawn from their launcher icons.
+  `collaboration_pokemon_1` applied, showed on the home screen, and stayed after a cold start.
+- The App icon page logs the events `AppIconApplied` and `AppIconSelected` through LINE's shared
+  analytics logger, so LINE can see that a non-subscriber uses a Premium icon.
 
 ### Second lever: the premium-backup flag (required)
 
