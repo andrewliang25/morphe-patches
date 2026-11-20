@@ -55,6 +55,7 @@ public final class LineSettings {
     static final String REMOVE_CALL_RECORDING_LIMIT = "remove_call_recording_limit";
     static final String DISABLE_PREMIUM = "disable_premium";
     static final String UNLOCK_APP_ICONS = "unlock_app_icons";
+    static final String BLOCK_ANALYTICS = "block_analytics";
 
     /** The resource name of the row title. The settings patch adds it to strings.xml. */
     private static final String TITLE_RESOURCE = "andrew_patch_settings";
@@ -169,6 +170,10 @@ public final class LineSettings {
     /** The App icon gate: true while the switch is on, and the value LINE computed while it is off. */
     public static boolean unlockAppIcons(boolean available) {
         return available || unlockAppIcons();
+    }
+
+    public static boolean blockAnalytics() {
+        return isOn(BLOCK_ANALYTICS);
     }
 
     // The patches that clear a "shown" boolean in place call these: they give false while the
@@ -346,6 +351,10 @@ public final class LineSettings {
     }
 
     static boolean unlockAppIconsIncluded() {
+        return false;
+    }
+
+    static boolean blockAnalyticsIncluded() {
         return false;
     }
 

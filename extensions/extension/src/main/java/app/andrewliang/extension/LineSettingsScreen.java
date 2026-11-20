@@ -122,7 +122,7 @@ final class LineSettingsScreen {
     private static void addSwitches(Activity activity, LinearLayout content) {
         boolean chats = LineSettings.keepChatsUnreadIncluded() || LineSettings.keepUnsentMessagesIncluded();
         boolean general = LineSettings.externalBrowserIncluded() || LineSettings.disableVoomIncluded()
-                || LineSettings.customFontIncluded();
+                || LineSettings.customFontIncluded() || LineSettings.blockAnalyticsIncluded();
         boolean tabs = LineSettings.hideTodayTabIncluded() || LineSettings.hideShoppingTabIncluded()
                 || LineSettings.hideVoomTabIncluded() || LineSettings.hideWalletTabIncluded();
         boolean buttons = LineSettings.hideAiFriendsIncluded() || LineSettings.hideCommunityButtonIncluded()
@@ -220,6 +220,17 @@ final class LineSettingsScreen {
                 close.setOnClickListener(v -> CustomFontPicker.exit(activity));
                 content.addView(toggle(activity, LineSettings.CUSTOM_FONT, "Custom font",
                         "Uses the font that you upload on LINE's Font page.",
+                        () -> close.setVisibility(View.VISIBLE)));
+                content.addView(close);
+            }
+            if (LineSettings.blockAnalyticsIncluded()) {
+                // LINE installs its analytics logger only when its process starts.
+                View close = row(activity, "Close LINE", "Open LINE again to apply your analytics change.", true);
+                close.setVisibility(View.GONE);
+                close.setOnClickListener(v -> CustomFontPicker.exit(activity));
+                content.addView(toggle(activity, LineSettings.BLOCK_ANALYTICS, "Block analytics",
+                        "Stops LINE from sending usage events, such as the screens you open and the buttons "
+                                + "you tap.",
                         () -> close.setVisibility(View.VISIBLE)));
                 content.addView(close);
             }
