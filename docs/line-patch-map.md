@@ -902,6 +902,56 @@ origin matches no facet of the account, so the FIDO server refuses the registrat
   button changed from Link to Unlink. Native `nativeMakeCredential` signs the `clientDataJSON` from
   Java and does not read the APK certificate on its own.
 
+### Google passkey sign-in and creation — not fixable on a re-signed build
+
+On a re-signed (Standard) build, a Google-managed passkey cannot sign in to LINE, and Settings ▸
+Account ▸ Passkey ▸ Create a passkey fails (issue #256). This is a dead end, not a bug in a patch.
+
+Device test (26.17.1, Android SDK 37, 2026-11-20). The passkey option on the login screen goes
+through the Android Credential Manager, which passes the request to Google Play Services
+(`PasswordAndPasskeyService`). Play Services checks the calling app and finds no usable passkey. The
+log shows, in the Play Services process, `GoogleSignatureVerifier: package info is not set correctly`
+and then `[ListPasskeyCredentialsOperation] Result size: 0`. The chooser never finishes, so the
+passkey page loads forever.
+
+Create a passkey takes the same path (26.18.2). `bg0/f` builds an `androidx.credentials`
+`CreatePublicKeyCredentialRequest` (`v7/j`) and calls `CredentialManager.createCredential` (`v7/t.b`).
+The reporter of #256 saw the biometric prompt, and then the create failed. This is static only: we
+did not reproduce the create on our device.
+
+The check is not in LINE. A passkey is bound to LINE's web site (relying party `line.me`). For an
+Android app to use it, Play Services reads the app signing certificate and checks it against the
+Digital Asset Links file on LINE's server (`line.me/.well-known/assetlinks.json`). A re-signed build
+has a different certificate, so it is not in that file. Play Services returns no passkey, and it
+does not save a new one. This is the same class as Google account sign-in (Path 1 above): the
+certificate is read in another process and checked against a file on a server, so no APK patch
+reaches it.
+
+"[Fix] Restore biometric login" does not help here. It rewrites the origin that LINE builds in its
+own process for the first-party FIDO2 flow (the biometric device link). Every caller of that flow
+asks `Fido2.getApiClient(Context, true)`, which gives LINE's own `LineFidoApiClient`. The Credential
+Manager passkey path does not run that code.
+
+MicroG-RE does not help either, so do not send passkey calls to it. Its release notes list passkey
+support from 7.1.0 (MicroG-RE PR #230), but its FIDO code makes the same asset-links check as Play
+Services. `RequestHandling.kt` (`getAllFacetIdCandidates`) reads the caller's real installed
+certificate with `PackageManager.getSignatures`, and `checkIsValid` then checks it against
+`line.me/.well-known/assetlinks.json`. A re-signed LINE fails there. MicroG-RE's signature spoofing
+(the `SPOOFED_PACKAGE_SIGNATURE` manifest metadata, `PackageSpoofUtils`) applies only to
+`PackageUtils.firstSignatureDigest`, which the GMS API calls use. The FIDO check does not use it. This
+is by design: if any app could claim another certificate, any app could use your `line.me` passkey.
+The routes through MicroG-RE (`fixgooglelogin`, `gmscoreauth`) work because MicroG-RE skips a check
+that Play Services makes. For passkeys it makes the same check, so it gives nothing that Play
+Services does not. Checked against the MicroG-RE source (2026-11-24), not on a device.
+
+Workarounds: sign in with phone number and password, or with the QR code from a signed-in device.
+These sign you in, but they do not give you a passkey.
+
+Root Mount is the only install that keeps passkeys working. It mounts the patched `base.apk` over
+the Play Store install, so Android still reports LINE's genuine certificate and Play Services
+accepts it. Device test (2026-11-24): on a Root Mount build, Settings ▸ Account ▸ Passkey ▸ Create
+a passkey works. Passkey sign-in on Root Mount is not tested yet.
+
 ### Can a payment run inside a modified LINE app? (issues #96, #161)
 
 No, and the bundle does not try. Three layers:
