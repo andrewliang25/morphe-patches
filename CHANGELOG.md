@@ -1,3 +1,20 @@
+## [3.12.1-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v3.12.0...v3.12.1-dev.1) (2026-11-20)
+
+### ⚠ BREAKING CHANGES
+
+* **LINE:** The patches no longer support LINE 26.14.0 and 26.15.1.
+Patch LINE 26.16.0 on Android 11 or 12, and LINE 26.17.1 on Android 12L
+or later.
+
+### 🐛 Bug Fixes
+
+* **LINE - Hide new item badges:** hide the "N" on the LINE Labs row ([5a4fef3](https://github.com/andrewliang25/morphe-patches/commit/5a4fef3abe0a3f3c4c78f6e25ec28c6ee04a59d8))
+
+### 🚀 Updated App Support
+
+* **LINE:** add support for LINE 26.17.1 ([dc57eca](https://github.com/andrewliang25/morphe-patches/commit/dc57eca7e9baa189ee40c96da76c6dbaf7e810fb))
+* **LINE:** drop LINE 26.14.0 and 26.15.1 ([66f4655](https://github.com/andrewliang25/morphe-patches/commit/66f4655bc72c9a5a41a87a50a896e3637d84f097))
+
 ## [3.12.0](https://github.com/andrewliang25/morphe-patches/compare/v3.11.0...v3.12.0) (2026-11-15)
 
 ### 🐛 Bug Fixes
