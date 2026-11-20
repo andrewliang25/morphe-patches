@@ -22,7 +22,8 @@ val hidePremiumPatch = bytecodePatch(
 ) {
     compatibleWith(COMPATIBILITY_LINE)
 
-    // The class names in these comments are from 26.14.0. R8 renames them on each version.
+    // The class names in these comments are from 26.14.0, as in `docs/line-premium-map.md`. R8
+    // renames them on each version, so the patch finds each one by shape.
     //
     // LINE gates every LYP premium surface on one market-availability config flag, a83.a.d() ==
     // g45.i1.Z(). The facade z73.k reads it three ways that all cascade from d():
@@ -94,21 +95,7 @@ val hidePremiumPatch = bytecodePatch(
         // backup entry point rather than leaving a hole.
         val backupFacade = mutableClassDefBy(PremiumBackupFacadeFingerprint.method.definingClass)
 
-        // The facade has three ()Z methods. Select on shape rather than the drift-prone name: the
-        // gate is the only one that opens with an `iget-object` of its lambda field, then calls
-        // that lambda's `invoke()Object` by invoke-virtual. One sibling opens with
-        // invoke-virtual. The other reads a lazy field, and the lazy's getter is not `invoke`.
-        val backupGate = backupFacade.methods.single { method ->
-            method.returnType == "Z" &&
-                method.parameterTypes.isEmpty() &&
-                method.implementation?.instructions?.toList()?.let { instructions ->
-                    instructions.size > 1 &&
-                        instructions[0].opcode == Opcode.IGET_OBJECT &&
-                        instructions[1].opcode == Opcode.INVOKE_VIRTUAL &&
-                        ((instructions[1] as ReferenceInstruction).reference as MethodReference)
-                            .let { it.name == "invoke" && it.returnType == "Ljava/lang/Object;" }
-                } == true
-        }
+        val backupGate = backupFacade.methods.single(::isPremiumBackupGate)
 
         // Third lever: the Home tab upsell module. The Home tab shows one server-driven list of
         // typed modules. The LYP recommendation is the module of type "HomeTabLypRecommendation".
@@ -128,8 +115,8 @@ val hidePremiumPatch = bytecodePatch(
         // Fourth lever: the promo sheet for new fonts on the Font page. Its text and image come
         // from the server. The Font page view model shows it only while the configuration flag
         // `isPremiumFontCmsPopupEnabled` is true. The flag is the last field of the data class, so
-        // it is the last `iget-boolean` of `toString`. 26.14.0 has one more field before it. The
-        // getter of the flag is the `()Z` method that reads that field.
+        // it is the last `iget-boolean` of `toString`. The getter of the flag is the `()Z` method
+        // that reads that field.
         val fontConfigToString = PremiumFontConfigToStringFingerprint.method
         val hasCmsPopupLabel = fontConfigToString.implementation!!.instructions.any { instruction ->
             ((instruction as? ReferenceInstruction)?.reference as? StringReference)?.string ==

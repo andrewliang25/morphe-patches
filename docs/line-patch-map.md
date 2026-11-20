@@ -15,12 +15,22 @@ Reference notes for authoring LINE (`jp.naver.line.android`) patches, distilled 
 
 ---
 
-## Supported versions (26.14.0, 26.15.1 and 26.16.0)
+## Supported versions (26.16.0 and 26.17.1)
 
-26.15.1 needs Android 12L (API 32). 26.14.0 and 26.16.0 need Android 11 (API 30). The bundle keeps
-all three versions, listed in ascending order in `Constants.kt` (`COMPATIBILITY_LINE.targets`). Each
-fingerprint must match every version, so no patch has a table of names per version. Each anchor is a
-name that R8 keeps:
+26.16.0 needs Android 11 (API 30), so it is the version for Android 11 and 12. 26.17.1 needs
+Android 12L (API 32). The two versions cover the same phones that 26.14.0, 26.15.1 and 26.16.0
+covered, so the bundle dropped 26.14.0 and 26.15.1 with the 26.17.1 bump. Each target in
+`Constants.kt` (`COMPATIBILITY_LINE.targets`, ascending order) pins the version, its `versionCode`
+and its `minSdk`. All splits of a LINE bundle share one `versionCode`, so the single-`Int` form of
+`AppTarget` applies it to every ABI.
+
+| Version | versionCode | minSdk |
+|---|---|---|
+| 26.16.0 | 261600106 | 30 |
+| 26.17.1 | 261710173 | 32 |
+
+Each fingerprint must match every version, so no patch has a table of names per version. Each
+anchor is a name that R8 keeps:
 
 - String literals, Kotlin `toString` text and Thrift operation names.
 - Kotlin enum-constant names, read with `sget-object`.
@@ -59,6 +69,33 @@ the 3-argument `Function3` method on `nt8.q` to `k`. The settings patch now read
 method name from the interface class at patch time and adds a forwarding method to
 `LineSettingsClick`. The 13 bottom-tab constants and 48 Home module types did not change.
 
+### What changed in 26.17.1
+
+The first apply of the 26.16.0 bundle to 26.17.1 applied 33 of 39 patches. No surface was removed.
+One more patch applied and changed nothing. Each version now changes 100 or 101 LINE methods (see
+"How to check a bump"). The renames include `eh5.t2` to `ji5.n2` (Settings rows), `mg8.d` to
+`di8.f` (bottom tabs), `eh2.g$a` to `dj2.h$a` (Home state), `wk8.x` to `a8.a` (unsend) and `xt7` to
+`nv7` (call recording). The failures and their fixes:
+
+| Patch | What changed | Fix |
+|---|---|---|
+| [Call] Auto-record calls | The setup call `st7.b.z` is `iv7.b.M`. The injected smali named the 26.16.0 class `rt7.a`, so a forced apply would add a call to a class that does not exist | The recorder, the setup call and the start method are found by shape (see "What the patches do" under call recording) |
+| [Call] Record without notifying | The fingerprint named the class `xt7/n0`. It is `methodOrNull`, so it applied and changed nothing | `emit` with `check-cast Boolean` and the "record" string |
+| [Chat] Keep unsent messages | R8 merged the unsend lambda into a `packed-switch` class (`a8/a`) and dropped the read of the row id before the guard | The block reads the id itself and jumps to the skip target (see "What the patch does") |
+| [General] Andrew's Patch Setting | The row constructor has 13 arguments, so argument 11 is in v16 | An argument above v15 goes through v4 and `move-object/from16` |
+| [General] Hide Agent i buttons | The two `()J` getters of the hidden-until time are one function reference that returns a boxed `Long` | The patch also accepts the boxed form (see "Agent i in chats") |
+| [General] Hide new item badges | R8 moved the header badge states out of the kept `header` package, so `header/a$c` is gone | `equals`, then the read of `HeaderButton.g`, then `setVisibility` |
+| [Premium] Disable LINE Premium | About 70 methods hold the `"InitialBackupRestore"` log tag. The fingerprint found the facade on 26.16.0 only because the facade came first in the dex order | The class must also have the backup gate shape (see `docs/line-premium-map.md`) |
+
+Traps:
+
+- A `methodOrNull` site that drifts applies with no error. The call recording patches now use
+  `.method`, because every supported version has call recording.
+- Injected smali must not name an obfuscated class. Read the descriptor from the matched method.
+- BranchSweep and a dump both passed the first Keep unsent fix, which joined the original guard
+  branch with a `long` in `v1`/`v2`. The stock path still reads `v2` as an enum, and ART rejects
+  such a method. Read the registers at every merge point of an injected branch.
+
 ### Shared helpers
 
 | Helper | What it finds | Used by |
@@ -72,7 +109,7 @@ top of the state constructor. A filter with a switch returns the input list whil
 
 ### How to check a bump
 
-A clean apply does not prove that each site changed. Eight sites of *Hide new item badges* are
+A clean apply does not prove that each site changed. Nine sites of *Hide new item badges* are
 best-effort (`methodOrNull`), so a drifted anchor skips its site with no error. Compare the patched
 dex with the original dex method by method:
 
@@ -82,8 +119,9 @@ dex with the original dex method by method:
 4. Run `BranchSweep` on each patched dex.
 5. Read each site that reuses a register on the new version. The register must be dead there.
 
-On this bump, each version changes 64 LINE methods, and the 26.14.0 list is the same as the list of
-the released bundle.
+On the 26.17.1 bump, 26.16.0 changes 101 LINE methods and 26.17.1 changes 100. The roles pair one to
+one, except that Hide Agent i changes two getters on 26.16.0 and one boxed reader on 26.17.1. The
+26.16.0 list is the same as the list of the released v3.12.0 bundle.
 
 A `check-cast` passes the verifier but can still throw at run time. The first 26.15.1 build cast a
 copied field to the type of a new row argument, and Settings crashed with `ClassCastException`. Read
@@ -604,7 +642,7 @@ starting point, so no one needs to sweep the APK again.
 | [Fix] Restore location maps via MicroG-RE | `line.fixlocationmaps` | `fo/p.b` — the maps module context (see below) |
 | [Fix] Restore Google login via MicroG-RE | `line.fixgooglelogin` | the androidx.credentials provider choice, the Play Services provider's version check and the Identity Sign-In client (see "Google account access") |
 | [Chat] Hide tips under messages | `line.hidechattips` | `rm1.u.invokeSuspend` — the "CHECK" tip under a bubble (see below) |
-| [General] Hide Agent i buttons | `line.hideagenti` | `wm2.j` Home header icon + `function.search.line_ai_entry.enabled` + the two `CHATROOM_AI_BUTTON_SHOWN_AFTER_MILLIS` getters + `WalletV3GrandDesignHeaderView.o()` + the `AiSubscription` Settings rows + the + menu "Show Agent i in chat" switch (see below) |
+| [General] Hide Agent i buttons | `line.hideagenti` | `wm2.j` Home header icon + `function.search.line_ai_entry.enabled` + the `CHATROOM_AI_BUTTON_SHOWN_AFTER_MILLIS` readers + `WalletV3GrandDesignHeaderView.o()` + the `AiSubscription` Settings rows + the + menu "Show Agent i in chat" switch (see below) |
 | [General] Hide LINE AI image editing | `line.hidelineaiimageedit` | the getter of `function.ai.lineai.enabled_entry_points` (see below) |
 | [Chat] Hide AI Friends button | `line.chatheaderbuttons` | `function.ai.character.display_button` (see below) |
 | [General] Custom font | `line.customfont` | LINE's premium font path: `PremiumFontProvider`, the androidx certificate check, the Font page (see below) |
@@ -934,6 +972,13 @@ register must carry a `check-cast` to the field's own owner before the guard (th
 including a register past `v15`, where `iget`/`invoke` operands stop fitting — throws rather than
 applying a half-patch.
 
+On 26.16.0, LINE reads the row id (`iget-wide`) between the row load and the guard, and the block
+passes that register. From 26.17.1, R8 drops that read. The block then reads the id itself, from the
+same field (`b`, the first `iget-wide` on the row class in the method), into a free low register
+pair. It then jumps to the skip target, which returns the row. The patch refuses a skip target that
+does not return the row. The block must not join the original guard branch: there the `long` pair
+meets the stock path, which still reads those registers as objects, and ART rejects the method.
+
 The mark is skipped when the row is **already** a tombstone (`type IN (27, 28, 38)`, what `na8.c.h()`
 covers). The injection sits ahead of the branch it flips, so it also runs where LINE's guard would have
 exited early: a redelivered unsend for a row tombstoned before the patch was installed, or one stripped
@@ -1099,13 +1144,20 @@ hidden (26.16.0 names):
 | Reader (Settings) | `r21.b.a()` | `fo0.y`: "Hide" is selected while `currentTimeMillis() < a()` |
 | Reader (Labs) | `vh8.g0$a.a(…)` | Turning on the "Scheduling agent" lab shows `LabsAiTalkChipVisibilityPopupFragment` while hidden |
 
+In 26.17.1 the three readers are one. `x21.a` hands a function reference,
+`getAiButtonShownAfterMillis()J` (`x21.a$a.invoke()`), to a shared controller. That reference reads
+the key and returns it boxed with `Long.valueOf`. The chat (`e91.d`), the Settings screen (`y21.a`,
+`kj8.c`) and the Labs popup (`mj8.h0`) all read the time through it.
+
 **The patch.** Both getters (`s81.c.v()`, `r21.b.a()`) are the same four instructions: `sget-object`
 of the key, `invoke-static` of the long getter of the store, `move-result-wide`, `return-wide`. The
 store class is `dao/d` in 26.14.0 and `dao/c` later, so the patch does not anchor on it. The patch
 finds them by this shape and the key name (R8 keeps enum constant names). While the switch "Hide
-Agent i" is on, they return `Long.MAX_VALUE`. The result register is written only by the
+Agent i" is on, they return `Long.MAX_VALUE`. On 26.17.1 the patch writes `Long.MAX_VALUE` into the
+read value of the boxed reader before `Long.valueOf`. That one site also covers the Labs popup. The result register is written only by the
 `move-result-wide`, so the switch value goes into it at entry. With the switch off, LINE's own
-"Show" and "Hide temporarily" work again. It fails unless it finds exactly two. Both readers only compare the value with the
+"Show" and "Hide temporarily" work again. It fails unless it finds exactly two getters or exactly one
+boxed reader. Both readers only compare the value with the
 current time, so the large value is safe. The writer is left alone: what it stores no longer matters.
 
 **Side effects.** The Settings screen always shows "Hide temporarily". Tapping "Show" writes 0, the
@@ -1982,6 +2034,11 @@ without patching the APK again. Anchors are 26.14.0.
    - The event argument has the event type. The patch passes null.
    - The mask is the last argument.
    - Each other argument is copied from the field where "About LINE" keeps it.
+
+   The new row puts argument N in `v(5 + N)`. In 26.17.1 the constructor has 13 arguments, so
+   argument 11 is in v16. `iget` and `const/4` take only v0 to v15. The patch reads such an argument
+   into v4 and moves it up with `move-object/from16`. It creates the row (`new-instance v4`) after
+   the arguments for this reason.
 3. It finds the fields by following each constructor argument through register moves and through
    the call to the base constructor (`fieldOfArgument`). So no obfuscated field name is hard-coded.
    If the field has another type than the argument, the patch passes null. Such a field holds the
@@ -2244,15 +2301,15 @@ The flag is an interface method that LINE gets from its service locator. The pat
 through this sequence in every version: `sget-object key`, `invoke-static lookup(Context, key)`,
 `move-result-object`, `check-cast`, `invoke-interface …()Z`.
 
-| | 26.14.0 | 26.15.1 | 26.16.0 |
-|---|---|---|---|
-| Flag | `c50/e0.t()` | `fa0/d0.s()` | `fa0/d0.q()` |
-| Dark-mode check | `v98/n.b(Context)Z` | `ug8/o.b(Context)Z` | `gk8/o.b()Z` (no parameter) |
-| Night-mode setter (called by `LineApplication`) | `u10/a.b(Z)` | `z60/a.a(Z)` | `z60/a.a(Z)` |
-| Settings builder (Themes row) | `ka5/o2` | `xg5/h2` | `eh5/t2` |
-| Row visibility → always-true | `m55/z.u` → `m55/z.m` | `zb5/y.u` → `zb5/y.m` | `ec5/k0.u` → `ec5/k0.m` |
-| My Themes adapter (Theme Shop footer) | `xa7/j` | `wh7/j` | `si7/j` |
-| Shared shop opener | not mapped | not mapped | `dl7/a.d(…, yf7/f, …)V` |
+| | 26.16.0 | 26.17.1 |
+|---|---|---|
+| Flag | `fa0/d0.q()` | `ca0/d0.o()` |
+| Dark-mode check | `gk8/o.b()Z` | `wl8/q.b()Z` |
+| Night-mode setter (called by `LineApplication`) | `z60/a.a(Z)` | not mapped |
+| Settings builder (Themes row) | `eh5/t2` | `ji5/n2` |
+| Row visibility → always-true | `ec5/k0.u` → `ec5/k0.m` | → `jd5/h0.m` |
+| My Themes adapter (Theme Shop footer) | `si7/j` | `hk7/k` |
+| Shared shop opener | `dl7/a.d(…, yf7/f, …)V` | not mapped |
 
 Do not hook the flag itself. It has about 95 callers, and it also sets the app type that LINE
 sends to the server (`ANDROIDSECONDARY`), E2EE key handling, FullSync and backup restore.
@@ -2390,9 +2447,14 @@ Recorded 2026-10-14 during the 26.15.1 bump.
 - **`MANUAL_READ_RECEIPT` is staged.** A new enum constant, with no code that reads it yet. If it
   goes live, examine it against *[Chat] Keep chats unread*.
 - **Badges that *[General] Hide new item badges* does not reach.** Seen on the device on both
-  versions: the "N" on the LINE Labs row in Settings, and the green dots on Edit, Unsend and Keep
-  Memo in the message long-press menu. With the tabs shown, the TODAY and Wallet tabs also show a
-  red dot, and Wallet service tiles show green dots.
+  versions: the green dots on Edit, Unsend and Keep Memo in the message long-press menu. With the
+  tabs shown, the TODAY and Wallet tabs also show a red dot, and Wallet service tiles show green
+  dots.
+- **The LINE Labs "N" is hidden since 26.17.1 support.** The LINE Labs row in Settings and in
+  Settings > Chats draws `new_mark` from the suspend predicate `hasNewLabFeature`, not from the
+  settings item views. Its body (`ji5/s2` in 26.17.1, `eh5/x2` in 26.16.0) is found by its Kotlin
+  debug annotation, `LineUserMainSettingsCategory$hasNewLabFeature$2`, and returns false at entry.
+  Device-confirmed on 26.17.1 (2026-11-20): no "N" on either row.
 
 ---
 
@@ -2415,10 +2477,9 @@ recorder does the capture and saves the file. The patches only trigger it, remov
 notice, choose where the copy goes, and remove the time limit.
 
 **Version:** call recording is **26.16.0+ only**. The `premiumcall` / `recording` packages and
-every `callrecording_*` string are absent from 26.14.0 and 26.15.1 (measured 2026-11-15). The
-`[Call]` patches use `COMPATIBILITY_LINE_CALL_RECORDING`, which lists 26.16.0 only, so Manager does
-not offer them for the older versions. Their sites stay `methodOrNull`-guarded, because a forced
-build (`-f`) still applies them to an older version, where they change nothing.
+every `callrecording_*` string are absent from 26.14.0 and 26.15.1 (measured 2026-11-15). Both
+supported versions have it, so the `[Call]` patches use `COMPATIBILITY_LINE` and resolve each site
+with `.method`. A site that drifts fails the patch instead of skipping with no error.
 
 LINE's call recording is a **LINE Labs** feature (`linemain_labs_desc_callrecording`
 "Record voice and video calls in a one-to-one chat") that is also **LYP-Premium / eligible
@@ -2471,15 +2532,23 @@ plays and shows the banner off the inbound SET. So the single `L()` cut removes 
 
 ### What the patches do
 
-- `callRecordingEnablePatch` (internal) forces the two feature gates true so the record button
-  appears without LINE Labs or a paid plan: `premiumcall/a.d()` (enable) and `.e()` (plan). The
-  server still grants the `"REC"` capability per call, so a region that withholds it is not
+- `callRecordingEnablePatch` (internal) forces the two feature gates true:
+  `premiumcall/a.d()` (Labs) and `.e()` (plan). The record button then appears without a paid plan.
+  The LINE Labs call recording switch must still be on. See
+  [Recording with the LINE Labs switch off](#recording-with-the-line-labs-switch-off-not-fixed).
+  The server still grants the `"REC"` capability per call, so a region that withholds it is not
   unlocked. Both `[Call]` patches depend on it.
-- `[Call] Auto-record calls`: after `st7.b.z(st7.b$a)` sets up the recording extension in
-  `premiumcall/a.a()`, calls `rt7.a.I()` on the same object. The `z()` receiver is the object, and
-  its argument register is dead right after the call and carries the switch value.
-- `[Call] Record calls without notifying`: skips the `dv7.f.L(dv7.a)` send in `xt7/n0.emit()` while
-  the switch is on. The `O("record")` stop branch is kept. That one send drives both the peer
+- `[Call] Auto-record calls`: after the setup call sets up the recording extension in
+  `premiumcall/a.a()` (`st7.b.z(st7.b$a)` in 26.16.0, `iv7.b.M(iv7.b$a)` in 26.17.1), calls the start
+  method of the recorder (`rt7.a.I()`, `hv7.a.J()`) on the same object. R8 renames all three, so
+  the patch finds them by shape. The recorder is the `check-cast` type before the `instance-of`. The
+  setup call is the first interface call on the `instance-of` type. The start method is the `()V`
+  method of the recorder whose implementation writes `Boolean.TRUE` (stop writes `FALSE`). The setup
+  argument register is dead right after the call and carries the switch value.
+- `[Call] Record calls without notifying`: skips the "record" send (`dv7.f.L(dv7.a)` in 26.16.0,
+  `tw7.f.H(tw7.a)` in 26.17.1) in the notify emitter while the switch is on. The emitter
+  (`xt7/n0`, `nv7/n0`) is the one `emit` that casts its value to `Boolean` and holds the "record"
+  string. The stop branch (`O("record")`, `R("record")`) is kept. That one send drives both the peer
   banner and the local announcement on both devices, so skipping it removes all of them.
 
 Both patches are on by default, and each switch is on by default. The legal warning is in each
@@ -2492,6 +2561,39 @@ Device-confirmed (26.16.0, 2026-11-15):
 - With both off, the record button is present and manual recording announces as normal.
 
 The capture is independent of the notify and the announcement.
+
+### Recording with the LINE Labs switch off (not fixed)
+
+With the LINE Labs call recording switch off, LINE makes no recording, even with the default
+patch set. Settings ▸ Calls ▸ Call recordings says "The call recording feature is disabled". Every
+earlier device test had the switch on. A fresh install turns it off. The `[Call] Auto-record
+calls` description tells the user to turn the switch on. Measured on 26.17.1 (2026-11-20). The
+names below are 26.17.1 names.
+
+- The server is not the blocker. A probe at the start of `premiumcall/a.a(qr7.c, Set)` logged
+  `set=[REC]` on a call with the switch off.
+- The switch is the `isCallRecordingEnabled` flag of the server-sent `LabConfiguration` data class
+  (`dc5/a1`, field `l`, getter `a()`; `ya5/z0` in 26.16.0). Its `toString()` names each flag. The
+  Labs state lambda `qv7/i` returns `(c() && w() && !f()) ? LAB : INACTIVE` on `hr7.m` (`rt7/d`).
+  `c()` is `LabConfiguration.isEnabled`, `w()` is `isCallRecordingEnabled`, and `f()` is the
+  official-release flag of `VoIPConfiguration.premiumCall`.
+- `premiumcall/a.d()` is only one reader of that state. The forced `d()` shows the record button,
+  but other code reads the state through `iv7.e.k()` (`nv7/a`) or holds the `qv7/i` lambda itself:
+  - `xz7/i` creates the recorder (`hv7.a`, impl `nv7/r`) only when `k() != INACTIVE`. With the
+    switch off, the call has no recorder and auto-record has nothing to start.
+  - The recorder loop `nv7/r.h0` first calls `iv7.e.u()` (`qv7/b`, which holds `qv7/i`). On
+    `INACTIVE` it returns false, and the recorder sets `NOT_AVAILABLE` and stops.
+  - Other direct readers: `er7/f`, `er7/h`, `vv7/n`, `vv7/p`, `f58/c`, `mj8/x`, `qv7/a`, `qv7/l`.
+- Tried and not enough (each one a device test with the switch off, no file saved):
+  1. Force `iv7.e.k()` to return `LAB`. The probe showed that the recorder was created, set up
+     (`M`) and started (`J`), and `h0` ran. But `h0` stopped before `j0`, because `qv7/b` reads
+     `qv7/i`, not `k()`.
+  2. Force the `isCallRecordingEnabled` getter true (`dc5/a1.a()`). LINE still made no recording,
+     and the settings page still said "disabled". It was not measured why. Either another flag of
+     the state is false here, or the value was cached before the patch could change it.
+- Next step, if this is picked up again: log `c()`, `w()`, `f()`, the `qv7/i` result and the `u()`
+  result during a call with the switch off, then force the value that is wrong. Keep the `nv7/r`
+  entry probe to see whether `j0` runs.
 
 **Legal:** covert recording with the consent notice removed is unlawful in two-party-consent
 jurisdictions. Each patch description carries a warning.
@@ -2590,8 +2692,10 @@ Route B anchors are obfuscated and drift: `xt7/n0` (notify emitter), `xt7/r` (st
 `dy7/d` (button controller), `rt7/a` (`I()`/`v()` interface), `du7/a`/`du7/c` (the "record"
 StateShare activity and announcement player), `ro7/b` (enable enum). The save path drifts too:
 `bu7/a` (export router), `ut7/a` (destination enum), `xt7/x0`, `uu7/d` and `uu7/f`. The time limit
-drifts in `au7/d` (limit timer), `xt7/r.q()` and `qt7/b$b` (video limits). Re-anchor them and re-confirm
-on each LINE bump.
+drifts in `au7/d` (limit timer), `xt7/r.q()` and `qt7/b$b` (video limits). These are 26.16.0 names.
+In 26.17.1 the patched sites are `nv7/n0` (notify emitter), `hv7/a` with `iv7/b` (recorder and
+extension), `nv7/r` (start/stop impl), `rv7/a` (export router) and `qv7/d$d$b` (limit check).
+Re-anchor them and re-confirm on each LINE bump.
 
 ## Dead ends (investigated, not patchable)
 

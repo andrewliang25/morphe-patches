@@ -9,7 +9,7 @@ import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 
 /**
- * The static initializer of LINE's main Settings list, `ka5/o2.<clinit>` in 26.14.0. It builds every
+ * The static initializer of LINE's main Settings list, `ji5/n2.<clinit>` in 26.17.1. It builds every
  * row of the list once and keeps them in a static `List`.
  *
  * Its class and its row types are obfuscated, but the "About LINE" row reads two enum constants

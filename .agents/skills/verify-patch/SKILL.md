@@ -12,7 +12,7 @@ every option.
 
 ```bash
 .agents/skills/verify-patch/scripts/verify.sh "[General] Custom font"            # build + both LINE versions
-.agents/skills/verify-patch/scripts/verify.sh --no-build -v 26.15.1 "<a>" "<b>"  # one version, two patches
+.agents/skills/verify-patch/scripts/verify.sh --no-build -v 26.17.1 "<a>" "<b>"  # one version, two patches
 .agents/skills/verify-patch/scripts/verify.sh --all --no-diff                     # every LINE patch, fast
 .agents/skills/verify-patch/scripts/verify.sh --app facebook "[Reels] Picture-in-picture"
 ```
@@ -43,7 +43,7 @@ Run it in the background when it covers both versions or `--all`.
   `invoke-static {v4}, Lapp/…/LineSettings;->customFont(Z)Z`. Branch targets print as `:L0`,
   `:L1` in address order, so an inserted block does not renumber the branches after it.
 - `SUMMARY` counts the changed classes, the extension classes (`Lapp/andrewliang/`), and the other
-  new classes by package. The extension bundle carries the Kotlin standard library, so on 26.15.1
+  new classes by package. The extension bundle carries the Kotlin standard library, so on LINE
   (which obfuscates its own copy) about 1,000 `kotlin` classes are new. Any other new package is
   worth a look.
 - A class that the patcher moved to another dex file counts as changed only when its content

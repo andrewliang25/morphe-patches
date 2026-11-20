@@ -8,20 +8,22 @@ Reference notes on how **LINE Yahoo Premium (LYP)** feature-gating works in LINE
 > The obfuscated descriptors in this file are from 26.14.0, unless a note gives another version.
 > Device-confirmation notes record the version each behaviour was *tested* on.
 
-## 26.15.1 and 26.16.0
+## 26.15.1, 26.16.0 and 26.17.1
 
-The levers and the unsend patch work on all three versions with the same anchors. The changes for
-26.15.1 and 26.16.0:
+The bundle supports 26.16.0 and 26.17.1. The levers and the unsend patch work on both with the same
+anchors. The changes since 26.14.0:
 
 - **Backup gate.** R8 renames `kotlin.Unit` in 26.15.1, so the `Lkotlin/Unit;` anchor is gone. The
-  patch finds the backup facade by the string `"InitialBackupRestore"`, which only one method holds.
-  It selects the gate by shape: the one `()Z` method that opens with `iget-object` and then calls
-  `invoke()Ljava/lang/Object;` with `invoke-virtual`. The gate is `gq4.g0.u0()` in 26.15.1 and
-  `iq4.g0.k()` in 26.16.0.
+  patch finds the backup facade by the log tag `"InitialBackupRestore"` and the gate shape: the one
+  `()Z` method that opens with `iget-object` and then calls `invoke()Ljava/lang/Object;` with
+  `invoke-virtual`. About 70 methods hold the tag, so the tag alone is not enough. On 26.16.0 it
+  found the facade only because the facade came first in the dex order. On 26.17.1 it found another
+  class. The gate is `gq4.g0.u0()` in 26.15.1, `iq4.g0.k()` in 26.16.0 and `ks4.s.j()` in 26.17.1.
 - **The crash site still exists.** The view holder without a null guard moved from `r55/c3` to
   `ec5/r3`. Thus the backup gate must still flip together with the market gate.
 - **Home lever.** The Home state class is found from its `PageData(modules=` text
-  (`line/shared/HomeState.kt`). It is `kh2.h$a` in 26.15.1 and `eh2.g$a` in 26.16.0.
+  (`line/shared/HomeState.kt`). It is `kh2.h$a` in 26.15.1, `eh2.g$a` in 26.16.0 and `dj2.h$a` in
+  26.17.1.
 - **Unsend age gate.** The patch finds the gate by shape: an `iget`, a `goto`, a second `iget`, then
   the `PREMIUM_UNSEND_MESSAGE` constant. It replaces the first read with the second one, the free
   window. Both reads are `jd1.a.o` in 26.15.1 and `xc1.a.o` in 26.16.0.
