@@ -53,6 +53,7 @@ public final class LineSettings {
     static final String SILENT_CALL_RECORDING = "silent_call_recording";
     static final String SAVE_CALL_RECORDINGS_TO_DEVICE = "save_call_recordings_to_device";
     static final String REMOVE_CALL_RECORDING_LIMIT = "remove_call_recording_limit";
+    static final String DISABLE_PREMIUM = "disable_premium";
 
     /** The resource name of the row title. The settings patch adds it to strings.xml. */
     private static final String TITLE_RESOURCE = "andrew_patch_settings";
@@ -156,6 +157,10 @@ public final class LineSettings {
         return isOn(REMOVE_CALL_RECORDING_LIMIT);
     }
 
+    public static boolean disablePremium() {
+        return isOn(DISABLE_PREMIUM);
+    }
+
     // The patches that clear a "shown" boolean in place call these: they give false while the
     // switch is on, and the value LINE computed while it is off.
 
@@ -173,6 +178,10 @@ public final class LineSettings {
 
     public static boolean hideChatTips(boolean shown) {
         return shown && !hideChatTips();
+    }
+
+    public static boolean disablePremium(boolean shown) {
+        return shown && !disablePremium();
     }
 
     /** The LINE AI entry point list: empty while the switch is on. */
@@ -319,6 +328,10 @@ public final class LineSettings {
     }
 
     static boolean removeCallRecordingLimitIncluded() {
+        return false;
+    }
+
+    static boolean disablePremiumIncluded() {
         return false;
     }
 

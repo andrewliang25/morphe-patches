@@ -210,6 +210,27 @@ filter.
 device, neuter that bit too and record it here. Re-verify all descriptors when bumping the pinned
 LINE version.
 
+### Runtime switch
+
+The patch has a switch in *Andrew's Patch Setting* (key `disable_premium`, default on). Every lever
+reads it, so with the switch off LINE runs as stock after a restart:
+
+- The four `()Z` gates (market, backup, both CMS popup getters) keep their body. The patch puts
+  `LineSettings.disablePremium(Z)Z` before each `return`, because the gates have `.locals 0` and the
+  only register is `this`, which the body reads. The backup gate has two returns: both must be
+  filtered, or the backup row comes back while the market gate is off (the crash in
+  [Second lever](#second-lever-the-premium-backup-flag-required)). The patch fails if a branch or a
+  catch handler jumps straight to a `return`, because code put before that `return` does not run on that path.
+- The banner constructor filters `isVisible` the same way, and the Home module filter passes
+  `feature = "disablePremium"` to `HomeState.addModuleFilter`.
+
+The App icon row is a premium surface (issue #234). The Settings row
+`shouldShowCustomAppIconSettings` (`hf5.t.c()` on 26.17.1) checks `z()` first, then the server flag
+`function.premium.common.appicon.enabled`, then the profile region (`JP`, `TH`, `TW`). So the patch
+hides it in every region. This is device-confirmed on 26.17.1 with a TW account. With the switch off, the
+row and the full icon list (Collaboration and Design) show. Selecting an icon shows **Apply** with no
+Premium prompt. Whether a non-premium account can apply an icon was not tested.
+
 ### Second lever: the premium-backup flag (required)
 
 **Symptom:** on a patched build, **Settings ▸ Chats** threw and bounced back to Home. Stock is fine;
