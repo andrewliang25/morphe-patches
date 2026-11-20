@@ -2527,9 +2527,11 @@ plays and shows the banner off the inbound SET. So the single `L()` cut removes 
 
 ### What the patches do
 
-- `callRecordingEnablePatch` (internal) forces the two feature gates true so the record button
-  appears without LINE Labs or a paid plan: `premiumcall/a.d()` (enable) and `.e()` (plan). The
-  server still grants the `"REC"` capability per call, so a region that withholds it is not
+- `callRecordingEnablePatch` (internal) forces the two feature gates true:
+  `premiumcall/a.d()` (Labs) and `.e()` (plan). The record button then appears without a paid plan.
+  The LINE Labs call recording switch must still be on. See
+  [Recording with the LINE Labs switch off](#recording-with-the-line-labs-switch-off-not-fixed).
+  The server still grants the `"REC"` capability per call, so a region that withholds it is not
   unlocked. Both `[Call]` patches depend on it.
 - `[Call] Auto-record calls`: after the setup call sets up the recording extension in
   `premiumcall/a.a()` (`st7.b.z(st7.b$a)` in 26.16.0, `iv7.b.M(iv7.b$a)` in 26.17.1), calls the start
@@ -2554,6 +2556,39 @@ Device-confirmed (26.16.0, 2026-11-15):
 - With both off, the record button is present and manual recording announces as normal.
 
 The capture is independent of the notify and the announcement.
+
+### Recording with the LINE Labs switch off (not fixed)
+
+With the LINE Labs call recording switch off, LINE makes no recording, even with the default
+patch set. Settings ▸ Calls ▸ Call recordings says "The call recording feature is disabled". Every
+earlier device test had the switch on. A fresh install turns it off. The `[Call] Auto-record
+calls` description tells the user to turn the switch on. Measured on 26.17.1 (2026-11-20). The
+names below are 26.17.1 names.
+
+- The server is not the blocker. A probe at the start of `premiumcall/a.a(qr7.c, Set)` logged
+  `set=[REC]` on a call with the switch off.
+- The switch is the `isCallRecordingEnabled` flag of the server-sent `LabConfiguration` data class
+  (`dc5/a1`, field `l`, getter `a()`; `ya5/z0` in 26.16.0). Its `toString()` names each flag. The
+  Labs state lambda `qv7/i` returns `(c() && w() && !f()) ? LAB : INACTIVE` on `hr7.m` (`rt7/d`).
+  `c()` is `LabConfiguration.isEnabled`, `w()` is `isCallRecordingEnabled`, and `f()` is the
+  official-release flag of `VoIPConfiguration.premiumCall`.
+- `premiumcall/a.d()` is only one reader of that state. The forced `d()` shows the record button,
+  but other code reads the state through `iv7.e.k()` (`nv7/a`) or holds the `qv7/i` lambda itself:
+  - `xz7/i` creates the recorder (`hv7.a`, impl `nv7/r`) only when `k() != INACTIVE`. With the
+    switch off, the call has no recorder and auto-record has nothing to start.
+  - The recorder loop `nv7/r.h0` first calls `iv7.e.u()` (`qv7/b`, which holds `qv7/i`). On
+    `INACTIVE` it returns false, and the recorder sets `NOT_AVAILABLE` and stops.
+  - Other direct readers: `er7/f`, `er7/h`, `vv7/n`, `vv7/p`, `f58/c`, `mj8/x`, `qv7/a`, `qv7/l`.
+- Tried and not enough (each one a device test with the switch off, no file saved):
+  1. Force `iv7.e.k()` to return `LAB`. The probe showed that the recorder was created, set up
+     (`M`) and started (`J`), and `h0` ran. But `h0` stopped before `j0`, because `qv7/b` reads
+     `qv7/i`, not `k()`.
+  2. Force the `isCallRecordingEnabled` getter true (`dc5/a1.a()`). LINE still made no recording,
+     and the settings page still said "disabled". It was not measured why. Either another flag of
+     the state is false here, or the value was cached before the patch could change it.
+- Next step, if this is picked up again: log `c()`, `w()`, `f()`, the `qv7/i` result and the `u()`
+  result during a call with the switch off, then force the value that is wrong. Keep the `nv7/r`
+  entry probe to see whether `j0` runs.
 
 **Legal:** covert recording with the consent notice removed is unlawful in two-party-consent
 jurisdictions. Each patch description carries a warning.

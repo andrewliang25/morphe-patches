@@ -29,7 +29,8 @@ import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 val autoRecordCallsPatch = bytecodePatch(
     name = "[Call] Auto-record calls",
     description = "Starts recording a 1-to-1 LINE call as soon as it connects. LINE saves the " +
-        "recording. Recording a call without the other person's consent is illegal " +
+        "recording. Turn on call recording in Settings > LINE Labs first, because LINE does not " +
+        "record while that switch is off. Recording a call without the other person's consent is illegal " +
         "in some places. You are responsible for following the law where you are.",
     default = true,
 ) {
