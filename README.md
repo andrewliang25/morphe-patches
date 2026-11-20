@@ -166,6 +166,21 @@ can get your account banned and can cause legal problems. So this will not be fi
 
 **Workaround:** at these merchants, pay in a different way, for example pay in the store.
 
+### LINE: Google passkey sign-in does not work (re-signed builds)
+
+**What:** On a patched (Standard) build, you cannot sign in to LINE with a Google-managed passkey.
+The passkey screen loads forever and no passkey appears.
+
+**Why:** A passkey is tied to LINE's web site. Before an app can use it, Google Play Services checks
+the app signing certificate against a file on LINE's server. A patched build is re-signed, so its
+certificate is different, and Play Services returns no passkey. Play Services does this check in its
+own process against a file on a server, so no patch in LINE can change it. This is the same reason
+Google account sign-in needs a separate fix.
+
+**Workaround:** sign in with your phone number and password, or with the QR login code from a device
+where you are already signed in. A **Root Mount** install keeps the original signature, so a passkey
+works there.
+
 ### Facebook: other Meta apps do not install (re-signed builds)
 
 **What:** After you install a patched **Facebook** build, an official Meta app that shares the same

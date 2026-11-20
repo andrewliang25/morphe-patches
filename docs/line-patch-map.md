@@ -816,6 +816,32 @@ origin matches no facet of the account, so the FIDO server refuses the registrat
   button changed from Link to Unlink. Native `nativeMakeCredential` signs the `clientDataJSON` from
   Java and does not read the APK certificate on its own.
 
+### Google passkey sign-in — not fixable on a re-signed build
+
+A Google-managed passkey cannot sign in to LINE on a re-signed (Standard) build. This is a dead end,
+not a bug in a patch.
+
+Device test (26.17.1, Android SDK 37, 2026-11-20). The passkey option on the login screen goes
+through the Android Credential Manager, which passes the request to Google Play Services
+(`PasswordAndPasskeyService`). Play Services checks the calling app and finds no usable passkey. The
+log shows, in the Play Services process, `GoogleSignatureVerifier: package info is not set correctly`
+and then `[ListPasskeyCredentialsOperation] Result size: 0`. The chooser never finishes, so the
+passkey page loads forever.
+
+The check is not in LINE. A passkey is bound to LINE's web site (relying party `line.me`). For an
+Android app to use it, Play Services reads the app signing certificate and checks it against the
+Digital Asset Links file on LINE's server (`line.me/.well-known/assetlinks.json`). A re-signed build
+has a different certificate, so it is not in that file, and Play Services returns no passkey. This is
+the same class as Google account sign-in (Path 1 above): the certificate is read in another process
+and checked against a file on a server, so no APK patch reaches it.
+
+"[Fix] Restore biometric login" does not help here. It rewrites the origin that LINE builds in its
+own process for the first-party FIDO2 flow (the biometric device link). The Credential Manager
+passkey path does not run that code.
+
+Workarounds: sign in with phone number and password, or with the QR code from a signed-in device. A
+Root Mount install keeps the genuine signature, so Play Services accepts the passkey there.
+
 ### Can a payment run inside a modified LINE app? (issues #96, #161)
 
 No, and the bundle does not try. Three layers:
