@@ -132,7 +132,7 @@ final class LineSettingsScreen {
                 || LineSettings.hideLineAiImageEditIncluded() || LineSettings.hideAgentIIncluded();
         boolean calls = LineSettings.autoRecordCallsIncluded() || LineSettings.silentCallRecordingIncluded()
                 || LineSettings.saveCallRecordingsToDeviceIncluded() || LineSettings.removeCallRecordingLimitIncluded();
-        boolean premium = LineSettings.disablePremiumIncluded();
+        boolean premium = LineSettings.disablePremiumIncluded() || LineSettings.unlockAppIconsIncluded();
 
         if (!chats && !general && !tabs && !buttons && !calls && !premium) {
             content.addView(note(activity, "No patches in this build have a switch."));
@@ -288,10 +288,18 @@ final class LineSettingsScreen {
             View restart = row(activity, "Restart LINE", "Applies your Premium change.", true);
             restart.setVisibility(View.GONE);
             restart.setOnClickListener(v -> restart(activity));
-            content.addView(toggle(activity, LineSettings.DISABLE_PREMIUM, "Disable LINE Premium",
-                    "Hides LINE Premium upsells, badges and pages.",
-                    () -> restart.setVisibility(View.VISIBLE)));
-            content.addView(note(activity, "This change shows after LINE restarts."));
+            Runnable showRestart = () -> restart.setVisibility(View.VISIBLE);
+            if (LineSettings.disablePremiumIncluded()) {
+                content.addView(toggle(activity, LineSettings.DISABLE_PREMIUM, "Disable LINE Premium",
+                        "Hides LINE Premium upsells, badges and pages.", showRestart));
+            }
+            if (LineSettings.unlockAppIconsIncluded()) {
+                content.addView(toggle(activity, LineSettings.UNLOCK_APP_ICONS, "Unlock app icons",
+                        "Shows the App icon page in Settings, also with the collaboration icons that LINE does not "
+                                + "offer now. You can apply every icon on it, also the Premium ones.",
+                        showRestart));
+            }
+            content.addView(note(activity, "Premium changes show after LINE restarts."));
             content.addView(restart);
         }
     }
