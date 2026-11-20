@@ -1,3 +1,9 @@
+## [3.13.0-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v3.12.1-dev.1...v3.13.0-dev.1) (2026-11-20)
+
+### ✨ New Features
+
+* **LINE - Disable LINE Premium:** add a switch in Andrew's Patch Setting ([52948c6](https://github.com/andrewliang25/morphe-patches/commit/52948c6570100020e00b96564fddde72f687f591)), closes [#234](https://github.com/andrewliang25/morphe-patches/issues/234)
+
 ## [3.12.1-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v3.12.0...v3.12.1-dev.1) (2026-11-20)
 
 ### ⚠ BREAKING CHANGES
