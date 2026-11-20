@@ -316,5 +316,15 @@ val hideNewBadgesPatch = bytecodePatch(
                 }
             }
         }
+
+        // 12. The green "N" on the LINE Labs row (Settings and Settings > Chats). Its predicate
+        //     answers "no new Labs feature" before it runs. `p0` is dead after the return.
+        LabFeatureNewMarkFingerprint.methodOrNull?.addInstructions(
+            0,
+            """
+                sget-object p0, Ljava/lang/Boolean;->FALSE:Ljava/lang/Boolean;
+                return-object p0
+            """,
+        )
     }
 }
