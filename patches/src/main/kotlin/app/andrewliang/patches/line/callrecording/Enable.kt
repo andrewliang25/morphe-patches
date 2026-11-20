@@ -6,11 +6,12 @@ import app.morphe.patcher.patch.bytecodePatch
 
 /**
  * Exposes LINE's call recording. Both `[Call]` patches depend on this, so the record button and
- * the recording flow are available whether the user has LINE Labs and a paid plan or not.
+ * the recording flow are available without a paid plan.
  *
- * Call recording is gated behind LINE Labs (`premiumcall.a.d()`) and a paid plan (`.e()`). This
- * forces both gates true. The server still decides the "REC" capability per call, so a region that
- * withholds it is not unlocked here.
+ * This forces the two gates `premiumcall.a.d()` (LINE Labs) and `.e()` (paid plan) true. The LINE
+ * Labs call recording switch must still be on: other code reads the Labs flag directly, and with
+ * the switch off LINE makes no recording (`docs/line-patch-map.md`, "Recording with the LINE Labs
+ * switch off"). The server still decides the "REC" capability per call.
  */
 internal val callRecordingEnablePatch = bytecodePatch {
     compatibleWith(COMPATIBILITY_LINE)
