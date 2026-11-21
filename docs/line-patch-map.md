@@ -2234,6 +2234,24 @@ Device findings (Xiaomi, Android 16):
    value gate also needs the `<feature>(boolean)` overload in `LineSettings.java`.
 3. For a branch gate, pick a register that is dead at the gate. Check it in the smali, then check
    the result with `Dumpx` and `BranchSweep`.
+4. Add the Japanese and Traditional Chinese text of the new row to `LineStrings.java`, with the
+   words that LINE's own `values-ja` / `values-zh-rTW` strings use. Then run
+   `python3 extensions/extension/check_line_strings.py`. A missing entry does not fail the build:
+   the row just shows English.
+
+### Language
+
+The screen text is in English, Japanese or Traditional Chinese (`LineStrings.get`). The language is
+the locale of the Settings Activity. LINE's own Language setting (`settings_languages`) uses the
+per-app locale (`localeConfig` + `setApplicationLocales`), so it changes that locale and the screen
+follows LINE, not only the phone. `ja` gives Japanese. `zh` with the `Hant` script, or the region
+TW, HK or MO, gives Traditional Chinese. Any other language stays English. The title "Andrew's
+Patch Setting", the "Unsent" label and the GPL text stay English.
+
+Device-confirmed on LINE 26.18.2 (Android API 37). The per-app locale was set with
+`adb shell cmd locale set-app-locales jp.naver.line.android --locales <tag>`: `ja-JP` and `zh-TW`
+showed the translated screen and license dialog, and `ko-KR` showed English. To set it back, use
+`--locales ""`.
 
 ---
 
