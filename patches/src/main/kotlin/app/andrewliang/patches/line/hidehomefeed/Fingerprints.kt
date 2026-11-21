@@ -1,7 +1,6 @@
 package app.andrewliang.patches.line.hidehomefeed
 
 import app.morphe.patcher.Fingerprint
-import app.morphe.patcher.checkCast
 import app.morphe.patcher.fieldAccess
 import app.morphe.patcher.string
 
@@ -29,8 +28,9 @@ internal object GcsPageToStringFingerprint : Fingerprint(
  * of the action interface (every method empty), thus an empty action is a state that LINE builds
  * itself.
  *
- * Anchored on shape: the `(Z)V` signature, the read of the page repository field, and the cast of
- * the page info to [pageType]. R8 renames both types, so the patch builds this fingerprint at
+ * Anchored on shape: the `(Z)V` signature, the read of the page repository field, and a read of a
+ * field of [pageType]. In 26.18.2 the state holds the page inside a wrapper, so the method no longer
+ * casts to [pageType]. R8 renames both types, so the patch builds this fingerprint at
  * patch time. The repository is the outer class of the Home state class.
  */
 internal fun loadMoreContentFingerprint(repositoryType: String, pageType: String) = Fingerprint(
@@ -38,6 +38,6 @@ internal fun loadMoreContentFingerprint(repositoryType: String, pageType: String
     parameters = listOf("Z"),
     filters = listOf(
         fieldAccess(type = repositoryType),
-        checkCast(pageType),
+        fieldAccess(definingClass = pageType),
     ),
 )
