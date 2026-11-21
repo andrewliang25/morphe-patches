@@ -333,7 +333,7 @@ final class LineSettingsScreen {
         // takes the color of the header title, as on LINE's own pages.
         ColorStateList titleColors = look.headerTitle != null ? look.headerTitle : look.title;
         if (titleColors != null) back.setImageTintList(titleColors);
-        back.setContentDescription("Back");
+        back.setContentDescription(LineStrings.get(activity, "Back"));
         back.setPadding(dp(activity, 4), 0, 0, 0);
         back.setOnClickListener(v -> dialog.dismiss());
         header.addView(back, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, height));
@@ -388,7 +388,7 @@ final class LineSettingsScreen {
         int horizontal = dimen(activity, "line_user_settings_item_container_padding_horizontal");
         section.setPaddingRelative(horizontal, dimen(activity, "line_user_settings_item_header_small_padding_top"),
                 horizontal, dimen(activity, "line_user_settings_item_header_padding_bottom"));
-        section.setText(title);
+        section.setText(LineStrings.get(activity, title));
         look.paint(section, look.sectionOrSecondary());
         return section;
     }
@@ -406,7 +406,7 @@ final class LineSettingsScreen {
 
     private static void text(Activity activity, View row, String view, String text) {
         TextView textView = row.findViewById(id(activity, view, "id"));
-        textView.setText(text);
+        textView.setText(LineStrings.get(activity, text));
         textView.setVisibility(View.VISIBLE);
         look.paint(textView, view.equals("setting_title") ? look.title : look.secondary());
     }
@@ -572,10 +572,10 @@ final class LineSettingsScreen {
         scroll.addView(text);
 
         new AlertDialog.Builder(activity)
-                .setTitle("License")
+                .setTitle(LineStrings.get(activity, "License"))
                 .setView(scroll)
-                .setNegativeButton("Full license", (d, w) -> open(activity, LICENSE_URL))
-                .setPositiveButton("Close", null)
+                .setNegativeButton(LineStrings.get(activity, "Full license"), (d, w) -> open(activity, LICENSE_URL))
+                .setPositiveButton(LineStrings.get(activity, "Close"), null)
                 .show();
     }
 
