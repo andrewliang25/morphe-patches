@@ -13,9 +13,9 @@ object Constants {
      * Pin the exact version the patches were developed and confirmed against.
      * Add a new version to this list after you verify it.
      *
-     * 26.16.0 needs Android 11 (API 30), so it is the version for Android 11 and 12. 26.17.1 needs
-     * Android 12L (API 32). Every fingerprint must match all supported versions, so anchor only on
-     * names R8 keeps.
+     * 26.16.0 needs Android 11 (API 30), so it is the version for Android 11 and 12. 26.17.1 and
+     * 26.18.2 need Android 12L (API 32). Every fingerprint must match all supported versions, so
+     * anchor only on names R8 keeps.
      * Keep targets sorted in ascending version order (oldest to newest).
      *
      * Pin the versionCode of the tested build. All splits of a LINE bundle (every ABI and
@@ -36,6 +36,11 @@ object Constants {
             AppTarget(
                 version = "26.17.1",
                 versionCode = 261710173,
+                minSdk = 32,
+            ),
+            AppTarget(
+                version = "26.18.2",
+                versionCode = 261820153,
                 minSdk = 32,
             ),
         ),

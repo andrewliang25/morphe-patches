@@ -4,8 +4,11 @@ import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.checkCast
 import app.morphe.patcher.fieldAccess
 import app.morphe.patcher.literal
-import app.morphe.patcher.string
+import app.morphe.patcher.patch.BytecodePatchContext
 import com.android.tools.smali.dexlib2.Opcode
+import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
+import com.android.tools.smali.dexlib2.iface.reference.MethodReference
+import com.android.tools.smali.dexlib2.iface.reference.StringReference
 
 private const val PREMIUMCALL_GATE = "Lcom/linecorp/voip2/feature/premiumcall/a;"
 
@@ -46,18 +49,44 @@ internal object CallRecordingPremiumFingerprint : Fingerprint(
 )
 
 /**
- * The peer-notify emitter (`nv7.n0.emit(Object, Continuation)` in 26.17.1). On a `true` value it
- * sends the "record" FeatureShare SET (`tw7.f.H(tw7.a)`) that tells the other party. On `false` it
- * clears it (`R("record")`). The silent switch skips the send. R8 renames the class, so the match is
- * the one `emit` that casts its value to `Boolean` and holds the "record" string.
+ * The peer-notify emitter (`nv7.n0.emit(Object, Continuation)` in 26.17.1, `qv7.o0` in 26.18.2).
+ * On a `true` value it sends the "record" FeatureShare SET that tells the other party
+ * (`tw7.f.H(tv7.a)` in 26.17.1, `ww7.f.W()` in 26.18.2). On `false` it clears it. The silent switch
+ * skips the send. R8 renames everything here and in 26.18.2 moved the "record" string into the
+ * FeatureShare class, so the match is the one `emit` that casts its value to `Boolean` and calls
+ * [featureShareTypes] (see [featureShareInterfaces]).
  */
-internal object CallRecordingNotifyFingerprint : Fingerprint(
+internal fun callRecordingNotifyFingerprint(featureShareTypes: Set<String>) = Fingerprint(
     name = "emit",
-    filters = listOf(
-        checkCast("Ljava/lang/Boolean;"),
-        string("record"),
-    ),
+    filters = listOf(checkCast("Ljava/lang/Boolean;")),
+    custom = { method, _ ->
+        method.implementation?.instructions?.any { instruction ->
+            instruction.opcode == Opcode.INVOKE_INTERFACE &&
+                ((instruction as ReferenceInstruction).reference as MethodReference).definingClass in
+                featureShareTypes
+        } == true
+    },
 )
+
+/**
+ * The interfaces of the call FeatureShare implementation (`tw7.g` in 26.17.1, `ww7.g` in 26.18.2).
+ * Its null checks keep the texts "modelImpl", "scope" and "sessionModel". One other class holds
+ * the same three texts, so this returns the interfaces of both. Only the FeatureShare interface
+ * is called from a `Boolean` emitter.
+ */
+internal fun BytecodePatchContext.featureShareInterfaces(): Set<String> {
+    val anchors = setOf("modelImpl", "scope", "sessionModel")
+    val interfaces = mutableSetOf<String>()
+    classDefForEach { classDef ->
+        val strings = classDef.methods.flatMap { method ->
+            method.implementation?.instructions?.mapNotNull {
+                ((it as? ReferenceInstruction)?.reference as? StringReference)?.string
+            } ?: emptyList()
+        }.toSet()
+        if (strings.containsAll(anchors)) interfaces += classDef.interfaces
+    }
+    return interfaces
+}
 
 private const val UPLOAD_NETWORK = "Lcom/linecorp/voip2/feature/recording/upload/b\$a;"
 

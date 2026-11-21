@@ -15,10 +15,10 @@ Reference notes for authoring LINE (`jp.naver.line.android`) patches, distilled 
 
 ---
 
-## Supported versions (26.16.0 and 26.17.1)
+## Supported versions (26.16.0, 26.17.1 and 26.18.2)
 
 26.16.0 needs Android 11 (API 30), so it is the version for Android 11 and 12. 26.17.1 needs
-Android 12L (API 32). The two versions cover the same phones that 26.14.0, 26.15.1 and 26.16.0
+Android 12L (API 32), and so does 26.18.2. The versions cover the same phones that 26.14.0, 26.15.1 and 26.16.0
 covered, so the bundle dropped 26.14.0 and 26.15.1 with the 26.17.1 bump. Each target in
 `Constants.kt` (`COMPATIBILITY_LINE.targets`, ascending order) pins the version, its `versionCode`
 and its `minSdk`. All splits of a LINE bundle share one `versionCode`, so the single-`Int` form of
@@ -28,6 +28,7 @@ and its `minSdk`. All splits of a LINE bundle share one `versionCode`, so the si
 |---|---|---|
 | 26.16.0 | 261600106 | 30 |
 | 26.17.1 | 261710173 | 32 |
+| 26.18.2 | 261820153 | 32 |
 
 Each fingerprint must match every version, so no patch has a table of names per version. Each
 anchor is a name that R8 keeps:
@@ -96,6 +97,21 @@ Traps:
   branch with a `long` in `v1`/`v2`. The stock path still reads `v2` as an enum, and ART rejects
   such a method. Read the registers at every merge point of an injected branch.
 
+### What changed in 26.18.2
+
+The first apply of the 26.17.1 bundle to 26.18.2 applied 39 of 41 patches. No surface was removed,
+and no patch applied with no change. Each version changes 105 LINE methods (26.16.0 changes 106, as
+in the released bundle). The renames include `nv7` to `qv7` (call recording), `tw7` to `ww7`
+(FeatureShare), `dj2.h` to `kk2.h` (Home repository), `fg2.m` to `mh2.l` (GCS page) and `bj2.y2`
+to `ik2.s2` (GCS page view model). The failures and their fixes:
+
+| Patch | What changed | Fix |
+|---|---|---|
+| [Call] Record calls without notifying | R8 split the generic FeatureShare calls into record-only methods: `tw7.f.H(tv7.a)` is `ww7.f.W()`, and `R("record")` is `ww7.f.O()`. The "record" string moved out of the emitter `qv7/o0` into `ww7/g` | The FeatureShare interface is the interface of the class that holds "modelImpl", "scope" and "sessionModel". The emitter is the one `emit` that casts to `Boolean` and calls it. The send is its first call on that interface |
+| [Home] Hide Home content feed | The repository state now holds the page in a wrapper (`kk2.h$a.a`), so the load-more action casts to the wrapper, not to the page | Lever 3 matches a read of a field of the page class (`iget-boolean …, Lmh2/l;->b:Z`) instead of the cast |
+
+Each new anchor matches one method in each of the three versions.
+
 ### Shared helpers
 
 | Helper | What it finds | Used by |
@@ -122,6 +138,10 @@ dex with the original dex method by method:
 On the 26.17.1 bump, 26.16.0 changes 101 LINE methods and 26.17.1 changes 100. The roles pair one to
 one, except that Hide Agent i changes two getters on 26.16.0 and one boxed reader on 26.17.1. The
 26.16.0 list is the same as the list of the released v3.12.0 bundle.
+
+On the 26.18.2 bump, 26.17.1 and 26.18.2 each change 105 LINE methods, and 26.16.0 changes 106. On
+26.16.0 and 26.17.1 the changed methods and their edits are the same as those of the released
+v3.13.0-dev.3 bundle.
 
 A `check-cast` passes the verifier but can still throw at run time. The first 26.15.1 build cast a
 copied field to the type of a new row argument, and Settings crashed with `ClassCastException`. Read
@@ -486,8 +506,11 @@ load-more goes through `B1`. The initial load, the pull-to-refresh and the visib
 interface methods (`P4`, `R2`, `Q1`, `L`, `r5`, `w6`, `n4`).
 
 **Anchor lever 3 on shape, never on the drift-prone name `B1`.** Use `returnType = "V"`,
-`parameters = ["Z"]`, plus `fieldAccess(type = "Llb2/g;")` and `checkCast("Ly82/t0;")`. On LINE
-26.14.0 that combination matches one method in the whole APK. A sweep of every `.smali` confirms it.
+`parameters = ["Z"]`, plus a read of the repository field (`fieldAccess(type = "Llb2/g;")`) and a
+read of a field of the page class (`fieldAccess(definingClass = "Ly82/t0;")`). On 26.14.0 the method
+cast to the page class. In 26.18.2 it casts to a wrapper that holds the page, so the filter takes
+the field read. A sweep of every `.smali` finds one match each in 26.16.0 (`ch2/x2.C1`), 26.17.1
+(`bj2/y2.C1`) and 26.18.2 (`ik2/s2.y1`).
 
 Lever 3 prevents the spinner on its own, but lever 2 stays. Lever 2 costs one instruction on a
 fingerprint that the patch already owns. Field `f` has one reader, thus lever 2 cannot break
@@ -2571,9 +2594,12 @@ plays and shows the banner off the inbound SET. So the single `L()` cut removes 
   method of the recorder whose implementation writes `Boolean.TRUE` (stop writes `FALSE`). The setup
   argument register is dead right after the call and carries the switch value.
 - `[Call] Record calls without notifying`: skips the "record" send (`dv7.f.L(dv7.a)` in 26.16.0,
-  `tw7.f.H(tw7.a)` in 26.17.1) in the notify emitter while the switch is on. The emitter
-  (`xt7/n0`, `nv7/n0`) is the one `emit` that casts its value to `Boolean` and holds the "record"
-  string. The stop branch (`O("record")`, `R("record")`) is kept. That one send drives both the peer
+  `tw7.f.H(tw7.a)` in 26.17.1, `ww7.f.W()` in 26.18.2) in the notify emitter while the switch is
+  on. The emitter (`xt7/n0`, `nv7/n0`, `qv7/o0`) is the one `emit` that casts its value to
+  `Boolean` and calls the FeatureShare interface. That interface belongs to the class with the
+  texts "modelImpl", "scope" and "sessionModel" (`dv7/g`, `tw7/g`, `ww7/g`). One other class has
+  the same texts, but no `Boolean` emitter calls its interfaces. The send is the first call on the
+  interface. The stop branch (`O("record")`, `R("record")`, `O()`) is kept. That one send drives both the peer
   banner and the local announcement on both devices, so skipping it removes all of them.
 
 Both patches are on by default, and each switch is on by default. The legal warning is in each
@@ -2720,6 +2746,7 @@ StateShare activity and announcement player), `ro7/b` (enable enum). The save pa
 drifts in `au7/d` (limit timer), `xt7/r.q()` and `qt7/b$b` (video limits). These are 26.16.0 names.
 In 26.17.1 the patched sites are `nv7/n0` (notify emitter), `hv7/a` with `iv7/b` (recorder and
 extension), `nv7/r` (start/stop impl), `rv7/a` (export router) and `qv7/d$d$b` (limit check).
+In 26.18.2 the notify emitter is `qv7/o0` and the FeatureShare interface is `ww7/f`.
 Re-anchor them and re-confirm on each LINE bump.
 
 ## Dead ends (investigated, not patchable)

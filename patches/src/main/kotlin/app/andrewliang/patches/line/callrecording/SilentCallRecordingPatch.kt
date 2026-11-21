@@ -13,8 +13,8 @@ import com.android.tools.smali.dexlib2.iface.reference.MethodReference
  * Records a call without telling the other party: no "is recording" banner and no spoken
  * "recording started/ended" announcement. Use the "Record without notifying" switch to turn it off.
  *
- * When recording starts, the notify emitter (`nv7.n0.emit()` in 26.17.1) sends a "record"
- * FeatureShare SET (`tw7.f.H(tw7.a)`) over the call session. That one send drives both the peer
+ * When recording starts, the notify emitter (`qv7.o0.emit()` in 26.18.2) sends a "record"
+ * FeatureShare SET (`ww7.f.W()`) over the call session. That one send drives both the peer
  * banner and the local announcement on both devices (a `MediaPlayer` that plays off the shared
  * "record" state). The patch skips the send while the switch is on. The `R("record")` stop branch
  * stays, and LINE's own recorder keeps
@@ -34,17 +34,13 @@ val silentCallRecordingPatch = bytecodePatch(
     dependsOn(callRecordingEnablePatch, lineSettingsExtensionPatch)
 
     execute {
-        val emit = CallRecordingNotifyFingerprint.method
+        val featureShare = featureShareInterfaces()
+        val emit = callRecordingNotifyFingerprint(featureShare).method
 
-        val instructions = emit.implementation!!.instructions.toList()
-        // The send is the one-argument interface call that does not take the "record" string.
-        val sendIndex = instructions.indexOfFirst {
+        // The send is the first FeatureShare call: the `true` branch comes before the clear.
+        val sendIndex = emit.implementation!!.instructions.indexOfFirst {
             it.opcode == Opcode.INVOKE_INTERFACE &&
-                ((it as? ReferenceInstruction)?.reference as? MethodReference).let { ref ->
-                    ref?.returnType == "V" &&
-                        ref.parameterTypes.size == 1 &&
-                        ref.parameterTypes[0] != "Ljava/lang/String;"
-                }
+                ((it as ReferenceInstruction).reference as MethodReference).definingClass in featureShare
         }
         check(sendIndex >= 0) { "could not find the record send in the notify emitter" }
         emit.skipIfLineSetting(sendIndex, 1, "silentCallRecording", "v2")
