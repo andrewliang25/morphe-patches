@@ -1,6 +1,6 @@
 # 🧩 Andrew's Patches
 
-English | [繁體中文](README.zh-TW.md)
+English | [繁體中文](README.zh-TW.md) | [日本語](README.ja-JP.md)
 
 Morphe patches for LINE and other apps I use.
 
