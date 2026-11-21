@@ -155,7 +155,7 @@ AMOLED 黑色主題沒有開關。建置時沒有加入的修補程式不會出�
 ### LINE：部分商店不接受 LINE Pay
 
 **狀況：**在部分商店，從網站或點餐系統發起的 LINE Pay 付款會失敗。LINE 開啟後，會轉到獨立的
-**LINE Pay** 應用程式並顯示錯誤，例如「您必須透過LINE應用程式操作此功能」或「請更新 LINE」。
+**LINE Pay** 應用程式並顯示錯誤，例如「您必須透過 LINE 應用程式操作此功能」或「請更新 LINE」。
 
 **原因：**LINE 內建的 LINE Pay 有完整性檢查，修改過的 LINE 無法通過。
 *[General] Redirect LINE Pay* 修補程式會把每筆付款改送到獨立的 LINE Pay 應用程式。大多數商店都接受這種方式，
