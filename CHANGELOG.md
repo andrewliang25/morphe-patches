@@ -1,3 +1,9 @@
+## [3.13.0-dev.5](https://github.com/andrewliang25/morphe-patches/compare/v3.13.0-dev.4...v3.13.0-dev.5) (2026-11-21)
+
+### ✨ New Features
+
+* **LINE - Andrew's Patch Setting:** show the screen in Japanese and Traditional Chinese ([0b28731](https://github.com/andrewliang25/morphe-patches/commit/0b2873192bd56ce79c69c348a0aeeca1f757b7d3))
+
 ## [3.13.0-dev.4](https://github.com/andrewliang25/morphe-patches/compare/v3.13.0-dev.3...v3.13.0-dev.4) (2026-11-21)
 
 ### 🚀 Updated App Support
