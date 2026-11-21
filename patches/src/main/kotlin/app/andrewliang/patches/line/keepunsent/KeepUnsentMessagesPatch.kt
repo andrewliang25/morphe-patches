@@ -11,6 +11,8 @@ import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.util.smali.ExternalLabel
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.Instruction
+import com.android.tools.smali.dexlib2.iface.instruction.OffsetInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
@@ -87,13 +89,40 @@ val keepUnsentMessagesPatch = bytecodePatch(
         // The message id, read off that row between load and guard. Which of na8.b's longs it is
         // (local vs server id) does not matter — the extension's WHERE clause accepts either. On
         // 26.11.0 it is `b`, the server id.
-        val messageIdRegister = ((rowReadIndex + 1) until guardIndex)
+        val existingIdRegister = ((rowReadIndex + 1) until guardIndex)
             .firstOrNull { index ->
                 instructions[index].opcode == Opcode.IGET_WIDE &&
                     (instructions[index] as TwoRegisterInstruction).registerB == rowRegister
             }
             ?.let { (instructions[it] as TwoRegisterInstruction).registerA }
-            ?: throw PatchException("unsend: message id read not found in ${method.definingClass}")
+
+        // From 26.17.1 R8 drops that read, so the block reads the id itself: the same field as the
+        // first `iget-wide` on the row class in the method (`b`, as on older versions). It then
+        // jumps straight to the skip target, which must return the row. Every other register is
+        // dead there, so any free low pair can take the id. Do not fall into the original guard
+        // branch: the long pair then meets the stock path, which still reads those registers as
+        // objects, and ART rejects the method.
+        val rowType = ((instructions[rowReadIndex] as ReferenceInstruction).reference as FieldReference)
+            .definingClass
+        val ownIdRead = if (existingIdRegister != null) {
+            null
+        } else {
+            val idField = instructions.firstNotNullOfOrNull {
+                val reference = (it as? ReferenceInstruction)?.reference as? FieldReference
+                reference.takeIf { _ ->
+                    it.opcode == Opcode.IGET_WIDE && reference?.definingClass == rowType
+                }
+            } ?: throw PatchException("unsend: message id field of $rowType not found in ${method.definingClass}")
+
+            val skipTarget = branchTarget(instructions, guardIndex + 3)
+            val skipReturn = instructions.getOrNull(skipTarget)
+            if (skipReturn?.opcode != Opcode.RETURN_OBJECT ||
+                (skipReturn as OneRegisterInstruction).registerA != rowRegister
+            ) {
+                throw PatchException("unsend: skip target does not return the row in ${method.definingClass}")
+            }
+            idField to method.getInstruction(skipTarget)
+        }
 
         // Registers whose type is proven before the guard. The lambda's parameter is `check-cast`ed
         // at the method head, and that cast dominates our injection point, so such a register still
@@ -136,9 +165,15 @@ val keepUnsentMessagesPatch = bytecodePatch(
         // silently mis-assembled. On 26.11.0 these are v1/v6/v7, but the method is `.locals 29`,
         // so a future version could spill them. Fail loudly rather than keeping messages with no
         // label: an unmarked kept message is indistinguishable from one that was never unsent.
+        val messageIdRegister = existingIdRegister
+            ?: (0 until MAX_NIBBLE_REGISTER).first { register ->
+                register !in setOf(guardRegister, databaseHolderRegister, rowRegister) &&
+                    register + 1 !in setOf(guardRegister, databaseHolderRegister, rowRegister)
+            }
         val highestRegister = maxOf(
             guardRegister,
             databaseHolderRegister,
+            rowRegister,
             messageIdRegister + 1,
         )
         if (highestRegister > MAX_NIBBLE_REGISTER) {
@@ -154,7 +189,9 @@ val keepUnsentMessagesPatch = bytecodePatch(
         //
         // Both new branches go to the original `if-eqz` with the guard value it expects. A row
         // that is already a tombstone (non-zero) skips the block as before. With the setting off,
-        // the guard is 0, so the stock unsend runs.
+        // the guard is 0, so the stock unsend runs. A marked row then skips the block: through
+        // the guard forced to 1 when LINE reads the id, or by a jump to the skip target when the
+        // block reads the id itself.
         method.addInstructionsWithLabels(
             guardIndex + 2,
             """
@@ -162,13 +199,28 @@ val keepUnsentMessagesPatch = bytecodePatch(
             """ + readLineSetting("keepUnsentMessages", "v$guardRegister") + """
                 if-eqz v$guardRegister, :stock
                 iget-object v$guardRegister, v$databaseHolderRegister, ${databaseField.definingClass}->${databaseField.name}:${databaseField.type}
+            """ + (ownIdRead?.let { (idField, _) ->
+                """
+                iget-wide v$messageIdRegister, v$rowRegister, ${idField.definingClass}->${idField.name}:${idField.type}
+                """
+            } ?: "") + """
                 invoke-static {v$guardRegister, v$messageIdRegister, v${messageIdRegister + 1}}, $EXTENSION->$MARK_UNSENT
-                const/16 v$guardRegister, 0x1
-            """,
-            ExternalLabel("stock", method.getInstruction(guardIndex + 2)),
+            """ + (if (ownIdRead != null) "goto/16 :skip" else "const/16 v$guardRegister, 0x1"),
+            *listOfNotNull(
+                ExternalLabel("stock", method.getInstruction(guardIndex + 2)),
+                ownIdRead?.let { (_, skip) -> ExternalLabel("skip", skip) },
+            ).toTypedArray(),
         )
         markLineSettingIncluded("keepUnsentMessages")
 
         addUnsentLabel()
     }
+}
+
+/** The index of the instruction that the branch at [index] jumps to. */
+private fun branchTarget(instructions: List<Instruction>, index: Int): Int {
+    var address = 0
+    val addresses = instructions.map { instruction -> address.also { address += instruction.codeUnits } }
+    val target = addresses[index] + (instructions[index] as OffsetInstruction).codeOffset
+    return addresses.indexOf(target)
 }

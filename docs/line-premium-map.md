@@ -8,20 +8,22 @@ Reference notes on how **LINE Yahoo Premium (LYP)** feature-gating works in LINE
 > The obfuscated descriptors in this file are from 26.14.0, unless a note gives another version.
 > Device-confirmation notes record the version each behaviour was *tested* on.
 
-## 26.15.1 and 26.16.0
+## 26.15.1, 26.16.0 and 26.17.1
 
-The levers and the unsend patch work on all three versions with the same anchors. The changes for
-26.15.1 and 26.16.0:
+The bundle supports 26.16.0 and 26.17.1. The levers and the unsend patch work on both with the same
+anchors. The changes since 26.14.0:
 
 - **Backup gate.** R8 renames `kotlin.Unit` in 26.15.1, so the `Lkotlin/Unit;` anchor is gone. The
-  patch finds the backup facade by the string `"InitialBackupRestore"`, which only one method holds.
-  It selects the gate by shape: the one `()Z` method that opens with `iget-object` and then calls
-  `invoke()Ljava/lang/Object;` with `invoke-virtual`. The gate is `gq4.g0.u0()` in 26.15.1 and
-  `iq4.g0.k()` in 26.16.0.
+  patch finds the backup facade by the log tag `"InitialBackupRestore"` and the gate shape: the one
+  `()Z` method that opens with `iget-object` and then calls `invoke()Ljava/lang/Object;` with
+  `invoke-virtual`. About 70 methods hold the tag, so the tag alone is not enough. On 26.16.0 it
+  found the facade only because the facade came first in the dex order. On 26.17.1 it found another
+  class. The gate is `gq4.g0.u0()` in 26.15.1, `iq4.g0.k()` in 26.16.0 and `ks4.s.j()` in 26.17.1.
 - **The crash site still exists.** The view holder without a null guard moved from `r55/c3` to
   `ec5/r3`. Thus the backup gate must still flip together with the market gate.
 - **Home lever.** The Home state class is found from its `PageData(modules=` text
-  (`line/shared/HomeState.kt`). It is `kh2.h$a` in 26.15.1 and `eh2.g$a` in 26.16.0.
+  (`line/shared/HomeState.kt`). It is `kh2.h$a` in 26.15.1, `eh2.g$a` in 26.16.0 and `dj2.h$a` in
+  26.17.1.
 - **Unsend age gate.** The patch finds the gate by shape: an `iget`, a `goto`, a second `iget`, then
   the `PREMIUM_UNSEND_MESSAGE` constant. It replaces the first read with the second one, the free
   window. Both reads are `jd1.a.o` in 26.15.1 and `xc1.a.o` in 26.16.0.
@@ -207,6 +209,73 @@ filter.
 (album promo, app-icon seasonal) independently of `a83.a.d()`. If any premium surface survives on
 device, neuter that bit too and record it here. Re-verify all descriptors when bumping the pinned
 LINE version.
+
+### Runtime switch
+
+The patch has a switch in *Andrew's Patch Setting* (key `disable_premium`, default on). Every lever
+reads it, so with the switch off LINE runs as stock after a restart:
+
+- The four `()Z` gates (market, backup, both CMS popup getters) keep their body. The patch puts
+  `LineSettings.disablePremium(Z)Z` before each `return`, because the gates have `.locals 0` and the
+  only register is `this`, which the body reads. The backup gate has two returns: both must be
+  filtered, or the backup row comes back while the market gate is off (the crash in
+  [Second lever](#second-lever-the-premium-backup-flag-required)). The patch fails if a branch or a
+  catch handler jumps straight to a `return`, because code put before that `return` does not run on that path.
+- The banner constructor filters `isVisible` the same way, and the Home module filter passes
+  `feature = "disablePremium"` to `HomeState.addModuleFilter`.
+
+The App icon row is a premium surface (issue #234). The Settings row
+`shouldShowCustomAppIconSettings` (`hf5.t.c()` on 26.17.1) checks `z()` first, then the server flag
+`function.premium.common.appicon.enabled`, then the profile region (`JP`, `TH`, `TW`). So this patch
+hides the row in every region. `[Premium] Unlock app icons` shows it again (see below).
+
+## App icons (`[Premium] Unlock app icons`)
+
+Every icon is in the APK as a launcher `activity-alias` with its own `@mipmap`. LINE applies an icon
+on the phone: `rf5.a` enables the alias with `PackageManager.setComponentEnabledSetting`, then LINE
+restarts. The server sends only the list that the App icon page shows (LEGY `GET /app-icons`, model
+`of5.i`). Thus a Premium icon is a client-side lock.
+
+The list is JSON with one object for each section (`collaboration`, `design`, `special`, `event`,
+`basic`), each with `category` and `items`. An item is `WcuAppIconData`: only `name` and `type`
+are required, and the decoder ignores keys it does not know. On 26.17.1 a TW account got 5
+collaboration items, 24 design items and 2 basic items. The APK has about 100 collaboration aliases.
+
+The patch has three levers, and all read the switch `unlock_app_icons` (default on):
+
+| Lever | 26.17.1 / 26.16.0 | Change |
+|---|---|---|
+| App icon gate | `hf5.t.c()` / `ce5.s.c()` | The result of the first `()Z` interface call (the Premium market flag `z()`) becomes `z() \|\| switch`. The server flag and the region check stay. |
+| Eligibility check | `bg3.m.A(sg3.c, Continuation)` / `be3.k.j(se3.b, Continuation)` | At entry, for `APP_ICON` only, it returns the `Eligible` object (`sg3.i$b.a`). Other features keep LINE's answer. |
+| List parse | `pf5.i.invoke` / `ke5.i.invoke` | After `check-cast p1, String`, `AppIcons.addBundledIcons` adds one `collaboration` item for each launcher alias named `collaboration_*` that no section lists. Its `iconUrl` is `android.resource://<package>/<icon id of the alias>`, which Coil (`jl.g$a`) draws. |
+
+The gate also decides the startup rollback (`hf5.t$b`): while it returns false, LINE puts the
+default icon back. The eligibility check decides the Premium lock on Apply, and the early end date
+for non-subscribers (`nonSubscriberEndTime`) in the same rollback.
+
+Anchors: the gate is the only `()Z` method with `getProfile`, `String.toUpperCase`, `Set.contains`
+and an interface `()Z` call. The eligibility check is the only two-argument method of the LYP facade
+that reads `NOT_SUBSCRIBED`. `Eligible` is the `toString` "Eligible" of a class that holds its own
+instance in a static field. The feature enum keeps its constant name `APP_ICON`. The list parse is
+the `invoke` method with the strings "RELEASE", "beta" and "CustomAppIcon". The extension reads the
+aliases from `PackageManager` (`GET_ACTIVITIES | MATCH_DISABLED_COMPONENTS`, entries with a
+`targetActivity`), so it needs no list of names.
+
+Device result on 26.17.1, TW account without Premium, with `[Premium] Disable LINE Premium` on:
+
+- Both switches on: the App icon row shows. The page lists Collaboration and Design (Premium) and
+  Basic (marked Free). A Design icon applied with no Premium prompt, and the launcher alias
+  `design_purple_glitter` was enabled. It stayed after two cold starts.
+- Unlock switch off: the App icon row is hidden.
+- Both switches off (stock): Apply on a Design icon opens "Use LINE Premium exclusive app icons"
+  with a Join prompt, and the icon does not change.
+- Not observed: the startup rollback. With the Unlock switch off, the applied icon stayed after a
+  restart.
+- Bundled collaboration icons: the Collaboration section shows the 5 server icons, then the bundled
+  ones (Stranger Things, Squid Game, Pokémon, Dragon Ball and more), drawn from their launcher icons.
+  `collaboration_pokemon_1` applied, showed on the home screen, and stayed after a cold start.
+- The App icon page logs the events `AppIconApplied` and `AppIconSelected` through LINE's shared
+  analytics logger, so LINE can see that a non-subscriber uses a Premium icon.
 
 ### Second lever: the premium-backup flag (required)
 

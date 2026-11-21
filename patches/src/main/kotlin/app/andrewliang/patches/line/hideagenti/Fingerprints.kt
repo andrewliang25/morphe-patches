@@ -15,7 +15,7 @@ import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 
 /**
- * The Compose lambda of the Home tab header (`wm2.j` in 26.14.0). It draws the header icons:
+ * The Compose lambda of the Home tab header (`nu2.j` in 26.17.1). It draws the header icons:
  * Agent i, the services grid, the bell and Settings. It draws Agent i only if its first boolean
  * field is true. It reads that field with the first `iget-boolean`, then labels the icon with
  * `access_agenti`. Nothing else in the APK uses that label.
@@ -28,7 +28,7 @@ internal object HomeHeaderAgentIFingerprint : Fingerprint(
 )
 
 /**
- * The server flag for the Agent i entry at the end of the search bar (`g45.i2.b()` in 26.14.0).
+ * The server flag for the Agent i entry at the end of the search bar (`dc5.p2.b()` in 26.17.1).
  * The search bar shows `main_tab_ai_entry_icon_container` only if this flag is true.
  */
 internal object SearchBarAiEntryFlagFingerprint :
@@ -64,6 +64,32 @@ internal fun isAgentIInChatHiddenUntilGetter(method: Method): Boolean {
         storeRead.parameterTypes == listOf(field.type) &&
         instructions[2].opcode == Opcode.MOVE_RESULT_WIDE &&
         instructions[3].opcode == Opcode.RETURN_WIDE
+}
+
+/**
+ * From 26.17.1 the two getters are one function reference, `getAiButtonShownAfterMillis()J`
+ * (`x21.a$a.invoke()`), that the chat, the Settings screen and the Labs popup all read. It reads
+ * [AGENT_I_IN_CHAT_HIDDEN_UNTIL_KEY] and returns it boxed with `Long.valueOf`. Returns the index of
+ * its `move-result-wide`, or null for any other method.
+ */
+internal fun agentIInChatHiddenUntilBoxedRead(method: Method): Int? {
+    if (method.returnType != "Ljava/lang/Object;" || method.parameterTypes.isNotEmpty()) return null
+    val instructions = method.implementation?.instructions?.toList() ?: return null
+    val keyIndex = instructions.indexOfFirst {
+        it.opcode == Opcode.SGET_OBJECT &&
+            ((it as ReferenceInstruction).reference as FieldReference).name == AGENT_I_IN_CHAT_HIDDEN_UNTIL_KEY
+    }
+    if (keyIndex < 0) return null
+    val field = (instructions[keyIndex] as ReferenceInstruction).reference as FieldReference
+    val storeRead = (instructions.getOrNull(keyIndex + 1) as? ReferenceInstruction)?.reference as? MethodReference
+    val box = (instructions.getOrNull(keyIndex + 3) as? ReferenceInstruction)?.reference as? MethodReference
+    val matches = instructions[keyIndex + 1].opcode == Opcode.INVOKE_STATIC &&
+        storeRead?.returnType == "J" &&
+        storeRead.parameterTypes == listOf(field.type) &&
+        instructions.getOrNull(keyIndex + 2)?.opcode == Opcode.MOVE_RESULT_WIDE &&
+        box?.definingClass == "Ljava/lang/Long;" &&
+        box.name == "valueOf"
+    return if (matches) keyIndex + 2 else null
 }
 
 internal const val WALLET_HEADER = "Lcom/linecorp/line/wallet/impl/v3/view/WalletV3GrandDesignHeaderView;"

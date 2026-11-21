@@ -10,6 +10,7 @@
     [
         "@semantic-release/commit-analyzer", {
         "releaseRules": [
+            { "breaking": true, "release": "major" },
             { "type": "fix", "release": "patch" },
             { "type": "feat", "release": "minor" },
             { "type": "bump", "release": "patch" },
@@ -47,7 +48,9 @@
       {
         "prepareCmd": "./gradlew generatePatchesList \
           && jq '.version=\"${nextRelease.version}\"' patches-list.json > patches-list.json.tmp && mv patches-list.json.tmp patches-list.json \
-          && python3 .github/scripts/generate_patches_readme.py $GITHUB_REPOSITORY $GITHUB_REF_NAME patches-list.json README.md"
+          && python3 .github/scripts/generate_patches_readme.py $GITHUB_REPOSITORY $GITHUB_REF_NAME patches-list.json README.md \
+          && python3 .github/scripts/generate_patches_readme.py $GITHUB_REPOSITORY $GITHUB_REF_NAME patches-list.json README.zh-TW.md \
+          && python3 .github/scripts/generate_patches_readme.py $GITHUB_REPOSITORY $GITHUB_REF_NAME patches-list.json README.ja-JP.md"
       }
     ],
     [
@@ -58,7 +61,9 @@
           "gradle.properties",
           "patches-bundle.json",
           "patches-list.json",
-          "README.md"
+          "README.md",
+          "README.zh-TW.md",
+          "README.ja-JP.md"
         ],
         "message": "chore: Release v${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
       }

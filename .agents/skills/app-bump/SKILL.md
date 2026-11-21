@@ -45,11 +45,14 @@ notes for your app at the end of this file before step 1.
    hit, compare it with `apksigner verify --print-certs` on the new `base.apk` (apksigner is in
    `~/Library/Android/sdk/build-tools/<newest>/`). Done when each stored value still matches, or the
    patch has the new one.
-7. **Pin the version.** Add an `AppTarget` with the new version to `COMPATIBILITY_<APP>` in
+7. **Pin the version.** Add an `AppTarget` with the new version, its `versionCode` (from step 1)
+   and its `minSdk` to `COMPATIBILITY_<APP>` in
    `Constants.kt`. Keep the `targets` list in ascending version order (oldest to newest, so append
    the new version at the end). Ask the user whether to keep the old version, and say why it matters
-   (a minSdk increase drops older Android devices). If the new version keeps a feature that has its
-   own list (for LINE, `COMPATIBILITY_LINE_CALL_RECORDING`), add the version to that filter too.
+   (a minSdk increase drops older Android devices). An old version that the new version covers
+   (same minSdk) adds no devices, so offer to drop it. Dropping a version is a breaking change. If
+   the new version keeps a feature that has its own list (a `Compatibility` that filters the targets
+   of the app), add the version to that filter too.
    Done when `verify.sh --app <APP> --all` applies with no `--force`.
 8. **Device test** each version that the phone can run, with the `device-test` skill: the default
    set, and each surface that a re-anchored patch touches. Done when each re-anchored surface shows
@@ -93,22 +96,29 @@ notes for your app at the end of this file before step 1.
   `(prefix, member)` pair in a single pass through a lookup table.
 - **A `methodOrNull` site that drifts** applies with no error. Only the method diff of step 5 shows
   it.
+- **Injected smali must not name an obfuscated class.** The patch applies, and the call points at a
+  class that does not exist in the new version. Read the descriptor from the matched method at patch
+  time.
+- **An injected branch that joins existing code must keep the register types there.** If the block
+  leaves a `long` in a register that the other path holds as an object, ART rejects the method.
+  BranchSweep and a dump both pass. Jump past the join, or use registers that are dead on both
+  paths.
 - **A `check-cast` satisfies the verifier, not the run time.** BranchSweep and a dump both pass, and
   the cast throws `ClassCastException` on the phone. A Kotlin default-argument constructor can store
   its own default in the field with another type than the argument.
 
 ### LINE (`--app LINE`)
 
-- The bundle supports two versions (26.14.0 for Android 11 and 12, 26.15.1 for 12L and later).
-  Read "Two supported versions" and "How to check a bump" in `docs/line-patch-map.md`.
-- From 26.15.1, R8 also renames the Kotlin stdlib (`kotlin.Unit`, `Lazy`, function types).
+- The bundle supports two versions (26.16.0 for Android 11 and 12, 26.17.1 for 12L and later).
+  Read "Supported versions" and "How to check a bump" in `docs/line-patch-map.md`.
+- R8 also renames the Kotlin stdlib (`kotlin.Unit`, `Lazy`, function types).
 - Shared helpers already absorb drift: `shared/ResourceIds.kt`, `line/shared/HomeState.kt`,
   `line/shared/AttachTile.kt`. Prefer them to a new anchor.
 - Step 6 finds the two signer SHA-1s of "[Fix] Restore push notifications". `base.apk` uses
   key rotation: `docs/line-patch-map.md` ("Which cert") says which of the two certificates the patch
   uses.
 - Docs: `docs/line-patch-map.md` and `docs/line-premium-map.md`. Past bumps: 26.14.0 (16 patches
-  broke), 26.15.1 (18 of 30).
+  broke), 26.15.1 (18 of 30), 26.17.1 (6 of 39 failed, and 1 applied with no change).
 
 ### Facebook (`--app FACEBOOK`)
 

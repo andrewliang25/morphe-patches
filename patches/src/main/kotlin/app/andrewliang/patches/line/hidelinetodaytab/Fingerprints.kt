@@ -6,7 +6,7 @@ import app.morphe.patcher.fieldAccess
 private const val MAIN_TAB = "Ljp/naver/line/android/activity/main/a;"
 
 /**
- * Matches `b68.g.a()` (26.14.0) — the main bottom-nav tab-list builder — via its access to the
+ * Matches `di8.f.a()` (26.17.1) — the main bottom-nav tab-list builder — via its access to the
  * non-obfuscated LINE TODAY tab constants. LINE TODAY is represented by two variants:
  * `NEWS` (the main news tab → `NewsMainTabFragment`) and `NEWS_ROW` (the news-row variant →
  * `NewsRowFragment`). Both are added in `a()`; matching both yields the two `sget-object`

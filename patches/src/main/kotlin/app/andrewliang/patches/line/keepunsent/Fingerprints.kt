@@ -40,8 +40,8 @@ internal object UnsendMessageDbWriteFingerprint : Fingerprint(
 )
 
 /**
- * `toString()` of LINE's view data for one chat message (obfuscated `te1.c` on 26.15.1, `m91.c` on
- * 26.14.0). The patch adds the unsent mark to this class as a field. The class is a Kotlin data
+ * `toString()` of LINE's view data for one chat message (obfuscated `ve1.c` on
+ * 26.17.1). The patch adds the unsent mark to this class as a field. The class is a Kotlin data
  * class, so its `toString` keeps the original class name as a string.
  */
 internal object MessageViewDataToStringFingerprint : Fingerprint(
@@ -54,7 +54,7 @@ internal object MessageViewDataToStringFingerprint : Fingerprint(
 )
 
 /**
- * The builder of the message view data (obfuscated `re1.d` on 26.15.1, `k91.e` on 26.14.0). It reads
+ * The builder of the message view data (obfuscated `te1.d` on 26.17.1). It reads
  * the `EDITED` key from the message's metadata, and then calls the view data constructor.
  *
  * Other methods read `IS_EDITED_MESSAGE` too: the edit merge, the edit send and a key table. Only
@@ -76,7 +76,7 @@ internal object MessageViewDataBuilderFingerprint : Fingerprint(
 )
 
 /**
- * The coroutine that makes LINE's "Edited" label a link (`qr1.f` on 26.15.1, `hm1.e` on 26.14.0).
+ * The coroutine that makes LINE's "Edited" label a link (`es1.i` on 26.17.1).
  * Kotlin's debug metadata keeps the name of the label's controller class,
  * `EditedMarkViewController`. The coroutine's constructor takes that controller as its first
  * parameter, which gives the controller's obfuscated class.

@@ -11,7 +11,7 @@ import com.android.tools.smali.dexlib2.AccessFlags
  * which only the RECV side throws. This excludes the SEND lambda and the `getBanners_args` /
  * `_result` structs, and needs no name of the obfuscated Thrift classes.
  *
- * The lambda can be one case of a shared `packed-switch` (26.15.1 puts both RECV lambdas next to
+ * The lambda can be one case of a shared `packed-switch` (R8 can put both RECV lambdas next to
  * unrelated branches), so the patch injects after the op-name string, not at method entry.
  */
 internal object GetBannersRecvFingerprint : Fingerprint(

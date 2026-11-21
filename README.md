@@ -1,5 +1,7 @@
 # 🧩 Andrew's Patches
 
+English | [繁體中文](README.zh-TW.md) | [日本語](README.ja-JP.md)
+
 Morphe patches for LINE and other apps I use.
 
 ## ❓ About
@@ -17,7 +19,7 @@ Morphe Manager to build a modified APK.
 ## 🩹 Patches list
 
 <!-- PATCHES_START EXPANDED -->
-> **[v3.12.0](https://github.com/andrewliang25/morphe-patches/releases/tag/v3.12.0)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;59 patches total
+> **[v3.13.0-dev.5](https://github.com/andrewliang25/morphe-patches/releases/tag/v3.13.0-dev.5)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;61 patches total
 <details open>
 <summary>📦 Facebook&nbsp;&nbsp;•&nbsp;&nbsp;20 patches</summary>
 <br>
@@ -53,19 +55,19 @@ Morphe Manager to build a modified APK.
 </details>
 
 <details open>
-<summary>📦 LINE&nbsp;&nbsp;•&nbsp;&nbsp;39 patches</summary>
+<summary>📦 LINE&nbsp;&nbsp;•&nbsp;&nbsp;41 patches</summary>
 <br>
 
 **🎯 Supported versions:**
 
-| 26.14.0 | 26.15.1 | 26.16.0 |
+| 26.16.0 | 26.17.1 | 26.18.2 |
 | :---: | :---: | :---: |
 
 | 💊&nbsp;Patch | 📜&nbsp;Description | ⚙️&nbsp;Options |
 |----------|----------------|-----------|
 | [[Ad] Hide ad views](#ad-hide-ad-views) | Hides LINE display ads: the LINE Ads banners, the Smart Channel banner in the chat list and Google AdManager ads. |  |
 | [[Ad] Remove banner ads](#ad-remove-banner-ads) | LINE no longer loads the Smart Channel banner ads. This patch makes the getBanners and getPrefetchableBanners responses null. |  |
-| [[Call] Auto-record calls](#call-auto-record-calls) | Starts recording a 1-to-1 LINE call as soon as it connects. LINE saves the recording. Recording a call without the other person's consent is illegal in some places. You are responsible for following the law where you are. |  |
+| [[Call] Auto-record calls](#call-auto-record-calls) | Starts recording a 1-to-1 LINE call as soon as it connects. LINE saves the recording. Turn on call recording in Settings > LINE Labs first, because LINE does not record while that switch is off. Recording a call without the other person's consent is illegal in some places. You are responsible for following the law where you are. |  |
 | [[Call] Record calls without notifying](#call-record-calls-without-notifying) | Records a 1-to-1 LINE call without telling the other party: no on-screen banner and no spoken recording announcement. Recording a call without the other person's consent is illegal in some places. You are responsible for following the law where you are. |  |
 | [[Call] Remove recording time limit](#call-remove-recording-time-limit) | Records a call until it ends. LINE stops voice recordings after 60 minutes and video recordings after 20 or 50 minutes. |  |
 | [[Call] Save recordings to device](#call-save-recordings-to-device) | Saves each call recording to the Movies/LINE folder on your phone instead of sharing it to Keep Memo, which refuses files over 1 GB. |  |
@@ -85,6 +87,7 @@ Morphe Manager to build a modified APK.
 | [[Fix] Restore location maps via MicroG-RE](#fix-restore-location-maps-via-microg-re) | Shows maps again on a re-signed build, with OpenFreeMap tiles. It needs MicroG-RE 7.0.0 or later. Root Mount does not need it. |  |
 | [[Fix] Restore push notifications](#fix-restore-push-notifications) | When LINE is fully closed, push notifications work again on a re-signed build. LINE also gets its Firebase Remote Config again. A Root Mount install does not need this patch. |  |
 | [[General] Andrew's Patch Setting](#general-andrew-s-patch-setting) | Adds "Andrew's Patch Setting" to LINE Settings, below "Profile". There you can turn some patches on or off without patching again, and see the credits and licenses. |  |
+| [[General] Block analytics](#general-block-analytics) | Stops LINE from sending usage events to its analytics service, such as the screens you open and the buttons you tap. Crash reports are not changed. |  |
 | [[General] Custom font](#general-custom-font) | Adds a button to LINE's Font page to use a font file from your device. The page then no longer loads LINE's font list from the server. |  |
 | [[General] Disable VOOM](#general-disable-voom) | VOOM deep links, shares, and notifications do nothing. If you open the standalone VOOM feed, it closes. Messaging and the other tabs do not change. |  |
 | [[General] Enable themes on sub devices](#general-enable-themes-on-sub-devices) | Lets a sub device (a tablet or second phone logged in to the same account) use themes and the Black theme in dark mode. Hides the Theme Shop button there, because LINE does not open the shop on a sub device. |  |
@@ -98,6 +101,7 @@ Morphe Manager to build a modified APK.
 | [[Home] Hide Home modules](#home-hide-home-modules) | Hides the recommended content, hot-topics and ad modules on the Home tab. |  |
 | [[Premium] Disable LINE Premium](#premium-disable-line-premium) | Hides all LINE Premium upsells, badges and pages. It unlocks nothing, because the server enforces Premium. |  |
 | [[Premium] Hide premium unsend upsells](#premium-hide-premium-unsend-upsells) | Removes the Premium unsend upsells that "Disable LINE Premium" leaves. Ordinary unsend still works. |  |
+| [[Premium] Unlock app icons](#premium-unlock-app-icons) | Shows the App icon page in Settings, also with "Disable LINE Premium" on. It also lists the collaboration icons that are in the app but not offered now. You can apply every icon on the page, also the Premium ones. |  |
 | [[Tab] Hide LINE TODAY tab](#tab-hide-line-today-tab) | Removes the LINE TODAY (News) tab from the main bottom navigation, in both the news-tab and news-row layouts. |  |
 | [[Tab] Hide Shopping tab](#tab-hide-shopping-tab) | Removes the Shopping tab from the main bottom navigation. This includes the Japan variant (Shopping, ショッピング) and the Taiwan variant (Discover, 逛逛). |  |
 | [[Tab] Hide VOOM tab](#tab-hide-voom-tab) | Removes the VOOM (formerly Timeline) tab from the main bottom navigation. |  |
@@ -154,7 +158,7 @@ To build Andrew's Patches, obey the instructions in the
 
 **What:** At some merchants, a LINE Pay payment from a website or an ordering system fails. LINE
 opens, then the standalone **LINE Pay** app opens and shows an error. Examples of the error are
-"you must use the LINE app for this function" (`您必須透過LINE應用程式操作此功能`) and "update LINE".
+"you must use the LINE app for this function" and "update LINE".
 
 **Why:** LINE Pay inside LINE has an integrity check that fails on a modified LINE. The
 *[General] Redirect LINE Pay* patch sends each payment to the standalone LINE Pay app instead. Most

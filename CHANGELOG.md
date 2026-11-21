@@ -1,3 +1,50 @@
+## [3.13.0-dev.5](https://github.com/andrewliang25/morphe-patches/compare/v3.13.0-dev.4...v3.13.0-dev.5) (2026-11-21)
+
+### ✨ New Features
+
+* **LINE - Andrew's Patch Setting:** show the screen in Japanese and Traditional Chinese ([0b28731](https://github.com/andrewliang25/morphe-patches/commit/0b2873192bd56ce79c69c348a0aeeca1f757b7d3))
+
+## [3.13.0-dev.4](https://github.com/andrewliang25/morphe-patches/compare/v3.13.0-dev.3...v3.13.0-dev.4) (2026-11-21)
+
+### 🚀 Updated App Support
+
+* **LINE:** add support for LINE 26.18.2 ([39d9e65](https://github.com/andrewliang25/morphe-patches/commit/39d9e6580e8187863fbdccda4a97ec303b75ae33))
+
+## [3.13.0-dev.3](https://github.com/andrewliang25/morphe-patches/compare/v3.13.0-dev.2...v3.13.0-dev.3) (2026-11-20)
+
+### ✨ New Features
+
+* **LINE - Block analytics:** stop LINE's usage events ([4c231ea](https://github.com/andrewliang25/morphe-patches/commit/4c231ea22159b952e8fab9f862f5e566ca1d0dc2))
+
+## [3.13.0-dev.2](https://github.com/andrewliang25/morphe-patches/compare/v3.13.0-dev.1...v3.13.0-dev.2) (2026-11-20)
+
+### ✨ New Features
+
+* **LINE - Unlock app icons:** show and unlock every app icon ([91ed919](https://github.com/andrewliang25/morphe-patches/commit/91ed919f6c130b77b27529cba69b11f19a546f05)), closes [#234](https://github.com/andrewliang25/morphe-patches/issues/234)
+
+## [3.13.0-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v3.12.1-dev.1...v3.13.0-dev.1) (2026-11-20)
+
+### ✨ New Features
+
+* **LINE - Disable LINE Premium:** add a switch in Andrew's Patch Setting ([52948c6](https://github.com/andrewliang25/morphe-patches/commit/52948c6570100020e00b96564fddde72f687f591)), closes [#234](https://github.com/andrewliang25/morphe-patches/issues/234)
+
+## [3.12.1-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v3.12.0...v3.12.1-dev.1) (2026-11-20)
+
+### ⚠ BREAKING CHANGES
+
+* **LINE:** The patches no longer support LINE 26.14.0 and 26.15.1.
+Patch LINE 26.16.0 on Android 11 or 12, and LINE 26.17.1 on Android 12L
+or later.
+
+### 🐛 Bug Fixes
+
+* **LINE - Hide new item badges:** hide the "N" on the LINE Labs row ([5a4fef3](https://github.com/andrewliang25/morphe-patches/commit/5a4fef3abe0a3f3c4c78f6e25ec28c6ee04a59d8))
+
+### 🚀 Updated App Support
+
+* **LINE:** add support for LINE 26.17.1 ([dc57eca](https://github.com/andrewliang25/morphe-patches/commit/dc57eca7e9baa189ee40c96da76c6dbaf7e810fb))
+* **LINE:** drop LINE 26.14.0 and 26.15.1 ([66f4655](https://github.com/andrewliang25/morphe-patches/commit/66f4655bc72c9a5a41a87a50a896e3637d84f097))
+
 ## [3.12.0](https://github.com/andrewliang25/morphe-patches/compare/v3.11.0...v3.12.0) (2026-11-15)
 
 ### 🐛 Bug Fixes

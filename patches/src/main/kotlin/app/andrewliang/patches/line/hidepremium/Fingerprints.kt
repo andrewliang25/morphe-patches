@@ -3,6 +3,10 @@ package app.andrewliang.patches.line.hidepremium
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.fieldAccess
 import app.morphe.patcher.string
+import com.android.tools.smali.dexlib2.Opcode
+import com.android.tools.smali.dexlib2.iface.Method
+import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
+import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 
 /**
  * `z(PremiumStateBatchedSyncWorker$b)Object` — the premium-state sync entry point of the LYP
@@ -33,19 +37,39 @@ internal object PremiumFacadeFingerprint : Fingerprint(
 
 /**
  * A method of the premium-backup facade impl (which implements the premium-backup facade
- * interface). It holds the string `"InitialBackupRestore"`, which no other method in the APK holds.
+ * interface). It holds the log tag `"InitialBackupRestore"`. About 70 backup methods hold that tag,
+ * so the match also needs the class to have the premium-backup gate ([isPremiumBackupGate]). Only
+ * the facade has it.
  *
  * We do NOT patch this method. We only need its `definingClass` to reach the premium-backup
  * availability gate (see the patch). The facade, its gate lambda and the interface are all
  * obfuscated and drift between versions, so none of them is hardcoded. Do not anchor on
- * `kotlin.Unit` either: from LINE 26.15.1, R8 also renames the Kotlin stdlib.
+ * `kotlin.Unit` either: R8 also renames the Kotlin stdlib.
  */
 internal object PremiumBackupFacadeFingerprint : Fingerprint(
     filters = listOf(string("InitialBackupRestore")),
+    custom = { _, classDef -> classDef.methods.any(::isPremiumBackupGate) },
 )
 
 /**
- * `toString` of LINE's premium font configuration (`g45/c2` in 26.14.0, `ta5/f2` in 26.15.1), a
+ * The premium-backup gate of the facade. The facade has three `()Z` methods. Select on shape
+ * rather than the drift-prone name: the gate is the only one that opens with an `iget-object` of
+ * its lambda field, then calls that lambda's `invoke()Object` by invoke-virtual. One sibling opens
+ * with invoke-virtual. The other reads a lazy field, and the lazy's getter is not `invoke`.
+ */
+internal fun isPremiumBackupGate(method: Method): Boolean =
+    method.returnType == "Z" &&
+        method.parameterTypes.isEmpty() &&
+        method.implementation?.instructions?.toList()?.let { instructions ->
+            instructions.size > 1 &&
+                instructions[0].opcode == Opcode.IGET_OBJECT &&
+                instructions[1].opcode == Opcode.INVOKE_VIRTUAL &&
+                ((instructions[1] as ReferenceInstruction).reference as MethodReference)
+                    .let { it.name == "invoke" && it.returnType == "Ljava/lang/Object;" }
+        } == true
+
+/**
+ * `toString` of LINE's premium font configuration (`dc5/j2` in 26.17.1), a
  * Kotlin data class. Its last field, `isPremiumFontCmsPopupEnabled`, comes from the server setting
  * `function.premium.common.font.cms_popup.enabled`. The Font page shows a server-made promo sheet
  * for new fonts ("Change to new fonts…") only while it is true.
@@ -53,12 +77,11 @@ internal object PremiumBackupFacadeFingerprint : Fingerprint(
 internal object PremiumFontConfigToStringFingerprint : Fingerprint(
     name = "toString",
     returnType = "Ljava/lang/String;",
-    // One filter only: the two versions load the labels in a different order.
     filters = listOf(string("PremiumFontConfiguration(isPremiumFontAvailable=")),
 )
 
 /**
- * `toString` of the state of the Font page banner (`dr4/a$b$b` in 26.14.0, `px4/a$b$b` in 26.15.1).
+ * `toString` of the state of the Font page banner (`tz4/a$b$b` in 26.17.1).
  * The banners are "A new font is available!" and the premium font banners. A banner shows only
  * while its first field, `isVisible`, is true.
  */
@@ -69,7 +92,7 @@ internal object FontBannerStateToStringFingerprint : Fingerprint(
 )
 
 /**
- * `toString` of LINE's CMS popup configuration (`g45/u` in 26.14.0, `ta5/a0` in 26.15.1). Its one
+ * `toString` of LINE's CMS popup configuration (`dc5/a0` in 26.17.1). Its one
  * field comes from the server setting `function.premium.common.cms_popup`. While it is false, the
  * CMS popup module (`com.linecorp.line.cms.popup`) fetches and shows no server-made promo popup.
  */

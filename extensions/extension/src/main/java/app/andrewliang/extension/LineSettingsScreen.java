@@ -122,7 +122,7 @@ final class LineSettingsScreen {
     private static void addSwitches(Activity activity, LinearLayout content) {
         boolean chats = LineSettings.keepChatsUnreadIncluded() || LineSettings.keepUnsentMessagesIncluded();
         boolean general = LineSettings.externalBrowserIncluded() || LineSettings.disableVoomIncluded()
-                || LineSettings.customFontIncluded();
+                || LineSettings.customFontIncluded() || LineSettings.blockAnalyticsIncluded();
         boolean tabs = LineSettings.hideTodayTabIncluded() || LineSettings.hideShoppingTabIncluded()
                 || LineSettings.hideVoomTabIncluded() || LineSettings.hideWalletTabIncluded();
         boolean buttons = LineSettings.hideAiFriendsIncluded() || LineSettings.hideCommunityButtonIncluded()
@@ -132,8 +132,9 @@ final class LineSettingsScreen {
                 || LineSettings.hideLineAiImageEditIncluded() || LineSettings.hideAgentIIncluded();
         boolean calls = LineSettings.autoRecordCallsIncluded() || LineSettings.silentCallRecordingIncluded()
                 || LineSettings.saveCallRecordingsToDeviceIncluded() || LineSettings.removeCallRecordingLimitIncluded();
+        boolean premium = LineSettings.disablePremiumIncluded() || LineSettings.unlockAppIconsIncluded();
 
-        if (!chats && !general && !tabs && !buttons && !calls) {
+        if (!chats && !general && !tabs && !buttons && !calls && !premium) {
             content.addView(note(activity, "No patches in this build have a switch."));
             return;
         }
@@ -222,6 +223,17 @@ final class LineSettingsScreen {
                         () -> close.setVisibility(View.VISIBLE)));
                 content.addView(close);
             }
+            if (LineSettings.blockAnalyticsIncluded()) {
+                // LINE installs its analytics logger only when its process starts.
+                View close = row(activity, "Close LINE", "Open LINE again to apply your analytics change.", true);
+                close.setVisibility(View.GONE);
+                close.setOnClickListener(v -> CustomFontPicker.exit(activity));
+                content.addView(toggle(activity, LineSettings.BLOCK_ANALYTICS, "Block analytics",
+                        "Stops LINE from sending usage events, such as the screens you open and the buttons "
+                                + "you tap.",
+                        () -> close.setVisibility(View.VISIBLE)));
+                content.addView(close);
+            }
         }
 
         if (calls) {
@@ -270,6 +282,26 @@ final class LineSettingsScreen {
             content.addView(note(activity, "Tab changes show after LINE restarts."));
             content.addView(restart);
         }
+
+        if (premium) {
+            content.addView(section(activity, "Premium"));
+            View restart = row(activity, "Restart LINE", "Applies your Premium change.", true);
+            restart.setVisibility(View.GONE);
+            restart.setOnClickListener(v -> restart(activity));
+            Runnable showRestart = () -> restart.setVisibility(View.VISIBLE);
+            if (LineSettings.disablePremiumIncluded()) {
+                content.addView(toggle(activity, LineSettings.DISABLE_PREMIUM, "Disable LINE Premium",
+                        "Hides LINE Premium upsells, badges and pages.", showRestart));
+            }
+            if (LineSettings.unlockAppIconsIncluded()) {
+                content.addView(toggle(activity, LineSettings.UNLOCK_APP_ICONS, "Unlock app icons",
+                        "Shows the App icon page in Settings, also with the collaboration icons that LINE does not "
+                                + "offer now. You can apply every icon on it, also the Premium ones.",
+                        showRestart));
+            }
+            content.addView(note(activity, "Premium changes show after LINE restarts."));
+            content.addView(restart);
+        }
     }
 
     private static void addCredits(Activity activity, LinearLayout content) {
@@ -301,7 +333,7 @@ final class LineSettingsScreen {
         // takes the color of the header title, as on LINE's own pages.
         ColorStateList titleColors = look.headerTitle != null ? look.headerTitle : look.title;
         if (titleColors != null) back.setImageTintList(titleColors);
-        back.setContentDescription("Back");
+        back.setContentDescription(LineStrings.get(activity, "Back"));
         back.setPadding(dp(activity, 4), 0, 0, 0);
         back.setOnClickListener(v -> dialog.dismiss());
         header.addView(back, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, height));
@@ -356,7 +388,7 @@ final class LineSettingsScreen {
         int horizontal = dimen(activity, "line_user_settings_item_container_padding_horizontal");
         section.setPaddingRelative(horizontal, dimen(activity, "line_user_settings_item_header_small_padding_top"),
                 horizontal, dimen(activity, "line_user_settings_item_header_padding_bottom"));
-        section.setText(title);
+        section.setText(LineStrings.get(activity, title));
         look.paint(section, look.sectionOrSecondary());
         return section;
     }
@@ -374,7 +406,7 @@ final class LineSettingsScreen {
 
     private static void text(Activity activity, View row, String view, String text) {
         TextView textView = row.findViewById(id(activity, view, "id"));
-        textView.setText(text);
+        textView.setText(LineStrings.get(activity, text));
         textView.setVisibility(View.VISIBLE);
         look.paint(textView, view.equals("setting_title") ? look.title : look.secondary());
     }
@@ -540,10 +572,10 @@ final class LineSettingsScreen {
         scroll.addView(text);
 
         new AlertDialog.Builder(activity)
-                .setTitle("License")
+                .setTitle(LineStrings.get(activity, "License"))
                 .setView(scroll)
-                .setNegativeButton("Full license", (d, w) -> open(activity, LICENSE_URL))
-                .setPositiveButton("Close", null)
+                .setNegativeButton(LineStrings.get(activity, "Full license"), (d, w) -> open(activity, LICENSE_URL))
+                .setPositiveButton(LineStrings.get(activity, "Close"), null)
                 .show();
     }
 
