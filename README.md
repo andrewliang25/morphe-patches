@@ -158,7 +158,7 @@ To build Andrew's Patches, obey the instructions in the
 
 **What:** At some merchants, a LINE Pay payment from a website or an ordering system fails. LINE
 opens, then the standalone **LINE Pay** app opens and shows an error. Examples of the error are
-"you must use the LINE app for this function" (`您必須透過LINE應用程式操作此功能`) and "update LINE".
+"you must use the LINE app for this function" and "update LINE".
 
 **Why:** LINE Pay inside LINE has an integrity check that fails on a modified LINE. The
 *[General] Redirect LINE Pay* patch sends each payment to the standalone LINE Pay app instead. Most
