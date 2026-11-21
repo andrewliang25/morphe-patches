@@ -21,7 +21,7 @@ Morphe Manager でパッチを適用すると、改変した APK をビルドで
 パッチの名前と説明は自動で生成されるため、英語で表示されます。
 
 <!-- PATCHES_START EXPANDED -->
-> **[v3.13.0-dev.5](https://github.com/andrewliang25/morphe-patches/releases/tag/v3.13.0-dev.5)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;61 patches total
+> **[v4.0.0](https://github.com/andrewliang25/morphe-patches/releases/tag/v4.0.0)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;61 patches total
 <details open>
 <summary>📦 Facebook&nbsp;&nbsp;•&nbsp;&nbsp;20 patches</summary>
 <br>

@@ -21,7 +21,7 @@ Morphe Manager 套用，產生修改過的 APK。
 修補程式的名稱與說明由程式自動產生，因此以英文顯示。
 
 <!-- PATCHES_START EXPANDED -->
-> **[v3.13.0-dev.5](https://github.com/andrewliang25/morphe-patches/releases/tag/v3.13.0-dev.5)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;61 patches total
+> **[v4.0.0](https://github.com/andrewliang25/morphe-patches/releases/tag/v4.0.0)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;61 patches total
 <details open>
 <summary>📦 Facebook&nbsp;&nbsp;•&nbsp;&nbsp;20 patches</summary>
 <br>
