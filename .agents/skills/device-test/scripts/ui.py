@@ -12,6 +12,9 @@ Commands:
   shot PATH [MAX]             Save a screenshot to PATH and a copy scaled to MAX px (default 1000) to
                               PATH with "-small" before the extension. Read the small one.
   pixel PATH X Y              Print the RGB hex of one pixel of a full-size screenshot.
+  adb ARGS...                 Run adb with ARGS, for example `adb shell pm path PKG`.
+
+With two phones connected, set $ANDROID_SERIAL to the serial of the phone under test.
 
 The adb binary is $ADB, else ../platform-tools/adb next to the repository, else adb on PATH.
 """
@@ -124,6 +127,12 @@ def device():
     if not lines:
         print("No device. Ask the user to connect the phone (another cable if it keeps dropping).")
         return False
+    serial = os.environ.get("ANDROID_SERIAL")
+    if len(lines) > 1:
+        lines = [line for line in lines if line.split()[0] == serial]
+        if not lines:
+            print("Two or more devices. Set ANDROID_SERIAL to one of them:", adb("devices").stdout)
+            return False
     if not lines[0].endswith("device"):
         print("Device not ready:", lines[0])
         return False
@@ -172,6 +181,8 @@ def main(argv):
         print(__doc__)
         return 2
     command, rest = argv[0], argv[1:]
+    if command == "adb":
+        return subprocess.run([ADB, *rest]).returncode
     if command == "device":
         return 0 if device() else 1
     if command == "list":

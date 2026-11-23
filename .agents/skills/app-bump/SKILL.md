@@ -14,8 +14,10 @@ notes for your app at the end of this file before step 1.
 ## Steps
 
 1. **Get the APK.** Put it at `../patched-apps/temp/<package>-<new>-<arch>.apk.apkm`, or a merged
-   `.apk` with the same name. If the user has none, ask for it (the `archive-dlurl` of the app in
-   the test configs points at their archive). Read `minSdkVersion` and `versionCode` from
+   `.apk` with the same name. When the new version is on the connected phone, run
+   `.agents/skills/device-test/scripts/pull-apk.sh <package>`: it pulls the splits and puts the
+   `.apk.apkm` there. Otherwise ask the user for the APK (the `archive-dlurl` of the app in the
+   test configs points at their archive). Read `minSdkVersion` and `versionCode` from
    `base.apk`, and check that the dex files are plain (`unzip -l base.apk | grep classes`). Done
    when the file is there and you know its minSdk.
 2. **Decompile.** Unzip `base.apk` to `work/apkm-extract-<app>-<new>/`, then `apktool d` to
