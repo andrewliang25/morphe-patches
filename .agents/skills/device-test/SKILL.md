@@ -12,16 +12,14 @@ Test a patch on the real phone yourself, including opening the screens. The user
 ## Steps
 
 1. **Preflight.** Run `ui.py device`. Done when it exits 0. If it prints "No device" or "locked",
-   ask the user to connect or unlock the phone, and wait for their reply.
-2. **Build the test APK** through `../patched-apps`, as in step 3 of the procedure in `AGENTS.md`.
-   - Wipe `patches/build/libs`, build, then copy the bundle to
-     `../patched-apps/temp/andrewliang25-rv/patches-<version>-<tag>.mpp`.
-   - Copy the newest `../patched-apps/*-test.toml`, and set `patches-version = "v<version>-<tag>"`,
-     `version` (the LINE version on the phone, see step 3) and `included-patches`.
-   - Run the Docker build in the background: it takes about 10 minutes.
-   - Rename `build/line-andrew-v<ver>-arm64-v8a.apk` to a name for this test, so the next build
-     does not overwrite it.
-   Done when the build log shows `Applied: <patch>` for each patch under test.
+   ask the user to connect or unlock the phone, and wait for their reply. With two phones
+   connected, set `ANDROID_SERIAL` to the phone under test on each command. Run raw adb commands
+   as `ui.py adb ARGS...`, which finds the adb binary for you.
+2. **Build the test APK** with `scripts/build-test-apk.sh <tag> <app version> ["<patch>" ...]`
+   (`--app Facebook` for Facebook) after a `verify.sh` run, in the background: it takes about
+   10 minutes. It adds the named patches to the default set, stages the bundle under the name
+   that `../patched-apps` needs, and prints the APK path. Done when it exits 0: each named patch
+   shows `Applied:` in the log.
 3. **Install** with `adb install -r <apk>` (keeps the app data and the login). First read the
    version on the phone (`dumpsys package jp.naver.line.android | grep versionName`). A build of an
    older version fails with `INSTALL_FAILED_VERSION_DOWNGRADE`: build for the phone's version
