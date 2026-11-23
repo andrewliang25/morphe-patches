@@ -75,6 +75,11 @@ Two Gradle modules (`settings.gradle.kts`):
 
 `util/PatchListGenerator.kt` (`main()`, run by `generatePatchesList`) loads the built `.mpp` via `loadPatchesFromJar`, reads the bundle version from the JAR manifest, and writes `patches-list.json`. Third-party tools read that file. Do not edit it by hand.
 
+### Translated text
+
+- **LINE Settings screen:** `LineStrings.java` keys each ja and zh-TW text by its English text. When you add or change the English text of a switch, add or change its `put(...)` row too. If you do not, the screen silently shows English in those languages. Take the words from LINE's own `values-ja` and `values-zh-rTW` strings. The Facebook screen is English only.
+- **READMEs:** `README.md`, `README.zh-TW.md` and `README.ja-JP.md` share their hand-written sections (for example "Known limitations"). Change all three in one commit. The release regenerates the patch table in each.
+
 ## Target app integrity (LINE)
 
 - The core messenger has no enforcing signature or integrity check. Root, debugger, emulator and signature checks in the general app are telemetry only (Crashlytics / Sentry), and no Play Integrity or SafetyNet is bundled.
@@ -116,11 +121,11 @@ Before patching any LINE limit, find out **who decides**:
 
 ## Development procedure
 
-Every new patch or fix goes through these six steps, in order. Each step ends on its completion criterion.
+Every new patch or fix goes through these six steps, in order. Each step ends on its completion criterion. The `ship` skill runs steps 4 to 6.
 
 1. **Investigate.** Locate the code that draws or decides the surface: first in the decompile, then by measurement on the device. Done when a logging build shows that the target method runs while the surface is on the screen (see "Verified bytecode does NOT mean the code runs"). Record the anchors and the dead ends in the `docs/*-map.md` of the app.
 2. **Develop.** Work on a `feat/` or `fix/` branch off `dev`. Never commit onto `dev` itself. Stage only the files of the task, because the working tree often holds unrelated edits. Done when `buildAndroid` passes and the patch applies to the pinned APK.
-3. **Device test.** Build the test APK through `../patched-apps`: stage the bundle in `temp/andrewliang25-rv/`, then `docker run --rm --platform linux/amd64 -v "$PWD":/repo -w /repo rvmm-build ./build.sh <test>.toml`. Install it with `../platform-tools/adb install -r`. Done when the disassembly shows the edit, `BranchSweep` is clean, and the device shows the change with no crash. For a rare or server-capped surface, force and observe in one build: a helper before the forced gate logs each case that the patch stops. Commit probe branches locally and never push them, because a pushed probe invites a PR for code that must not ship. Record the measured result in `docs/*-map.md` and in the PR body of the real patch.
+3. **Device test.** Build the test APK through `../patched-apps` with `build-test-apk.sh` (`device-test` skill), and install it with `adb install -r`. Done when the disassembly shows the edit, `BranchSweep` is clean, and the device shows the change with no crash. For a rare or server-capped surface, force and observe in one build: a helper before the forced gate logs each case that the patch stops. Commit probe branches locally and never push them, because a pushed probe invites a PR for code that must not ship. Record the measured result in `docs/*-map.md` and in the PR body of the real patch.
 4. **Clean up.** Remove probe code, dead code and backstory from comments. A comment keeps the rule and a one-clause reason. The story (issue numbers, how it was found) goes in the commit or PR. Done when the diff holds only the shipping change and its docs.
 5. **Simple English.** Load the `simple-english` skill and run its self-check on the new comments, docs, patch descriptions, commit message and PR body. Keep the file's existing spelling (the Facebook AMOLED code uses "colour"). Say in the PR that steps 4 and 5 ran.
 6. **Commit, push, PR.** Write one conventional commit, scoped to its app (see "Scope each app change" in the release pipeline), with no `Co-Authored-By` trailer, because semantic-release copies the message into the release notes. Push the branch and open a PR into `dev`. The PR body gives a summary, how the patch works, and a testing checklist. An item that was not observed on the device stays unchecked, with the reason. Squash or reword the branch's commits before merge: only `feat`/`fix`/`perf`/`bump` subjects reach the release notes, and `dev` cannot be rewritten after a release.
@@ -141,6 +146,7 @@ Automated by **semantic-release** (`.releaserc`, `.github/workflows/release.yml`
 
 Procedures live in `.agents/skills/<name>/SKILL.md` ([Agent Skills](https://agentskills.io) format). If your tool does not load skills, read the file when its case applies:
 
+- `ship`: steps 4 to 6 (clean up, simple English, commit, PR), and rebasing a stacked PR after a squash merge.
 - `verify-patch`: build, apply to every pinned version, diff the changed instructions, run BranchSweep. Run it after every patch edit.
 - `probe`: build a logging build for step 1 (investigate), or when a patch applies but changes nothing.
 - `device-test`: drive the phone over adb for step 3 (install, open screens, screenshots, logcat).

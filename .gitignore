@@ -138,3 +138,6 @@ local.properties
 # Claude Code local settings; .claude/skills is a tracked symlink to .agents/skills
 .claude/*
 !.claude/skills
+
+# Python bytecode
+__pycache__/
