@@ -943,6 +943,29 @@ The routes through MicroG-RE (`fixgooglelogin`, `gmscoreauth`) work because Micr
 that Play Services makes. For passkeys it makes the same check, so it gives nothing that Play
 Services does not. Checked against the MicroG-RE source (2026-11-24), not on a device.
 
+MicroG-RE also cannot give LINE the passkeys that Google syncs. It keeps passkeys only on the
+phone. `ScreenLockCredentialStore` makes each private key in the AndroidKeyStore, and that key
+cannot leave the phone. The credential ID goes into the local `fido.db` database
+(`Database.insertKnownRegistration`). For a sign-in, `PasswordAndPasskeyService` lists only the
+`fido.db` entries with `Transport.SCREEN_LOCK` for the relying party. Its only other choice is
+"hybrid", which means a QR code for another phone or a security key.
+
+The `folsom` code (`KeyRetrievalService`, `LocalKeyManager`) does reach Google for the
+`gpm_passkeys` security domain. But it only gets the Google Password Manager encryption key for the
+app that asks for it. It does not download or use synced passkeys, and it gives none to other apps.
+So a signature-spoofing fork of MicroG-RE can only make new passkeys that stay on one phone. Checked
+against the MicroG-RE source (commit `ab96213`, 2026-11-21), not on a device.
+
+Google Password Manager is part of Play Services, not a service that MicroG-RE can call. To use
+synced passkeys, MicroG-RE must rebuild passkey sync itself, and it has no sync code today.
+Chromium contains the Chrome desktop client for synced passkeys, so a rebuild has a public model.
+
+A rebuild is still a large job. Google can change or block its servers at any time. Chrome desktop
+also seems to enroll each device with a Google server (the "enclave") with the Google Password
+Manager PIN. This is from memory and not read in the Chromium source. A rebuild also does not fix
+a re-signed LINE, because MicroG-RE must still make the asset-links check above. Not investigated
+further (2026-11-24).
+
 Workarounds: sign in with phone number and password, or with the QR code from a signed-in device.
 These sign you in, but they do not give you a passkey.
 
