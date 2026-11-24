@@ -166,19 +166,13 @@ Andrew's Patches をビルドするには、
 
 ### Facebook：他の Meta アプリがインストールできない（再署名したビルド）
 
-**内容：**パッチ適用済みの **Facebook** をインストールした後、同じ権限名を使う公式の Meta アプリがインストール
-できなくなります。**Facebook Lite** と **Messenger** が既知の例です。インストーラーは
-`INSTALL_FAILED_DUPLICATE_PERMISSION` で停止します。
+**内容：**パッチ適用済みの **Facebook** があると、**Facebook Lite** と **Messenger** が
+`INSTALL_FAILED_DUPLICATE_PERMISSION` でインストールできません。
 
-**原因：**Meta のアプリは、同じファミリー権限を宣言します。たとえば
-`com.facebook.permission.prod.FB_APP_COMMUNICATION` です。Android では、2 つのアプリの署名証明書が同じでない限り、
-1 つの権限名を持てるアプリは 1 つだけです。パッチ適用済みのビルドは再署名されるため、証明書が Meta の証明書と
-異なります。インストールの順番を変えても結果は同じです。
-[patched-apps](https://github.com/andrewliang25/patched-apps#meta-app-clones-duplicate-permission-conflict)
-でも同じ競合が起きます。
+**原因：**Meta のアプリは同じ権限名を使います。Android では、署名が同じアプリだけがこれを共有できます。
+パッチ適用済みのビルドは再署名されています。[patched-apps](https://github.com/andrewliang25/patched-apps#meta-app-clones-duplicate-permission-conflict) でも同じ競合が起きます。
 
-**回避策：**パッチ適用済みの Facebook を **root 権限マウント**でインストールします。この方法では元の署名が残ります。
-または、2 つのアプリのうち 1 つだけを残します。
+**回避策：**root 権限マウントでインストールするか、2 つのアプリのうち 1 つだけを残してください。
 
 ## 🙏 謝辞
 

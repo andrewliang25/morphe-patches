@@ -163,16 +163,13 @@ AMOLED 黑色主題沒有開關。建置時沒有加入的修補程式不會出�
 
 ### Facebook：無法安裝其他 Meta 應用程式（重新簽署的版本）
 
-**狀況：**安裝已修補的 **Facebook** 後，使用相同權限名稱的官方 Meta 應用程式會無法安裝。目前已知的有
-**Facebook Lite** 和 **Messenger**。安裝會停止並顯示 `INSTALL_FAILED_DUPLICATE_PERMISSION`。
+**狀況：**安裝已修補的 **Facebook** 後，**Facebook Lite** 和 **Messenger** 會因
+`INSTALL_FAILED_DUPLICATE_PERMISSION` 無法安裝。
 
-**原因：**Meta 的應用程式會宣告相同的家族權限，例如
-`com.facebook.permission.prod.FB_APP_COMMUNICATION`。除非兩個應用程式的簽署憑證相同，否則 Android
-只允許一個應用程式擁有同一個權限名稱。已修補的版本經過重新簽署，憑證與 Meta 的憑證不同。安裝順序不會改變
-這個結果。[patched-apps](https://github.com/andrewliang25/patched-apps#meta-app-clones-duplicate-permission-conflict)
-也有相同的衝突。
+**原因：**Meta 的應用程式使用相同的權限名稱，Android 只允許簽署相同的應用程式共用。已修補的版本經過重新簽署。
+[patched-apps](https://github.com/andrewliang25/patched-apps#meta-app-clones-duplicate-permission-conflict) 也有相同的衝突。
 
-**替代方法：**用 **Root 掛載** 安裝已修補的 Facebook，這樣會保留原本的簽章。或者兩個應用程式只保留其中一個。
+**替代方法：**用 Root 掛載安裝，或兩個應用程式只保留其中一個。
 
 ## 🙏 特別感謝
 

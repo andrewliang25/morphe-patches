@@ -167,19 +167,13 @@ patches do not touch payment code, because that risks a ban.
 
 ### Facebook: other Meta apps do not install (re-signed builds)
 
-**What:** After you install a patched **Facebook** build, an official Meta app that shares the same
-permission names does not install. **Facebook Lite** and **Messenger** are the known examples. The installer stops
+**What:** With a patched **Facebook** installed, **Facebook Lite** and **Messenger** fail to install
 with `INSTALL_FAILED_DUPLICATE_PERMISSION`.
 
-**Why:** Meta apps declare the same family permissions, for example
-`com.facebook.permission.prod.FB_APP_COMMUNICATION`. Android permits only one owner of a permission
-name, unless the two apps have the same signing certificate. A patched build is re-signed, so its
-certificate is different from the certificate of Meta. The order of the installs does not change
-this. The same conflict occurs in
-[patched-apps](https://github.com/andrewliang25/patched-apps#meta-app-clones-duplicate-permission-conflict).
+**Why:** Meta apps share permission names, and Android allows that only when the apps have the same
+signature. A patched build is re-signed. The same conflict occurs in [patched-apps](https://github.com/andrewliang25/patched-apps#meta-app-clones-duplicate-permission-conflict).
 
-**Workaround:** install the patched Facebook with **Root Mount**, which keeps the original
-signature. Or keep only one app of the two.
+**Workaround:** use a **Root Mount** install, or keep only one of the two apps.
 
 ## 🙏 Special thanks
 
