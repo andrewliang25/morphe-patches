@@ -156,19 +156,14 @@ To build Andrew's Patches, obey the instructions in the
 
 ### LINE: some merchants do not accept LINE Pay
 
-**What:** At some merchants, a LINE Pay payment from a website or an ordering system fails. LINE
-opens, then the standalone **LINE Pay** app opens and shows an error. Examples of the error are
-"you must use the LINE app for this function" and "update LINE".
+**What:** At some merchants, a LINE Pay payment opens the standalone **LINE Pay** app, which shows
+an error ([#161](https://github.com/andrewliang25/morphe-patches/issues/161), [#220](https://github.com/andrewliang25/morphe-patches/issues/220)).
 
-**Why:** LINE Pay inside LINE has an integrity check that fails on a modified LINE. The
-*[General] Redirect LINE Pay* patch sends each payment to the standalone LINE Pay app instead. Most
-merchants accept this. Some merchants accept a payment only from inside LINE, so the LINE Pay app
-refuses it. These patches do not change the LINE Pay part of LINE, because a change to payment code
-can get your account banned and can cause legal problems. So this will not be fixed
-([#161](https://github.com/andrewliang25/morphe-patches/issues/161),
-[#220](https://github.com/andrewliang25/morphe-patches/issues/220)).
+**Why:** *[General] Redirect LINE Pay* sends payments to the standalone app, because LINE Pay inside
+a modified LINE fails its integrity check. Some merchants accept payments only from inside LINE. The
+patches do not touch payment code, because that risks a ban.
 
-**Workaround:** at these merchants, pay in a different way, for example pay in the store.
+**Workaround:** pay in a different way at these merchants.
 
 ### Facebook: other Meta apps do not install (re-signed builds)
 

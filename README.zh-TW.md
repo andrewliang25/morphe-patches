@@ -154,17 +154,12 @@ AMOLED 黑色主題沒有開關。建置時沒有加入的修補程式不會出�
 
 ### LINE：部分商店不接受 LINE Pay
 
-**狀況：**在部分商店，從網站或點餐系統發起的 LINE Pay 付款會失敗。LINE 開啟後，會轉到獨立的
-**LINE Pay** 應用程式並顯示錯誤，例如「您必須透過 LINE 應用程式操作此功能」或「請更新 LINE」。
+**狀況：**在部分商店，LINE Pay 付款會開啟獨立的 **LINE Pay** 應用程式並顯示錯誤（[#161](https://github.com/andrewliang25/morphe-patches/issues/161)、[#220](https://github.com/andrewliang25/morphe-patches/issues/220)）。
 
-**原因：**LINE 內建的 LINE Pay 有完整性檢查，修改過的 LINE 無法通過。
-*[General] Redirect LINE Pay* 修補程式會把每筆付款改送到獨立的 LINE Pay 應用程式。大多數商店都接受這種方式，
-但部分商店只接受從 LINE 內部發起的付款，所以 LINE Pay 應用程式會拒絕。這些修補程式不會修改 LINE 中的
-LINE Pay 部分，因為修改付款程式碼可能導致帳號被停用，也可能引起法律問題。因此這個問題不會修正
-（[#161](https://github.com/andrewliang25/morphe-patches/issues/161)、
-[#220](https://github.com/andrewliang25/morphe-patches/issues/220)）。
+**原因：**「[General] Redirect LINE Pay」會把付款改送到獨立的應用程式，因為修改過的 LINE 內建的 LINE Pay
+無法通過完整性檢查。部分商店只接受從 LINE 內部發起的付款。修補程式不會修改付款程式碼，因為這可能導致帳號被停用。
 
-**替代方法：**在這些商店改用其他方式付款，例如到店付款。
+**替代方法：**在這些商店改用其他方式付款。
 
 ### Facebook：無法安裝其他 Meta 應用程式（重新簽署的版本）
 
