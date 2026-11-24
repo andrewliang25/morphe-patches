@@ -59,9 +59,11 @@ notes for your app at the end of this file before step 1.
 8. **Device test** each version that the phone can run, with the `device-test` skill: the default
    set, and each surface that a re-anchored patch touches. Done when each re-anchored surface shows
    its change on the phone, with no crash.
-9. **Update the docs** of the app (see the app notes): a "What changed in <new>" section with the
-   new names, the traps and the method count, and the new descriptor names in the sections of the
-   patches that moved. Done when no doc names a class that does not exist in a supported version.
+9. **Update the docs** of the app (see the app notes): the new descriptor names in the sections of
+   the patches that moved, the method count in "How to check a bump", each new trap in "Traps from
+   earlier bumps" below, and a recheck of "Open items". The bump PR body keeps the list of what
+   broke and how it was fixed. Done when no doc names a class that does not exist in a supported
+   version.
 10. **Commit, push, PR** as in step 6 of the procedure in AGENTS.md, with these differences: put
    the code in one `bump(<App>): add support for <App> <new>` commit (`bump:` files under
    "Updated App Support"), and the docs in separate `docs:` commits. If a version is dropped, that
@@ -91,6 +93,9 @@ notes for your app at the end of this file before step 1.
   hand-built register range. When a patch fails while its fingerprint still resolves, diff the
   instruction order of the matched method across versions, not only its names.
 - **A string can move into a shared lookup list,** so a fingerprint on it hits another method.
+- **A string that many methods hold matches the first one in dex order.** On LINE about 70 methods
+  hold the `"InitialBackupRestore"` log tag, and the premium facade came first only by luck. Add a
+  shape filter so that one method matches.
 - **Never blind find/replace a descriptor map across versions.** Prefix renames chain (`fg1`→`wi1`
   and `wi1`→`nl1` in the same release, so a two-pass replace produced a class that did not exist).
   Member letters do not always survive (`hg1.r`→`yi1.p`, `hg1.k`→`yi1.j`). Also, `\b` does not match
@@ -111,15 +116,15 @@ notes for your app at the end of this file before step 1.
 
 ### LINE (`--app LINE`)
 
-- The bundle supports two versions (26.16.0 for Android 11 and 12, 26.17.1 for 12L and later).
-  Read "Supported versions" and "How to check a bump" in `docs/line-patch-map.md`.
+- Read "Supported versions" and "How to check a bump" in `docs/line/build-and-versions.md` for the
+  supported versions and the method counts of the last bump.
 - R8 also renames the Kotlin stdlib (`kotlin.Unit`, `Lazy`, function types).
 - Shared helpers already absorb drift: `shared/ResourceIds.kt`, `line/shared/HomeState.kt`,
   `line/shared/AttachTile.kt`. Prefer them to a new anchor.
 - Step 6 finds the two signer SHA-1s of "[Fix] Restore push notifications". `base.apk` uses
-  key rotation: `docs/line-patch-map.md` ("Which cert") says which of the two certificates the patch
+  key rotation: `docs/line/resigning.md` ("Which cert") says which of the two certificates the patch
   uses.
-- Docs: `docs/line-patch-map.md` and `docs/line-premium-map.md`. Past bumps: 26.14.0 (16 patches
+- Docs: `docs/line/` (`README.md` lists the files and the open items). Past bumps: 26.14.0 (16 patches
   broke), 26.15.1 (18 of 30), 26.17.1 (6 of 39 failed, and 1 applied with no change).
 
 ### Facebook (`--app FACEBOOK`)

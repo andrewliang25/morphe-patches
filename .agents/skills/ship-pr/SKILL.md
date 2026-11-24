@@ -1,5 +1,5 @@
 ---
-name: ship
+name: ship-pr
 description: Turn a tested branch into a pull request into dev - clean up the diff, run the simple-english pass, write one scoped conventional commit, push and open the PR. Use for steps 4 to 6 of the development procedure ("commit, push and open the PR"), and when a stacked PR conflicts after its base PR was squash-merged.
 ---
 

@@ -30,7 +30,7 @@ val hidePremiumPatch = bytecodePatch(
 
     dependsOn(lineSettingsExtensionPatch)
 
-    // The class names in these comments are from 26.14.0, as in `docs/line-premium-map.md`. R8
+    // The class names in these comments are from 26.14.0, as in `docs/line/premium.md`. R8
     // renames them on each version, so the patch finds each one by shape.
     //
     // LINE gates every LYP premium surface on one market-availability config flag, a83.a.d() ==
