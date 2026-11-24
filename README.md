@@ -2,19 +2,19 @@
 
 English | [繁體中文](README.zh-TW.md) | [日本語](README.ja-JP.md)
 
-Morphe patches for LINE and other apps I use.
+Morphe patches for LINE and Facebook.
 
 ## ❓ About
 
-These are [Morphe](https://github.com/MorpheApp) patches. The current focus is
-[LINE](https://line.me) (`jp.naver.line.android`). Apply them with the Morphe CLI or
+These are [Morphe](https://github.com/MorpheApp) patches for [LINE](https://line.me)
+(`jp.naver.line.android`) and Facebook (`com.facebook.katana`). Apply them with the Morphe CLI or
 Morphe Manager to build a modified APK.
 
 > 💡 **Do not want to build it yourself?** Download ready-made patched apps from
 > [andrewliang25/patched-apps](https://github.com/andrewliang25/patched-apps/releases).
 
-> This project has no connection to the Morphe open source project, LINE, or LY
-> Corporation. They do not endorse it and did not write it.
+> This project has no connection to the Morphe open source project, LINE, LY Corporation,
+> Facebook, or Meta. They do not endorse it and did not write it.
 
 ## 🩹 Patches list
 
@@ -117,74 +117,53 @@ Click here to add these patches to Morphe: https://morphe.software/add-source?gi
 
 Or add this repository URL as a patch source in Morphe: https://github.com/andrewliang25/morphe-patches
 
-#### Change LINE patches in the app
+#### Change patches in the app
 
-With the "[General] Andrew's Patch Setting" patch, LINE **Settings** has an **Andrew's Patch
-Setting** row below **Profile**. There you can turn these patches on or off without patching
-again:
+With the "[General] Andrew's Patch Setting" patch, you can turn most patches on or off without
+patching again. In LINE, open **Settings**, then **Andrew's Patch Setting** below **Profile**. In
+Facebook, open the **Menu** (☰), then **Andrew's Patch Setting** at the top.
 
-- Keep chats unread, and keep unsent messages
-- Open links in external browser, and disable VOOM
-- Hide the LINE TODAY, Shopping, VOOM and Wallet tabs. A tab change shows after LINE restarts.
-- Hide the chat buttons and tips: AI Friends, community, calendar, Events, LINE GIFT, Transfer,
-  the extra tools in the + menu, and the tips under messages. Some of these changes show only
-  after LINE restarts.
+Some changes show only after the app restarts. The screen then shows a button to restart it. A patch
+that you did not include in the build has no switch.
 
-A patch that you did not include in the build has no switch. The row also shows the author and the
-license.
+## 🛠️ Building
 
-#### Change Facebook patches in the app
-
-With the "[General] Andrew's Patch Setting" patch, the Facebook **Menu** (☰) has an **Andrew's
-Patch Setting** row at the top. There you can turn these patches on or off without patching again:
-
-- Feed: hide sponsored posts, page suggestions and post prompts, and block feed auto refresh
-- Reels: hide sponsored reels and interest prompts, download any reel, and picture-in-picture
-- Stories: hide sponsored stories, download any story, view stories anonymously, and disable auto
-  advance
-- Hide affiliate product links, and open links in external browser
-
-Some changes show only after Facebook restarts. The screen has a **Restart Facebook** row for this.
-The AMOLED black theme has no switch. A patch that you did not include in the build has no switch.
-
-### 🛠️ Building
-
-To build Andrew's Patches, obey the instructions in the
+To build Andrew's Patches, follow the instructions in the
 [Morphe documentation](https://github.com/MorpheApp/morphe-documentation).
 
 ## ⚠️ Known limitations
 
 ### LINE: some merchants do not accept LINE Pay
 
-**What:** At some merchants, a LINE Pay payment from a website or an ordering system fails. LINE
-opens, then the standalone **LINE Pay** app opens and shows an error. Examples of the error are
-"you must use the LINE app for this function" and "update LINE".
+**What:** At some merchants, a LINE Pay payment opens the standalone **LINE Pay** app, which shows
+an error ([#161](https://github.com/andrewliang25/morphe-patches/issues/161), [#220](https://github.com/andrewliang25/morphe-patches/issues/220)).
 
-**Why:** LINE Pay inside LINE has an integrity check that fails on a modified LINE. The
-*[General] Redirect LINE Pay* patch sends each payment to the standalone LINE Pay app instead. Most
-merchants accept this. Some merchants accept a payment only from inside LINE, so the LINE Pay app
-refuses it. These patches do not change the LINE Pay part of LINE, because a change to payment code
-can get your account banned and can cause legal problems. So this will not be fixed
-([#161](https://github.com/andrewliang25/morphe-patches/issues/161),
-[#220](https://github.com/andrewliang25/morphe-patches/issues/220)).
+**Why:** *[General] Redirect LINE Pay* sends payments to the standalone app, because LINE Pay inside
+a modified LINE fails its integrity check. Some merchants accept payments only from inside LINE. The
+patches do not touch payment code, because that risks a ban.
 
-**Workaround:** at these merchants, pay in a different way, for example pay in the store.
+**Workaround:** pay in a different way at these merchants.
+
+### LINE: Google passkeys do not work (re-signed builds)
+
+**What:** On a patched (Standard) build, you cannot sign in with a passkey or create one
+([#256](https://github.com/andrewliang25/morphe-patches/issues/256)).
+
+**Why:** Google Play Services allows passkeys only for LINE's original signature. A patch cannot
+change this, and MicroG-RE does not help.
+
+**Workaround:** use a **Root Mount** install, or sign in with your phone number and password or a
+QR code.
 
 ### Facebook: other Meta apps do not install (re-signed builds)
 
-**What:** After you install a patched **Facebook** build, an official Meta app that shares the same
-permission names does not install. **Facebook Lite** and **Messenger** are the known examples. The installer stops
+**What:** With a patched **Facebook** installed, **Facebook Lite** and **Messenger** fail to install
 with `INSTALL_FAILED_DUPLICATE_PERMISSION`.
 
-**Why:** Meta apps declare the same family permissions, for example
-`com.facebook.permission.prod.FB_APP_COMMUNICATION`. Android permits only one owner of a permission
-name, unless the two apps have the same signing certificate. A patched build is re-signed, so its
-certificate is different from the certificate of Meta. The order of the installs does not change
-this. The same conflict occurs in
-[patched-apps](https://github.com/andrewliang25/patched-apps#meta-app-clones-duplicate-permission-conflict).
+**Why:** Meta apps share permission names, and Android allows that only when the apps have the same
+signature. A patched build is re-signed. The same conflict occurs in [patched-apps](https://github.com/andrewliang25/patched-apps#meta-app-clones-duplicate-permission-conflict).
 
-**Workaround:** install the patched Facebook with **Root Mount**, which keeps the original
-signature. Or keep only one app of the two.
+**Workaround:** use a **Root Mount** install, or keep only one of the two apps.
 
 ## 🙏 Special thanks
 

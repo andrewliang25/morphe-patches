@@ -15,8 +15,7 @@ import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
 @Suppress("unused")
 val hideEventsButtonPatch = bytecodePatch(
     name = "[Chat] Hide Events button",
-    description = "Removes the \"Events\" row from the slide-out menu in a chat room. Events is " +
-        "a different feature from LINE Calendar, and it opens a server-hosted page.",
+    description = "Removes the \"Events\" row from the menu in a chat room.",
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_LINE)

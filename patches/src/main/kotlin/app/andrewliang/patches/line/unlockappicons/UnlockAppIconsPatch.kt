@@ -20,9 +20,8 @@ import com.android.tools.smali.dexlib2.iface.reference.TypeReference
 @Suppress("unused")
 val unlockAppIconsPatch = bytecodePatch(
     name = "[Premium] Unlock app icons",
-    description = "Shows the App icon page in Settings, also with \"Disable LINE Premium\" on. It also lists " +
-        "the collaboration icons that are in the app but not offered now. You can apply every icon on the " +
-        "page, also the Premium ones.",
+    description = "Lets you use every app icon, including Premium and old collaboration icons. " +
+        "The App icon page stays in Settings even with \"Disable LINE Premium\" on.",
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_LINE)

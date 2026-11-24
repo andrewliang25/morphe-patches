@@ -2,18 +2,18 @@
 
 [English](README.md) | [繁體中文](README.zh-TW.md) | 日本語
 
-LINE と、私が使うその他のアプリ向けの Morphe パッチです。
+LINE と Facebook 向けの Morphe パッチです。
 
 ## ❓ 概要
 
-これは [Morphe](https://github.com/MorpheApp) のパッチです。現在は
-[LINE](https://line.me)（`jp.naver.line.android`）が中心です。Morphe CLI または
+これは [LINE](https://line.me)（`jp.naver.line.android`）と Facebook（`com.facebook.katana`）向けの
+[Morphe](https://github.com/MorpheApp) パッチです。Morphe CLI または
 Morphe Manager でパッチを適用すると、改変した APK をビルドできます。
 
 > 💡 **自分でビルドしたくない場合は？**
 > [andrewliang25/patched-apps](https://github.com/andrewliang25/patched-apps/releases) からパッチ適用済みのアプリをダウンロードできます。
 
-> このプロジェクトは、Morphe オープンソースプロジェクト、LINE、LY Corporation とは関係ありません。
+> このプロジェクトは、Morphe オープンソースプロジェクト、LINE、LY Corporation、Facebook、Meta とは関係ありません。
 > これらの団体はこのプロジェクトを推奨しておらず、作成にも関わっていません。
 
 ## 🩹 パッチ一覧
@@ -119,34 +119,16 @@ Morphe Manager でパッチを適用すると、改変した APK をビルドで
 
 または、このリポジトリの URL を Morphe のパッチソースとして追加します：https://github.com/andrewliang25/morphe-patches
 
-#### アプリ内で LINE のパッチを変更する
+#### アプリ内でパッチを変更する
 
-「[General] Andrew's Patch Setting」パッチを適用すると、LINE の**設定**の**プロフィール**の下に
-**Andrew's Patch Setting** の行が追加されます。ここで次のパッチをオンまたはオフにでき、もう一度パッチを適用する必要はありません：
+「[General] Andrew's Patch Setting」パッチを適用すると、もう一度パッチを適用しなくても、ほとんどのパッチを
+オンまたはオフにできます。LINE では、**設定**を開き、**プロフィール**の下の **Andrew's Patch Setting** を
+開きます。Facebook では、**メニュー**（☰）を開き、一番上の **Andrew's Patch Setting** を開きます。
 
-- トークを未読のままにする、送信取消されたメッセージを残す
-- リンクを外部ブラウザで開く、VOOM を無効にする
-- LINE TODAY、ショッピング、VOOM、ウォレットのタブを非表示にする。タブの変更は LINE の再起動後に反映されます。
-- トークのボタンとヒントを非表示にする：AI Friends、コミュニティ、カレンダー、イベント、LINE GIFT、送金、
-  ＋メニューの追加ツール、メッセージの下のヒント。一部の変更は LINE の再起動後に反映されます。
+一部の変更は、アプリの再起動後に反映されます。その場合、画面に再起動のボタンが表示されます。
+ビルドに含めなかったパッチにはスイッチがありません。
 
-ビルドに含めなかったパッチにはスイッチがありません。この行には作者とライセンスも表示されます。
-
-#### アプリ内で Facebook のパッチを変更する
-
-「[General] Andrew's Patch Setting」パッチを適用すると、Facebook の**メニュー**（☰）の一番上に
-**Andrew's Patch Setting** の行が追加されます。ここで次のパッチをオンまたはオフにでき、もう一度パッチを適用する必要はありません：
-
-- フィード：広告投稿、ページのおすすめ、投稿の促しを非表示にする、フィードの自動更新を止める
-- リール：広告リールと興味のプロンプトを非表示にする、すべてのリールをダウンロードする、ピクチャー・イン・ピクチャー
-- ストーリーズ：広告ストーリーを非表示にする、すべてのストーリーをダウンロードする、ストーリーを匿名で見る、
-  自動で次に進む機能を無効にする
-- アフィリエイト商品リンクを非表示にする、リンクを外部ブラウザで開く
-
-一部の変更は Facebook の再起動後に反映されます。そのため、画面に **Restart Facebook** の行があります。
-AMOLED ブラックテーマにはスイッチがありません。ビルドに含めなかったパッチにはスイッチがありません。
-
-### 🛠️ ビルド
+## 🛠️ ビルド
 
 Andrew's Patches をビルドするには、
 [Morphe のドキュメント](https://github.com/MorpheApp/morphe-documentation)の手順に従ってください。
@@ -155,35 +137,34 @@ Andrew's Patches をビルドするには、
 
 ### LINE：一部の店舗で LINE Pay が使えない
 
-**内容：**一部の店舗では、ウェブサイトや注文システムからの LINE Pay の支払いが失敗します。LINE が開いた後、
-単体の **LINE Pay** アプリが開き、エラーが表示されます。エラーの例は「この機能は LINE アプリから操作する必要があります」
-や「LINE を更新してください」です。
+**内容：**一部の店舗では、LINE Pay の支払いで単体の **LINE Pay** アプリが開き、エラーが表示されます
+（[#161](https://github.com/andrewliang25/morphe-patches/issues/161)、[#220](https://github.com/andrewliang25/morphe-patches/issues/220)）。
 
-**原因：**LINE 内の LINE Pay には整合性チェックがあり、改変された LINE では失敗します。
-*[General] Redirect LINE Pay* パッチは、すべての支払いを単体の LINE Pay アプリに送ります。ほとんどの店舗はこれを
-受け付けます。一部の店舗は LINE 内からの支払いだけを受け付けるため、LINE Pay アプリが拒否します。これらのパッチは
-LINE の LINE Pay 部分を変更しません。支払いのコードを変更すると、アカウントが停止されたり、法的な問題が起きたりする
-おそれがあるためです。そのため、この問題は修正しません
-（[#161](https://github.com/andrewliang25/morphe-patches/issues/161)、
-[#220](https://github.com/andrewliang25/morphe-patches/issues/220)）。
+**原因：**「[General] Redirect LINE Pay」は支払いを単体のアプリに送ります。改変された LINE の中の LINE Pay は
+整合性チェックで失敗するためです。一部の店舗は LINE 内からの支払いだけを受け付けます。アカウント停止の
+おそれがあるため、パッチは支払いのコードを変更しません。
 
-**回避策：**これらの店舗では、別の方法で支払ってください。たとえば店頭で支払います。
+**回避策：**これらの店舗では、別の方法で支払ってください。
+
+### LINE：Google のパスキーが使えない（再署名したビルド）
+
+**内容：**パッチ適用済み（Standard）のビルドでは、パスキーでのログインも、パスキーの作成もできません
+（[#256](https://github.com/andrewliang25/morphe-patches/issues/256)）。
+
+**原因：**Google Play 開発者サービスは、LINE の元の署名にだけパスキーを許可します。パッチでは変更できず、
+MicroG-RE でも解決しません。
+
+**回避策：**Root Mount でインストールするか、電話番号とパスワード、または QR コードでログインしてください。
 
 ### Facebook：他の Meta アプリがインストールできない（再署名したビルド）
 
-**内容：**パッチ適用済みの **Facebook** をインストールした後、同じ権限名を使う公式の Meta アプリがインストール
-できなくなります。**Facebook Lite** と **Messenger** が既知の例です。インストーラーは
-`INSTALL_FAILED_DUPLICATE_PERMISSION` で停止します。
+**内容：**パッチ適用済みの **Facebook** があると、**Facebook Lite** と **Messenger** が
+`INSTALL_FAILED_DUPLICATE_PERMISSION` でインストールできません。
 
-**原因：**Meta のアプリは、同じファミリー権限を宣言します。たとえば
-`com.facebook.permission.prod.FB_APP_COMMUNICATION` です。Android では、2 つのアプリの署名証明書が同じでない限り、
-1 つの権限名を持てるアプリは 1 つだけです。パッチ適用済みのビルドは再署名されるため、証明書が Meta の証明書と
-異なります。インストールの順番を変えても結果は同じです。
-[patched-apps](https://github.com/andrewliang25/patched-apps#meta-app-clones-duplicate-permission-conflict)
-でも同じ競合が起きます。
+**原因：**Meta のアプリは同じ権限名を使います。Android では、署名が同じアプリだけがこれを共有できます。
+パッチ適用済みのビルドは再署名されています。[patched-apps](https://github.com/andrewliang25/patched-apps#meta-app-clones-duplicate-permission-conflict) でも同じ競合が起きます。
 
-**回避策：**パッチ適用済みの Facebook を **root 権限マウント**でインストールします。この方法では元の署名が残ります。
-または、2 つのアプリのうち 1 つだけを残します。
+**回避策：**root 権限マウントでインストールするか、2 つのアプリのうち 1 つだけを残してください。
 
 ## 🙏 謝辞
 
