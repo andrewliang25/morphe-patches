@@ -165,6 +165,17 @@ patches do not touch payment code, because that risks a ban.
 
 **Workaround:** pay in a different way at these merchants.
 
+### LINE: Google passkeys do not work (re-signed builds)
+
+**What:** On a patched (Standard) build, you cannot sign in with a passkey or create one
+([#256](https://github.com/andrewliang25/morphe-patches/issues/256)).
+
+**Why:** Google Play Services allows passkeys only for LINE's original signature. A patch cannot
+change this, and MicroG-RE does not help.
+
+**Workaround:** use a **Root Mount** install, or sign in with your phone number and password or a
+QR code.
+
 ### Facebook: other Meta apps do not install (re-signed builds)
 
 **What:** With a patched **Facebook** installed, **Facebook Lite** and **Messenger** fail to install

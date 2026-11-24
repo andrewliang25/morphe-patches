@@ -164,6 +164,16 @@ Andrew's Patches をビルドするには、
 
 **回避策：**これらの店舗では、別の方法で支払ってください。
 
+### LINE：Google のパスキーが使えない（再署名したビルド）
+
+**内容：**パッチ適用済み（Standard）のビルドでは、パスキーでのログインも、パスキーの作成もできません
+（[#256](https://github.com/andrewliang25/morphe-patches/issues/256)）。
+
+**原因：**Google Play 開発者サービスは、LINE の元の署名にだけパスキーを許可します。パッチでは変更できず、
+MicroG-RE でも解決しません。
+
+**回避策：**Root Mount でインストールするか、電話番号とパスワード、または QR コードでログインしてください。
+
 ### Facebook：他の Meta アプリがインストールできない（再署名したビルド）
 
 **内容：**パッチ適用済みの **Facebook** があると、**Facebook Lite** と **Messenger** が

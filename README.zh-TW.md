@@ -161,6 +161,15 @@ AMOLED 黑色主題沒有開關。建置時沒有加入的修補程式不會出�
 
 **替代方法：**在這些商店改用其他方式付款。
 
+### LINE：無法使用 Google 通行金鑰（重新簽署的版本）
+
+**狀況：**在套用修補程式的（Standard）版本上，無法用通行金鑰登入，也無法建立通行金鑰
+（[#256](https://github.com/andrewliang25/morphe-patches/issues/256)）。
+
+**原因：**Google Play 服務只允許 LINE 原本的簽署使用通行金鑰。修補程式無法改變這一點，MicroG-RE 也沒有幫助。
+
+**替代方法：**改用 **Root Mount** 安裝，或用電話號碼和密碼、QR 碼登入。
+
 ### Facebook：無法安裝其他 Meta 應用程式（重新簽署的版本）
 
 **狀況：**安裝已修補的 **Facebook** 後，**Facebook Lite** 和 **Messenger** 會因
