@@ -134,7 +134,7 @@ internal val gmsCoreAuthManifestPatch = resourcePatch {
  * does nothing rather than crashing.
  *
  * Device-confirmed end to end (LINE 26.11.0 + MicroG-RE 6.1.4, Android 16): picker, token grant and
- * a completed chat-history restore. Full investigation in `docs/line-patch-map.md`.
+ * a completed chat-history restore. Full investigation in `docs/line/resigning.md`.
  */
 @Suppress("unused")
 val gmsCoreAuthPatch = bytecodePatch(

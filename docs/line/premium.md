@@ -2,8 +2,8 @@
 
 Reference notes on how **LINE Yahoo Premium (LYP)** feature-gating works in LINE
 (`jp.naver.line.android`), distilled from decompiling **LINE 26.14.0**. The bundle supports 26.14.0,
-26.15.1 and 26.16.0 (see `app/andrewliang/patches/shared/Constants.kt`). Companion to
-`docs/line-patch-map.md`.
+26.15.1 and 26.16.0 (see `app/andrewliang/patches/shared/Constants.kt`). Companion to the
+other files in `docs/line/`.
 
 > The obfuscated descriptors in this file are from 26.14.0, unless a note gives another version.
 > Device-confirmation notes record the version each behaviour was *tested* on.
@@ -31,7 +31,7 @@ anchors. The changes since 26.14.0:
   `SUPPORTED_CHAT` field.
 - **Scroll preview** (`function.premium.common.scroll_preview`, evaluator `d52.f` in 26.15.1) is
   live. It is not known whether the market gate hides its upsell. See "Open items" in
-  `docs/line-patch-map.md`.
+  [README.md](README.md).
 
 Device tests on 26.15.1 (2026-10-14) and 26.16.0 (2026-10-23): Settings ▸ Chats opens, and the
 unsend dialog shows no Premium promo.
@@ -369,7 +369,7 @@ The filter goes on `lb2.g$a.<init>(List, Z×5, String, Long, Long, I, Z)`, at in
   `invoke-static` + `move-result-object v1` pairs chain, then the original `Object.<init>` and
   `iput-object v1` into field `a`.
 
-The full Home module inventory (45 types) is in `line-patch-map.md`, section "Home tab modules".
+The full Home module inventory (45 types) is in [chat-and-tabs.md](chat-and-tabs.md), section "Home tab modules".
 
 **Not confirmed on device.** This is a static finding: the type never appeared in the on-device Home
 module capture from a Taiwan account (8 modules, no `HomeTabLypRecommendation`). The module list is

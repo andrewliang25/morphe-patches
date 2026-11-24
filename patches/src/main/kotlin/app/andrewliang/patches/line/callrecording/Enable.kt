@@ -10,7 +10,7 @@ import app.morphe.patcher.patch.bytecodePatch
  *
  * This forces the two gates `premiumcall.a.d()` (LINE Labs) and `.e()` (paid plan) true. The LINE
  * Labs call recording switch must still be on: other code reads the Labs flag directly, and with
- * the switch off LINE makes no recording (`docs/line-patch-map.md`, "Recording with the LINE Labs
+ * the switch off LINE makes no recording (`docs/line/calls.md`, "Recording with the LINE Labs
  * switch off"). The server still decides the "REC" capability per call.
  */
 internal val callRecordingEnablePatch = bytecodePatch {
