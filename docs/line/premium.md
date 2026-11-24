@@ -1,9 +1,8 @@
 # LINE premium (LYP) gating map & findings
 
 Reference notes on how **LINE Yahoo Premium (LYP)** feature-gating works in LINE
-(`jp.naver.line.android`), distilled from decompiling **LINE 26.14.0**. The bundle supports 26.14.0,
-26.15.1 and 26.16.0 (see `app/andrewliang/patches/shared/Constants.kt`). Companion to the
-other files in `docs/line/`.
+(`jp.naver.line.android`), distilled from decompiling **LINE 26.14.0**. For the supported versions, see "Supported versions"
+in [build-and-versions.md](build-and-versions.md). Companion to the other files in `docs/line/`.
 
 > The obfuscated descriptors in this file are from 26.14.0, unless a note gives another version.
 > Device-confirmation notes record the version each behaviour was *tested* on.
