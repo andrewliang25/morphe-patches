@@ -943,6 +943,20 @@ The routes through MicroG-RE (`fixgooglelogin`, `gmscoreauth`) work because Micr
 that Play Services makes. For passkeys it makes the same check, so it gives nothing that Play
 Services does not. Checked against the MicroG-RE source (2026-11-24), not on a device.
 
+MicroG-RE also cannot give LINE the passkeys that Google syncs. It keeps passkeys only on the
+phone. `ScreenLockCredentialStore` makes each private key in the AndroidKeyStore, and that key
+cannot leave the phone. The credential ID goes into the local `fido.db` database
+(`Database.insertKnownRegistration`). For a sign-in, `PasswordAndPasskeyService` lists only the
+`fido.db` entries with `Transport.SCREEN_LOCK` for the relying party. Its only other choice is
+"hybrid", which means a QR code for another phone or a security key.
+
+The `folsom` code (`KeyRetrievalService`, `LocalKeyManager`) does reach Google for the
+`gpm_passkeys` security domain. But it only gets the Google Password Manager encryption key and
+gives it to the caller, which is usually Chrome. Chrome then syncs and decrypts the passkeys itself.
+MicroG-RE never gives Google Password Manager passkeys to other apps. So a signature-spoofing fork
+of MicroG-RE can only make new passkeys that stay on one phone. Checked against the MicroG-RE source (commit
+`ab96213`, 2026-11-21), not on a device.
+
 Workarounds: sign in with phone number and password, or with the QR code from a signed-in device.
 These sign you in, but they do not give you a passkey.
 
