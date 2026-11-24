@@ -1,17 +1,44 @@
 # LINE patch map & findings
 
-Reference notes for authoring LINE (`jp.naver.line.android`) patches, distilled from decompiling
-**LINE 26.14.0**. The bundle supports **26.14.0, 26.15.1 and 26.16.0** (see
-`app/andrewliang/patches/shared/Constants.kt` and "Supported versions" below).
+Reference notes for authoring LINE (`jp.naver.line.android`) patches. The bundle supports the
+versions in "Supported versions" below (see `app/andrewliang/patches/shared/Constants.kt`).
 
-> The obfuscated descriptors in this file are from 26.14.0, unless a note gives another version.
-> Device-confirmation notes record the version each behaviour was *tested* on.
+> Most obfuscated descriptors in this file are from 26.14.0. A note gives the version when it is
+> another one. Device-confirmation notes record the version each behaviour was *tested* on.
 
 > ⚠️ **Obfuscation drift.** Names like `yi1.d`, `q11.q`, `z00.n`, `kh1.x0$c`, `wi1.b$b`, `k81.a`
 > are R8-obfuscated and **change between LINE versions**. The concepts and anchoring strategies are
 > durable; re-confirm every descriptor against the decompiled smali on a version bump. Prefer
 > anchors obfuscation cannot touch: Kotlin **enum-constant names** (`CALENDAR`, `GIFT`), **string
 > literals**, **resource ids**.
+
+## Contents
+
+- [Supported versions (26.16.0, 26.17.1 and 26.18.2)](#supported-versions-26160-26171-and-26182)
+- [Local build & verify without GitHub Packages credentials](#local-build--verify-without-github-packages-credentials)
+- [Chat "+" attach menu](#chat--attach-menu)
+- [LINE Calendar vs Events vs Message scheduler — three distinct features](#line-calendar-vs-events-vs-message-scheduler--three-distinct-features)
+- [Main bottom-navigation tabs](#main-bottom-navigation-tabs)
+- [Home tab modules](#home-tab-modules)
+- [Analytics & the "[General] Block analytics" patch](#analytics--the-general-block-analytics-patch)
+- [Ads — bundled SDKs, display coverage, and the parts not patched](#ads--bundled-sdks-display-coverage-and-the-parts-not-patched)
+- [LINE Pay intake & the "[General] Redirect LINE Pay" patch](#line-pay-intake--the-general-redirect-line-pay-patch)
+- [App-signature reads & the re-signing family (full inventory)](#app-signature-reads--the-re-signing-family-full-inventory)
+- [Message unsend (receive side) & the "[Chat] Keep unsent messages" patch](#message-unsend-receive-side--the-chat-keep-unsent-messages-patch)
+- [Message tips & the "[Chat] Hide tips under messages" patch](#message-tips--the-chat-hide-tips-under-messages-patch)
+- [AI entry points & the "Hide Agent i buttons" / "Hide AI Friends button" patches](#ai-entry-points--the-hide-agent-i-buttons--hide-ai-friends-button-patches)
+- [Outbound photo pipeline (reference — no patch ships for this)](#outbound-photo-pipeline-reference--no-patch-ships-for-this)
+- [Feature limits — client-side vs server-enforced (LINE)](#feature-limits--client-side-vs-server-enforced-line)
+- [Call ringtone pipeline (investigated, deliberately not shipped)](#call-ringtone-pipeline-investigated-deliberately-not-shipped)
+- [Google account access — two independent paths (one patched, one not)](#google-account-access--two-independent-paths-one-patched-one-not)
+- [Location maps & the "[Fix] Restore location maps via MicroG-RE" patch](#location-maps--the-fix-restore-location-maps-via-microg-re-patch)
+- [Traffic interception & the "[General] Trust user-installed CAs" patch](#traffic-interception--the-general-trust-user-installed-cas-patch)
+- [Settings screen & the "[General] Andrew's Patch Setting" patch](#settings-screen--the-general-andrews-patch-setting-patch)
+- [Custom fonts & the "[General] Custom font" patch](#custom-fonts--the-general-custom-font-patch)
+- [Themes on a sub device & the "[General] Enable themes on sub devices" patch](#themes-on-a-sub-device--the-general-enable-themes-on-sub-devices-patch)
+- [Open items (rechecked on 26.18.2, 2026-11-24)](#open-items-rechecked-on-26182-2026-11-24)
+- [Call recording & the "[Call]" patches](#call-recording--the-call-patches)
+- [Dead ends (investigated, not patchable)](#dead-ends-investigated-not-patchable)
 
 ---
 
@@ -42,76 +69,6 @@ anchor is a name that R8 keeps:
 - Classes that LINE does not obfuscate (`ChatHistoryMenuFragment`, `UnsendMessageLdsDialog`,
   `HeaderButton`).
 
-### What changed in 26.15.1
-
-The first apply of the 26.14.0 bundle to 26.15.1 applied 12 of 30 patches. No surface was removed.
-All 18 failures were R8 drift:
-
-- **New package prefixes.** For example `yi1` → `go1` (attach menu), `c81` → `jd1` (context-menu
-  actions), `lb2.g$a` → `kh2.h$a` (Home state), `ag1` → `il1` (chat header).
-- **R8 now renames the Kotlin stdlib.** `kotlin.Unit` is `ip8.i0` (its `INSTANCE` is field `a`),
-  `Lazy` is `ip8.l`, and `Function0..3` are `aq8.a`, `aq8.l`, `aq8.p` and `aq8.q`. Only
-  `kotlin/Metadata`, `Continuation` and a few other stdlib names stay. Do not anchor on a stdlib
-  type.
-- **The `Function3` method is `g`, not `j`.** `LineSettingsClick` declares both methods, and `g`
-  calls `j`.
-- **Resource ids moved.** A hardcoded id silently points at another view. In the first apply,
-  *[General] Hide new item badges* hid the bottom-bar **LIVE** badge.
-- **Code moved.** In 26.15.1 the two banner lambdas of *[Ad] Remove banner ads* are cases of one
-  `packed-switch`. A `return` at the start of the method would also break the other cases. The patch
-  returns right after each operation-name string instead.
-
-### What changed in 26.16.0
-
-All 32 patches applied on the first run. Each version changes 80 LINE methods across 71 classes.
-R8 renamed packages again, for example `go1` to `un1` (attach menu), `kh2.h$a` to `eh2.g$a` (Home
-state), `ad8.g` to `mg8.d` (bottom tabs), and `xg5.h2` to `eh5.t2` (Settings rows). R8 also renamed
-the 3-argument `Function3` method on `nt8.q` to `k`. The settings patch now reads the `Function3`
-method name from the interface class at patch time and adds a forwarding method to
-`LineSettingsClick`. The 13 bottom-tab constants and 48 Home module types did not change.
-
-### What changed in 26.17.1
-
-The first apply of the 26.16.0 bundle to 26.17.1 applied 33 of 39 patches. No surface was removed.
-One more patch applied and changed nothing. Each version now changes 100 or 101 LINE methods (see
-"How to check a bump"). The renames include `eh5.t2` to `ji5.n2` (Settings rows), `mg8.d` to
-`di8.f` (bottom tabs), `eh2.g$a` to `dj2.h$a` (Home state), `wk8.x` to `a8.a` (unsend) and `xt7` to
-`nv7` (call recording). The failures and their fixes:
-
-| Patch | What changed | Fix |
-|---|---|---|
-| [Call] Auto-record calls | The setup call `st7.b.z` is `iv7.b.M`. The injected smali named the 26.16.0 class `rt7.a`, so a forced apply would add a call to a class that does not exist | The recorder, the setup call and the start method are found by shape (see "What the patches do" under call recording) |
-| [Call] Record without notifying | The fingerprint named the class `xt7/n0`. It is `methodOrNull`, so it applied and changed nothing | `emit` with `check-cast Boolean` and the "record" string |
-| [Chat] Keep unsent messages | R8 merged the unsend lambda into a `packed-switch` class (`a8/a`) and dropped the read of the row id before the guard | The block reads the id itself and jumps to the skip target (see "What the patch does") |
-| [General] Andrew's Patch Setting | The row constructor has 13 arguments, so argument 11 is in v16 | An argument above v15 goes through v4 and `move-object/from16` |
-| [General] Hide Agent i buttons | The two `()J` getters of the hidden-until time are one function reference that returns a boxed `Long` | The patch also accepts the boxed form (see "Agent i in chats") |
-| [General] Hide new item badges | R8 moved the header badge states out of the kept `header` package, so `header/a$c` is gone | `equals`, then the read of `HeaderButton.g`, then `setVisibility` |
-| [Premium] Disable LINE Premium | About 70 methods hold the `"InitialBackupRestore"` log tag. The fingerprint found the facade on 26.16.0 only because the facade came first in the dex order | The class must also have the backup gate shape (see `docs/line-premium-map.md`) |
-
-Traps:
-
-- A `methodOrNull` site that drifts applies with no error. The call recording patches now use
-  `.method`, because every supported version has call recording.
-- Injected smali must not name an obfuscated class. Read the descriptor from the matched method.
-- BranchSweep and a dump both passed the first Keep unsent fix, which joined the original guard
-  branch with a `long` in `v1`/`v2`. The stock path still reads `v2` as an enum, and ART rejects
-  such a method. Read the registers at every merge point of an injected branch.
-
-### What changed in 26.18.2
-
-The first apply of the 26.17.1 bundle to 26.18.2 applied 39 of 41 patches. No surface was removed,
-and no patch applied with no change. Each version changes 105 LINE methods (26.16.0 changes 106, as
-in the released bundle). The renames include `nv7` to `qv7` (call recording), `tw7` to `ww7`
-(FeatureShare), `dj2.h` to `kk2.h` (Home repository), `fg2.m` to `mh2.l` (GCS page) and `bj2.y2`
-to `ik2.s2` (GCS page view model). The failures and their fixes:
-
-| Patch | What changed | Fix |
-|---|---|---|
-| [Call] Record calls without notifying | R8 split the generic FeatureShare calls into record-only methods: `tw7.f.H(tv7.a)` is `ww7.f.W()`, and `R("record")` is `ww7.f.O()`. The "record" string moved out of the emitter `qv7/o0` into `ww7/g` | The FeatureShare interface is the interface of the class that holds "modelImpl", "scope" and "sessionModel". The emitter is the one `emit` that casts to `Boolean` and calls it. The send is its first call on that interface |
-| [Home] Hide Home content feed | The repository state now holds the page in a wrapper (`kk2.h$a.a`), so the load-more action casts to the wrapper, not to the page | Lever 3 matches a read of a field of the page class (`iget-boolean …, Lmh2/l;->b:Z`) instead of the cast |
-
-Each new anchor matches one method in each of the three versions.
-
 ### Shared helpers
 
 | Helper | What it finds | Used by |
@@ -135,17 +92,9 @@ dex with the original dex method by method:
 4. Run `BranchSweep` on each patched dex.
 5. Read each site that reuses a register on the new version. The register must be dead there.
 
-On the 26.17.1 bump, 26.16.0 changes 101 LINE methods and 26.17.1 changes 100. The roles pair one to
-one, except that Hide Agent i changes two getters on 26.16.0 and one boxed reader on 26.17.1. The
-26.16.0 list is the same as the list of the released v3.12.0 bundle.
-
-On the 26.18.2 bump, 26.17.1 and 26.18.2 each change 105 LINE methods, and 26.16.0 changes 106. On
-26.16.0 and 26.17.1 the changed methods and their edits are the same as those of the released
-v3.13.0-dev.3 bundle.
-
-A `check-cast` passes the verifier but can still throw at run time. The first 26.15.1 build cast a
-copied field to the type of a new row argument, and Settings crashed with `ClassCastException`. Read
-what the value is at run time, not only what its declared type is (see "Settings screen").
+On the 26.18.2 bump, 26.17.1 and 26.18.2 each changed 105 LINE methods, and 26.16.0 changed 106. On
+26.16.0 and 26.17.1 the changed methods and their edits were the same as those of the released
+v3.13.0-dev.3 bundle. The traps from earlier bumps are in the `app-bump` skill.
 
 ---
 
@@ -673,34 +622,6 @@ Google wrappers. A Taiwan account renders neither, thus a device report must com
 starting point, so no one needs to sweep the APK again.
 
 ---
-
-## Shipped / proposed patches (this line of work)
-
-| Patch (name) | Package | Targets |
-|---|---|---|
-| [Chat] Hide calendar buttons | `line.hidecalendar` | the 5 Calendar surfaces above |
-| [Chat] Hide Events button | `line.hideevents` | the `z00.n` Events chat-menu row |
-| [Chat] Hide Transfer button | `line.hidetransfer` | `yi1.j` (`+` Transfer/LINE Pay tile) |
-| [Chat] Hide LINE GIFT button | `line.hidegift` | `yi1.h` (`+` LINE GIFT tile) |
-| [Chat] Hide attach menu extra tools | `line.hideattachmenutools` | all server-driven `yi1.d` services |
-| [General] Redirect LINE Pay | `line.disablepay` | `PayLaunchActivity` / `PayLiffActivity` onCreate (see below) |
-| [Chat] Keep unsent messages | `line.keepunsent` | `la8.x.invoke` — the unsend DB write, and the "Edited" label slot (see below) |
-| [Tab] Hide Shopping tab | `line.hideshoppingtab` | `COMMERCE` + `COMMERCE_TW` in `b68/g.a()` (see above) |
-| [General] Andrew's Patch Setting | `line.settings` | a row below "Profile" in Settings, via `ka5/o2.a()` (see below) |
-| [Fix] Restore location maps via MicroG-RE | `line.fixlocationmaps` | `fo/p.b` — the maps module context (see below) |
-| [Fix] Restore Google login via MicroG-RE | `line.fixgooglelogin` | the androidx.credentials provider choice, the Play Services provider's version check and the Identity Sign-In client (see "Google account access") |
-| [Chat] Hide tips under messages | `line.hidechattips` | `rm1.u.invokeSuspend` — the "CHECK" tip under a bubble (see below) |
-| [General] Hide Agent i buttons | `line.hideagenti` | `wm2.j` Home header icon + `function.search.line_ai_entry.enabled` + the `CHATROOM_AI_BUTTON_SHOWN_AFTER_MILLIS` readers + `WalletV3GrandDesignHeaderView.o()` + the `AiSubscription` Settings rows + the + menu "Show Agent i in chat" switch (see below) |
-| [General] Hide LINE AI image editing | `line.hidelineaiimageedit` | the getter of `function.ai.lineai.enabled_entry_points` (see below) |
-| [Chat] Hide AI Friends button | `line.chatheaderbuttons` | `function.ai.character.display_button` (see below) |
-| [General] Custom font | `line.customfont` | LINE's premium font path: `PremiumFontProvider`, the androidx certificate check, the Font page (see below) |
-| [General] Enable themes on sub devices | `line.subdevicethemes` | the dark-mode check, the Settings Themes row and the My Themes Theme Shop button (see below) |
-
-Each is an independent, `default = true`, user-facing `bytecodePatch` — one feature (or one
-feature's full set of entry points) per patch. Most are instruction-level edits. *Redirect LINE
-Pay*, *[Chat] Keep unsent messages*, *[Fix] Restore location maps* and *[General] Andrew's Patch
-Setting* carry extension code. Eight patches also read a runtime switch from the extension (see
-"Settings screen" below).
 
 ## LINE Pay intake & the "[General] Redirect LINE Pay" patch
 
@@ -2505,94 +2426,46 @@ Everything in the table above. The patch finds the dark-mode check by `THEME_AUT
 return type `Z`, the Settings builder by `MORETAB_SETTINGS_THEMES` and `settings_theme_title`, and
 the adapter by the footer layout, the `shop_button` id and a `check-cast` to `TextView`.
 
-## Watch list — surfaced in 26.14.0, not yet actionable
-
-Recorded 2026-09-03 during the 26.14.0 re-anchor, so nobody has to sweep the APK again.
-
-**How to re-check any entry:** resolve the string by **name** in `res/values/public.xml` to its id,
-then grep `smali*/` for that id. A hit means LINE has wired the feature up. Resource **ids drift
-every release; names do not** — always go through the name.
-
-### Staged — resources shipped, zero bytecode references
-
-These are built into `res/` but no smali references them, so they are waiting on a server flip or a
-later release. Nothing to patch today.
-
-| Feature | Strings (all dead in 26.14.0) | Why it matters when it ships |
-|---|---|---|
-| **Scroll preview** (chat list) | `chat_preview_desc_scrollpreview`, `chat_preview_banner_scrollpreview{labs,lyplite,lypstd,nonlypstd}`, `chat_chatlist_tooltip_scrollpreview{labs,lypstd,nonlypstd}` | A new chat-list feature tiered **four ways** (LINE Labs / LYP Lite / LYP Standard / non-LYP). The tier check is the thing to look at — if it is a local read of the market gate, `hidepremium` already moves it; if it is a server entitlement, it is another `INVALID_PREMIUM_STATUS` case. |
-| **LINE Calendar → standalone app cross-promo** | `line_calendar_apppromotion_link_morefeatures`, `line_calendar_apppromotion_popupdesc_eventlocation` | Would be a **6th Calendar surface** and belongs in *[Chat] Hide calendar buttons*, which currently covers five. |
-| **Scheduled-message upsell** | `chat_scheduledmessages_popupdesc_upgradetosendasscheduled_misc`, `chat_scheduledmessages_toast_errorwithmembership_linep` | Upsell copy for the scheduled-message feature below. |
-
-### Live, but not yet verified against a patched build
-
-Three new premium upsell entry points that do **not** reference the premium facade (`Lx73/b;`), and
-whose immediate launch sites do not either — so it is unproven whether `hidepremium`'s market-gate
-cascade suppresses them. Their gate may sit further up the call chain; tracing it statically has poor
-returns compared with one look at a patched build.
-
-- `com/linecorp/line/chat/ui/impl/message/schedule/popup/ScheduledMessageLypSubscriptionPopupDialogFragment`
-- `com/linecorp/line/chat/ui/impl/premium/popup/onboarding/view/LypFeatureOnboardingPopupDialogFragment`
-- `com/linecorp/line/settings/labs/view/LineUserSettingLabPremiumIntroComposeView`
-
-**Visible symptom to look for:** an LYP feature-onboarding popup appearing on a build with
-*[Premium] Disable LINE Premium* applied.
-
-For contrast, these new upsells **are** covered — each does a null-guarded facade read, so a false
-market gate takes the hide branch: `ChatVisualEndPageActivity` (photo-viewer premium banner),
-`LiteUpgradeEntryPopupActivity`, `MuteMessageLitePlanUpgradePopupFragment`, the Global Home
-file-expiration banners (`od2.k1`), and the backup upgrade banner (`d55.m`).
-
-### New Home module types — currently kept
-
-Three types are new in 26.14.0 and land in no blocklist (full inventory above). All three are
-**`GLOBALHOME`** tab modules, a different tab from `HOME`, so whether they render at all is
-region-dependent — check on device before widening the blocklist.
-
-| Type | Recommendation |
-|---|---|
-| `GlobalHomeRecommendedSticker` | **Candidate.** Global Home analogue of `HomeContentsRecommendation`, which *[Home] Hide Home modules* already hides — leaving this one is an inconsistency. |
-| `GlobalHomeLoungeHoroscope` | **Candidate.** New clutter module. |
-| `GcsGlobalHomeActivityHybridContentCard` | **Keep.** Analogue of `GcsHomeActivityHybridContentCard`, which is deliberately kept. |
-
-### Checked and clear in 26.14.0
-
-Confirmed unchanged, so no new coverage is needed — re-run these diffs on the next bump rather than
-assuming:
-
-- **Bottom-nav tabs:** 12 → 12, identical constants. No new tab.
-- **Attach-menu tiles:** 17 → 17, identical. No new tile.
-- **Ad surface:** no new LINE-side ad view. Only Google Mobile Ads internals moved
-  (`zzbyb` → `zzbym`, a new `com/google/android/gms/ads/…/hsdp` deep-link wrapper).
-- **Nullable premium badge (`Lq83/n;`):** all 63 field reads are null-guarded. The 32 that look
-  unguarded are inside `q83/n`'s own `equals`/`hashCode`/`toString`, where the holder is `this`.
-  So *[Premium] Disable LINE Premium* adds no new `getDrawable(0)`-class crash risk beyond the known
-  Settings ▸ Chats one, which the backup-gate lever covers.
-- **Read receipts:** `DisabledManualReadReceiptViewModel` is new and sounds relevant, but it is a
-  40-line Square (OpenChat) component-graph stub that never touches `TalkServiceClient` or the
-  `na3.e` read manager. *[Chat] Keep chats unread* is unaffected.
-
 ---
 
-## Watch list — surfaced in 26.15.1
+## Open items (rechecked on 26.18.2, 2026-11-24)
 
-Recorded 2026-10-14 during the 26.15.1 bump.
+These are features that a patch can need later. Each item gives what the 26.18.2 decompile shows.
+To find out whether LINE uses a string, get its id by name from `res/values/public.xml`. Then
+search `smali*/` for the id. A hit means that LINE uses the string. Ids change in each version, but
+names do not.
 
-- **Scroll preview is live.** 26.14.0 only had its strings. 26.15.1 reads the server key
-  `function.premium.common.scroll_preview` in the evaluator `d52.f`. It is not known whether
-  *[Premium] Disable LINE Premium* hides its upsell. The device test found no scroll-preview entry
-  in Settings ▸ Chats.
-- **`MANUAL_READ_RECEIPT` is staged.** A new enum constant, with no code that reads it yet. If it
-  goes live, examine it against *[Chat] Keep chats unread*.
-- **Badges that *[General] Hide new item badges* does not reach.** Seen on the device on both
-  versions: the green dots on Edit, Unsend and Keep Memo in the message long-press menu. With the
-  tabs shown, the TODAY and Wallet tabs also show a red dot, and Wallet service tiles show green
-  dots.
-- **The LINE Labs "N" is hidden since 26.17.1 support.** The LINE Labs row in Settings and in
-  Settings > Chats draws `new_mark` from the suspend predicate `hasNewLabFeature`, not from the
-  settings item views. Its body (`ji5/s2` in 26.17.1, `eh5/x2` in 26.16.0) is found by its Kotlin
-  debug annotation, `LineUserMainSettingsCategory$hasNewLabFeature$2`, and returns false at entry.
-  Device-confirmed on 26.17.1 (2026-11-20): no "N" on either row.
+- **Scroll preview** (chat list). The strings `chat_preview_desc_scrollpreview`,
+  `chat_preview_banner_scrollpreview*` and `chat_chatlist_tooltip_scrollpreview*` are now used, and
+  LINE reads the server key `function.premium.common.scroll_preview`. The feature has four tiers:
+  LINE Labs, LYP Lite, LYP Standard and no LYP. It is not known whether *[Premium] Disable LINE
+  Premium* hides its upsell. The device test on 26.15.1 found no scroll preview entry in Settings ▸
+  Chats.
+- **LINE Calendar app promotion.** The strings `line_calendar_apppromotion_link_morefeatures` and
+  `line_calendar_apppromotion_popupdesc_eventlocation` are now used (`gx0.d`, `gx0.s`, `uy0.d`). If
+  the promotion shows in a chat, it is a sixth Calendar surface for *[Chat] Hide calendar buttons*.
+  Not seen on the device.
+- **Manual read receipts** (`MANUAL_READ_RECEIPT`). This was a staged enum constant in 26.15.1. In
+  26.18.2 it is an LYP Premium setting with its own screen
+  (`com/linecorp/line/settings/impl/lyppremium/manualreadreceipt`). Compare it with *[Chat] Keep
+  chats unread* before you change that patch.
+- **Labs premium intro.** `LineUserSettingLabPremiumIntroComposeView` does not read the premium
+  facade, so it is not known whether *[Premium] Disable LINE Premium* hides it. Look for an LYP
+  intro on the LINE Labs page of a patched build.
+- **Global Home module types.** `GlobalHomeRecommendedSticker`, `GlobalHomeLoungeHoroscope` and
+  `GcsGlobalHomeActivityHybridContentCard` are in no blocklist. They are on the `GLOBALHOME` tab,
+  which shows only in some regions. The first two are candidates for *[Home] Hide Home modules*,
+  because it already hides the `HOME` version of the sticker module. Keep the third, because its
+  `HOME` version is kept. Make sure that they show on a device before you add them.
+- **Badges that *[General] Hide new item badges* does not reach.** The green dots on Edit, Unsend
+  and Keep Memo in the message long-press menu. With the tabs shown, the red dots on the TODAY and
+  Wallet tabs, and the green dots on Wallet service tiles. The LINE Labs "N" is reached: its rows
+  read the suspend predicate `hasNewLabFeature`, which the patch finds by its Kotlin debug
+  annotation `LineUserMainSettingsCategory$hasNewLabFeature$2` and makes return false.
+
+Closed since 26.14.0: the scheduled message upsell strings and two upsell dialogs
+(`ScheduledMessageLypSubscriptionPopupDialogFragment`, `LypFeatureOnboardingPopupDialogFragment`)
+are not in 26.18.2.
 
 ---
 

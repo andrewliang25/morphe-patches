@@ -29,8 +29,8 @@ anchors. The changes since 26.14.0:
   window. Both reads are `jd1.a.o` in 26.15.1 and `xc1.a.o` in 26.16.0.
 - **Promo link.** The patch finds the gate call as the `invoke-static` whose return type has a
   `SUPPORTED_CHAT` field.
-- **Scroll preview** (`function.premium.common.scroll_preview`, evaluator `d52.f`) is live in
-  26.15.1. It is not known whether the market gate hides its upsell. See the 26.15.1 watch list in
+- **Scroll preview** (`function.premium.common.scroll_preview`, evaluator `d52.f` in 26.15.1) is
+  live. It is not known whether the market gate hides its upsell. See "Open items" in
   `docs/line-patch-map.md`.
 
 Device tests on 26.15.1 (2026-10-14) and 26.16.0 (2026-10-23): Settings ▸ Chats opens, and the
