@@ -196,7 +196,7 @@ final class LineSettingsScreen {
             }
             if (LineSettings.hideAgentIIncluded()) {
                 content.addView(toggle(activity, LineSettings.HIDE_AGENT_I, "Hide Agent i",
-                        "In the Home tab, the search bar, chats, the + menu, the Wallet tab and Settings.",
+                        "In Home, search, chats, the + menu, Wallet and Settings.",
                         showRestart));
             }
             content.addView(note(activity, "Some button changes show only after LINE restarts."));
@@ -244,18 +244,16 @@ final class LineSettingsScreen {
             }
             if (LineSettings.silentCallRecordingIncluded()) {
                 content.addView(toggle(activity, LineSettings.SILENT_CALL_RECORDING, "Record without notifying",
-                        "The other person is not told that you record, and hears no recording announcement.", null));
+                        "The other person sees no banner and hears no announcement.", null));
             }
             if (LineSettings.saveCallRecordingsToDeviceIncluded()) {
                 content.addView(toggle(activity, LineSettings.SAVE_CALL_RECORDINGS_TO_DEVICE, "Save recordings to device",
-                        "On: saves each recording to Movies/LINE on your phone. Off: shares it to Keep Memo, "
-                                + "which refuses files over 1 GB. Each recording also stays in the chat's Call recordings list.",
+                        "Saves recordings to Movies/LINE instead of Keep Memo, which refuses files over 1 GB.",
                         null));
             }
             if (LineSettings.removeCallRecordingLimitIncluded()) {
                 content.addView(toggle(activity, LineSettings.REMOVE_CALL_RECORDING_LIMIT, "Remove recording time limit",
-                        "Records a call until it ends. Without this, LINE stops voice recordings after 60 minutes "
-                                + "and video recordings after 20 or 50 minutes.",
+                        "Records until the call ends. LINE normally stops after 20 to 60 minutes.",
                         null));
             }
         }
@@ -295,8 +293,7 @@ final class LineSettingsScreen {
             }
             if (LineSettings.unlockAppIconsIncluded()) {
                 content.addView(toggle(activity, LineSettings.UNLOCK_APP_ICONS, "Unlock app icons",
-                        "Shows the App icon page in Settings, also with the collaboration icons that LINE does not "
-                                + "offer now. You can apply every icon on it, also the Premium ones.",
+                        "Lets you use every app icon, including Premium and old collaboration icons.",
                         showRestart));
             }
             content.addView(note(activity, "Premium changes show after LINE restarts."));

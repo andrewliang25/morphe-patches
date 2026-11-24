@@ -24,9 +24,8 @@ import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 @Suppress("unused")
 val silentCallRecordingPatch = bytecodePatch(
     name = "[Call] Record calls without notifying",
-    description = "Records a 1-to-1 LINE call without telling the other party: no on-screen banner " +
-        "and no spoken recording announcement. Recording a call without the other person's consent " +
-        "is illegal in some places. You are responsible for following the law where you are.",
+    description = "The other person in a 1-to-1 call sees no recording banner and hears no " +
+        "announcement. Recording without consent is illegal in some places.",
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_LINE)

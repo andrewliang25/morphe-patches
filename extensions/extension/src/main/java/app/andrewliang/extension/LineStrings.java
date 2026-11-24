@@ -89,9 +89,9 @@ final class LineStrings {
                 "トークルームの「AI 編集」と、写真ビューアーの AI ボタンです。",
                 "聊天室中的「AI 編輯」，以及照片檢視器中的 AI 按鈕。");
         put("Hide Agent i", "Agent i を非表示", "隱藏 Agent i");
-        put("In the Home tab, the search bar, chats, the + menu, the Wallet tab and Settings.",
-                "ホームタブ、検索バー、トークルーム、＋メニュー、ウォレットタブ、設定にあります。",
-                "位於主頁分頁、搜尋列、聊天室、＋選單、錢包分頁和設定。");
+        put("In Home, search, chats, the + menu, Wallet and Settings.",
+                "ホーム、検索、トーク、＋メニュー、ウォレット、設定にあります。",
+                "位於主頁、搜尋、聊天、＋選單、錢包和設定。");
         put("Some button changes show only after LINE restarts.",
                 "一部のボタンの変更は、LINE の再起動後に反映されます。",
                 "部分按鈕的變更會在 LINE 重新啟動後生效。");
@@ -127,23 +127,17 @@ final class LineStrings {
                 "1 対 1 の通話がつながると、すぐに録音・録画を始めます。",
                 "一對一通話接通後，立即開始錄製。");
         put("Record without notifying", "相手に知らせずに録音・録画", "錄製時不通知對方");
-        put("The other person is not told that you record, and hears no recording announcement.",
-                "録音・録画していることは相手に通知されず、録音のアナウンスも流れません。",
-                "對方不會收到錄製通知，也不會聽到錄製提示音。");
+        put("The other person sees no banner and hears no announcement.",
+                "相手にはバナーが表示されず、アナウンスも流れません。",
+                "對方不會看到橫幅，也不會聽到提示音。");
         put("Save recordings to device", "録音・録画を端末に保存", "將錄製檔儲存到裝置");
-        put("On: saves each recording to Movies/LINE on your phone. Off: shares it to Keep Memo, "
-                        + "which refuses files over 1 GB. Each recording also stays in the chat's Call recordings list.",
-                "オン：各レコーディングファイルを端末の Movies/LINE に保存します。オフ：Keep メモに共有します。"
-                        + "Keep メモは 1 GB を超えるファイルを受け付けません。どちらの場合も、"
-                        + "トークルームの通話レコーディング一覧にも残ります。",
-                "開啟：將每個錄製檔儲存到裝置的 Movies/LINE。關閉：分享到 Keep 筆記，"
-                        + "但 Keep 筆記不接受超過 1 GB 的檔案。每個錄製檔也會保留在聊天室的通話錄製清單中。");
+        put("Saves recordings to Movies/LINE instead of Keep Memo, which refuses files over 1 GB.",
+                "Keep メモではなく Movies/LINE に保存します。Keep メモは 1 GB を超えるファイルを受け付けません。",
+                "儲存到 Movies/LINE，而不是 Keep 筆記。Keep 筆記不接受超過 1 GB 的檔案。");
         put("Remove recording time limit", "録音・録画の時間制限をなくす", "移除錄製時間限制");
-        put("Records a call until it ends. Without this, LINE stops voice recordings after 60 minutes "
-                        + "and video recordings after 20 or 50 minutes.",
-                "通話が終わるまで録音・録画します。オフの場合、LINE は音声を 60 分、"
-                        + "ビデオを 20 分または 50 分で停止します。",
-                "錄製到通話結束為止。關閉時，LINE 會在語音錄製 60 分鐘、視訊錄製 20 或 50 分鐘後停止。");
+        put("Records until the call ends. LINE normally stops after 20 to 60 minutes.",
+                "通話が終わるまで録音・録画します。通常、LINE は 20〜60 分で停止します。",
+                "錄製到通話結束為止。LINE 通常會在 20 到 60 分鐘後停止。");
 
         put("Tabs", "タブ", "分頁");
         put("Shows your tab changes now.", "タブの変更をすぐに反映します。", "立即套用分頁的變更。");
@@ -162,12 +156,9 @@ final class LineStrings {
                 "LINE Premium の勧誘、バッジ、画面を非表示にします。",
                 "隱藏 LINE Premium 的推銷、徽章和頁面。");
         put("Unlock app icons", "アプリアイコンを解放", "解鎖應用程式圖示");
-        put("Shows the App icon page in Settings, also with the collaboration icons that LINE does not "
-                        + "offer now. You can apply every icon on it, also the Premium ones.",
-                "設定にアプリアイコンの画面を表示し、現在は提供されていないコラボアイコンも並べます。"
-                        + "Premium のアイコンも含め、すべてのアイコンを設定できます。",
-                "在設定中顯示應用程式圖示頁面，並列出 LINE 目前不再提供的聯名圖示。"
-                        + "所有圖示都能套用，包括 Premium 圖示。");
+        put("Lets you use every app icon, including Premium and old collaboration icons.",
+                "Premium や過去のコラボアイコンを含め、すべてのアプリアイコンを使えます。",
+                "可使用所有應用程式圖示，包括 Premium 和過去的聯名圖示。");
         put("Premium changes show after LINE restarts.",
                 "Premium の変更は、LINE の再起動後に反映されます。",
                 "Premium 的變更會在 LINE 重新啟動後生效。");
