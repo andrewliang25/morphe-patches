@@ -104,7 +104,7 @@ The check is not in LINE. A passkey is bound to LINE's web site (relying party `
 Android app can use it, Play Services reads the app signing certificate. Then it compares the
 certificate with the Digital Asset Links file on LINE's server (`line.me/.well-known/assetlinks.json`). A re-signed build
 has a different certificate, so it is not in that file. Play Services returns no passkey, and it
-does not save a new one. This is the same class as Google account sign-in (Path 1 above). Another
+does not save a new one. This is the same class as Google account sign-in (Path 1 below). Another
 process reads the certificate and compares it with a file on a server, so no APK patch reaches it.
 
 "[Fix] Restore biometric login" does not help here. It rewrites the origin that LINE builds in its
