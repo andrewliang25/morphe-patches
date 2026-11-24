@@ -121,7 +121,7 @@ Before patching any LINE limit, find out **who decides**:
 
 ## Development procedure
 
-Every new patch or fix goes through these six steps, in order. Each step ends on its completion criterion. The `ship` skill runs steps 4 to 6.
+Every new patch or fix goes through these six steps, in order. Each step ends on its completion criterion. The `ship-pr` skill runs steps 4 to 6.
 
 1. **Investigate.** Locate the code that draws or decides the surface: first in the decompile, then by measurement on the device. Done when a logging build shows that the target method runs while the surface is on the screen (see "Verified bytecode does NOT mean the code runs"). Record the anchors and the dead ends in the `docs/*-map.md` of the app.
 2. **Develop.** Work on a `feat/` or `fix/` branch off `dev`. Never commit onto `dev` itself. Stage only the files of the task, because the working tree often holds unrelated edits. Done when `buildAndroid` passes and the patch applies to the pinned APK.
@@ -146,7 +146,7 @@ Automated by **semantic-release** (`.releaserc`, `.github/workflows/release.yml`
 
 Procedures live in `.agents/skills/<name>/SKILL.md` ([Agent Skills](https://agentskills.io) format). If your tool does not load skills, read the file when its case applies:
 
-- `ship`: steps 4 to 6 (clean up, simple English, commit, PR), and rebasing a stacked PR after a squash merge.
+- `ship-pr`: steps 4 to 6 (clean up, simple English, commit, PR), and rebasing a stacked PR after a squash merge.
 - `verify-patch`: build, apply to every pinned version, diff the changed instructions, run BranchSweep. Run it after every patch edit.
 - `probe`: build a logging build for step 1 (investigate), or when a patch applies but changes nothing.
 - `device-test`: drive the phone over adb for step 3 (install, open screens, screenshots, logcat).
