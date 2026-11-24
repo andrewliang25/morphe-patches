@@ -155,35 +155,24 @@ Andrew's Patches をビルドするには、
 
 ### LINE：一部の店舗で LINE Pay が使えない
 
-**内容：**一部の店舗では、ウェブサイトや注文システムからの LINE Pay の支払いが失敗します。LINE が開いた後、
-単体の **LINE Pay** アプリが開き、エラーが表示されます。エラーの例は「この機能は LINE アプリから操作する必要があります」
-や「LINE を更新してください」です。
+**内容：**一部の店舗では、LINE Pay の支払いで単体の **LINE Pay** アプリが開き、エラーが表示されます
+（[#161](https://github.com/andrewliang25/morphe-patches/issues/161)、[#220](https://github.com/andrewliang25/morphe-patches/issues/220)）。
 
-**原因：**LINE 内の LINE Pay には整合性チェックがあり、改変された LINE では失敗します。
-*[General] Redirect LINE Pay* パッチは、すべての支払いを単体の LINE Pay アプリに送ります。ほとんどの店舗はこれを
-受け付けます。一部の店舗は LINE 内からの支払いだけを受け付けるため、LINE Pay アプリが拒否します。これらのパッチは
-LINE の LINE Pay 部分を変更しません。支払いのコードを変更すると、アカウントが停止されたり、法的な問題が起きたりする
-おそれがあるためです。そのため、この問題は修正しません
-（[#161](https://github.com/andrewliang25/morphe-patches/issues/161)、
-[#220](https://github.com/andrewliang25/morphe-patches/issues/220)）。
+**原因：**「[General] Redirect LINE Pay」は支払いを単体のアプリに送ります。改変された LINE の中の LINE Pay は
+整合性チェックで失敗するためです。一部の店舗は LINE 内からの支払いだけを受け付けます。アカウント停止の
+おそれがあるため、パッチは支払いのコードを変更しません。
 
-**回避策：**これらの店舗では、別の方法で支払ってください。たとえば店頭で支払います。
+**回避策：**これらの店舗では、別の方法で支払ってください。
 
 ### Facebook：他の Meta アプリがインストールできない（再署名したビルド）
 
-**内容：**パッチ適用済みの **Facebook** をインストールした後、同じ権限名を使う公式の Meta アプリがインストール
-できなくなります。**Facebook Lite** と **Messenger** が既知の例です。インストーラーは
-`INSTALL_FAILED_DUPLICATE_PERMISSION` で停止します。
+**内容：**パッチ適用済みの **Facebook** があると、**Facebook Lite** と **Messenger** が
+`INSTALL_FAILED_DUPLICATE_PERMISSION` でインストールできません。
 
-**原因：**Meta のアプリは、同じファミリー権限を宣言します。たとえば
-`com.facebook.permission.prod.FB_APP_COMMUNICATION` です。Android では、2 つのアプリの署名証明書が同じでない限り、
-1 つの権限名を持てるアプリは 1 つだけです。パッチ適用済みのビルドは再署名されるため、証明書が Meta の証明書と
-異なります。インストールの順番を変えても結果は同じです。
-[patched-apps](https://github.com/andrewliang25/patched-apps#meta-app-clones-duplicate-permission-conflict)
-でも同じ競合が起きます。
+**原因：**Meta のアプリは同じ権限名を使います。Android では、署名が同じアプリだけがこれを共有できます。
+パッチ適用済みのビルドは再署名されています。[patched-apps](https://github.com/andrewliang25/patched-apps#meta-app-clones-duplicate-permission-conflict) でも同じ競合が起きます。
 
-**回避策：**パッチ適用済みの Facebook を **root 権限マウント**でインストールします。この方法では元の署名が残ります。
-または、2 つのアプリのうち 1 つだけを残します。
+**回避策：**root 権限マウントでインストールするか、2 つのアプリのうち 1 つだけを残してください。
 
 ## 🙏 謝辞
 

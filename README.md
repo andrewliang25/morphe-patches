@@ -156,35 +156,24 @@ To build Andrew's Patches, obey the instructions in the
 
 ### LINE: some merchants do not accept LINE Pay
 
-**What:** At some merchants, a LINE Pay payment from a website or an ordering system fails. LINE
-opens, then the standalone **LINE Pay** app opens and shows an error. Examples of the error are
-"you must use the LINE app for this function" and "update LINE".
+**What:** At some merchants, a LINE Pay payment opens the standalone **LINE Pay** app, which shows
+an error ([#161](https://github.com/andrewliang25/morphe-patches/issues/161), [#220](https://github.com/andrewliang25/morphe-patches/issues/220)).
 
-**Why:** LINE Pay inside LINE has an integrity check that fails on a modified LINE. The
-*[General] Redirect LINE Pay* patch sends each payment to the standalone LINE Pay app instead. Most
-merchants accept this. Some merchants accept a payment only from inside LINE, so the LINE Pay app
-refuses it. These patches do not change the LINE Pay part of LINE, because a change to payment code
-can get your account banned and can cause legal problems. So this will not be fixed
-([#161](https://github.com/andrewliang25/morphe-patches/issues/161),
-[#220](https://github.com/andrewliang25/morphe-patches/issues/220)).
+**Why:** *[General] Redirect LINE Pay* sends payments to the standalone app, because LINE Pay inside
+a modified LINE fails its integrity check. Some merchants accept payments only from inside LINE. The
+patches do not touch payment code, because that risks a ban.
 
-**Workaround:** at these merchants, pay in a different way, for example pay in the store.
+**Workaround:** pay in a different way at these merchants.
 
 ### Facebook: other Meta apps do not install (re-signed builds)
 
-**What:** After you install a patched **Facebook** build, an official Meta app that shares the same
-permission names does not install. **Facebook Lite** and **Messenger** are the known examples. The installer stops
+**What:** With a patched **Facebook** installed, **Facebook Lite** and **Messenger** fail to install
 with `INSTALL_FAILED_DUPLICATE_PERMISSION`.
 
-**Why:** Meta apps declare the same family permissions, for example
-`com.facebook.permission.prod.FB_APP_COMMUNICATION`. Android permits only one owner of a permission
-name, unless the two apps have the same signing certificate. A patched build is re-signed, so its
-certificate is different from the certificate of Meta. The order of the installs does not change
-this. The same conflict occurs in
-[patched-apps](https://github.com/andrewliang25/patched-apps#meta-app-clones-duplicate-permission-conflict).
+**Why:** Meta apps share permission names, and Android allows that only when the apps have the same
+signature. A patched build is re-signed. The same conflict occurs in [patched-apps](https://github.com/andrewliang25/patched-apps#meta-app-clones-duplicate-permission-conflict).
 
-**Workaround:** install the patched Facebook with **Root Mount**, which keeps the original
-signature. Or keep only one app of the two.
+**Workaround:** use a **Root Mount** install, or keep only one of the two apps.
 
 ## 🙏 Special thanks
 
