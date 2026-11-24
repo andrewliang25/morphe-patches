@@ -116,15 +116,15 @@ notes for your app at the end of this file before step 1.
 
 ### LINE (`--app LINE`)
 
-- Read "Supported versions" and "How to check a bump" in `docs/line-patch-map.md` for the
+- Read "Supported versions" and "How to check a bump" in `docs/line/build-and-versions.md` for the
   supported versions and the method counts of the last bump.
 - R8 also renames the Kotlin stdlib (`kotlin.Unit`, `Lazy`, function types).
 - Shared helpers already absorb drift: `shared/ResourceIds.kt`, `line/shared/HomeState.kt`,
   `line/shared/AttachTile.kt`. Prefer them to a new anchor.
 - Step 6 finds the two signer SHA-1s of "[Fix] Restore push notifications". `base.apk` uses
-  key rotation: `docs/line-patch-map.md` ("Which cert") says which of the two certificates the patch
+  key rotation: `docs/line/resigning.md` ("Which cert") says which of the two certificates the patch
   uses.
-- Docs: `docs/line-patch-map.md` and `docs/line-premium-map.md`. Past bumps: 26.14.0 (16 patches
+- Docs: `docs/line/` (`README.md` lists the files and the open items). Past bumps: 26.14.0 (16 patches
   broke), 26.15.1 (18 of 30), 26.17.1 (6 of 39 failed, and 1 applied with no change).
 
 ### Facebook (`--app FACEBOOK`)

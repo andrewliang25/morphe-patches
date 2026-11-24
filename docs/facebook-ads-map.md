@@ -1344,7 +1344,7 @@ window away, it closed and the playback paused. The crash buffer was empty.
 `[General] Andrew's Patch Setting` adds a row, "Andrew's Patch Setting", to the top of the Menu
 drawer. The row opens a screen with a runtime switch for 15 patches, then credits and the license.
 Who it helps: a user of the prebuilt APK from `patched-apps`, who otherwise cannot turn off one
-patch without patching the APK again. LINE has the same patch (`docs/line-patch-map.md`, "Settings
+patch without patching the APK again. LINE has the same patch (`docs/line/settings-fonts-themes.md`, "Settings
 screen"). Anchors are 577.0.0.50.72.
 
 ### Where the row can go
