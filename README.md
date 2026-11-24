@@ -2,19 +2,19 @@
 
 English | [繁體中文](README.zh-TW.md) | [日本語](README.ja-JP.md)
 
-Morphe patches for LINE and other apps I use.
+Morphe patches for LINE and Facebook.
 
 ## ❓ About
 
-These are [Morphe](https://github.com/MorpheApp) patches. The current focus is
-[LINE](https://line.me) (`jp.naver.line.android`). Apply them with the Morphe CLI or
+These are [Morphe](https://github.com/MorpheApp) patches for [LINE](https://line.me)
+(`jp.naver.line.android`) and Facebook (`com.facebook.katana`). Apply them with the Morphe CLI or
 Morphe Manager to build a modified APK.
 
 > 💡 **Do not want to build it yourself?** Download ready-made patched apps from
 > [andrewliang25/patched-apps](https://github.com/andrewliang25/patched-apps/releases).
 
-> This project has no connection to the Morphe open source project, LINE, or LY
-> Corporation. They do not endorse it and did not write it.
+> This project has no connection to the Morphe open source project, LINE, LY Corporation,
+> Facebook, or Meta. They do not endorse it and did not write it.
 
 ## 🩹 Patches list
 
@@ -117,39 +117,20 @@ Click here to add these patches to Morphe: https://morphe.software/add-source?gi
 
 Or add this repository URL as a patch source in Morphe: https://github.com/andrewliang25/morphe-patches
 
-#### Change LINE patches in the app
+#### Change patches in the app
 
-With the "[General] Andrew's Patch Setting" patch, LINE **Settings** has an **Andrew's Patch
-Setting** row below **Profile**. There you can turn these patches on or off without patching
-again:
+With the "[General] Andrew's Patch Setting" patch, you can turn most patches on or off without
+patching again:
 
-- Keep chats unread, and keep unsent messages
-- Open links in external browser, and disable VOOM
-- Hide the LINE TODAY, Shopping, VOOM and Wallet tabs. A tab change shows after LINE restarts.
-- Hide the chat buttons and tips: AI Friends, community, calendar, Events, LINE GIFT, Transfer,
-  the extra tools in the + menu, and the tips under messages. Some of these changes show only
-  after LINE restarts.
+- **LINE:** open **Settings**, then **Andrew's Patch Setting** below **Profile**.
+- **Facebook:** open the **Menu** (☰), then **Andrew's Patch Setting** at the top.
 
-A patch that you did not include in the build has no switch. The row also shows the author and the
-license.
+Some changes show only after the app restarts. The screen then shows a button to restart it. A patch
+that you did not include in the build has no switch.
 
-#### Change Facebook patches in the app
+## 🛠️ Building
 
-With the "[General] Andrew's Patch Setting" patch, the Facebook **Menu** (☰) has an **Andrew's
-Patch Setting** row at the top. There you can turn these patches on or off without patching again:
-
-- Feed: hide sponsored posts, page suggestions and post prompts, and block feed auto refresh
-- Reels: hide sponsored reels and interest prompts, download any reel, and picture-in-picture
-- Stories: hide sponsored stories, download any story, view stories anonymously, and disable auto
-  advance
-- Hide affiliate product links, and open links in external browser
-
-Some changes show only after Facebook restarts. The screen has a **Restart Facebook** row for this.
-The AMOLED black theme has no switch. A patch that you did not include in the build has no switch.
-
-### 🛠️ Building
-
-To build Andrew's Patches, obey the instructions in the
+To build Andrew's Patches, follow the instructions in the
 [Morphe documentation](https://github.com/MorpheApp/morphe-documentation).
 
 ## ⚠️ Known limitations

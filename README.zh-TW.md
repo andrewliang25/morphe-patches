@@ -2,18 +2,18 @@
 
 [English](README.md) | 繁體中文 | [日本語](README.ja-JP.md)
 
-適用於 LINE 及其他我常用應用程式的 Morphe 修補程式。
+適用於 LINE 和 Facebook 的 Morphe 修補程式。
 
 ## ❓ 關於
 
-這是一套 [Morphe](https://github.com/MorpheApp) 修補程式，目前以
-[LINE](https://line.me)（`jp.naver.line.android`）為主。請使用 Morphe CLI 或
+這是一套適用於 [LINE](https://line.me)（`jp.naver.line.android`）和 Facebook（`com.facebook.katana`）的
+[Morphe](https://github.com/MorpheApp) 修補程式。請使用 Morphe CLI 或
 Morphe Manager 套用，產生修改過的 APK。
 
 > 💡 **不想自己建置？** 可以到
 > [andrewliang25/patched-apps](https://github.com/andrewliang25/patched-apps/releases) 下載已修補的應用程式。
 
-> 本專案與 Morphe 開源專案、LINE 及 LY Corporation 皆無關係。上述各方並未認可本專案，
+> 本專案與 Morphe 開源專案、LINE、LY Corporation、Facebook 及 Meta 皆無關係。上述各方並未認可本專案，
 > 也未參與撰寫。
 
 ## 🩹 修補程式清單
@@ -119,33 +119,16 @@ Morphe Manager 套用，產生修改過的 APK。
 
 或在 Morphe 中把這個儲存庫網址加為修補來源：https://github.com/andrewliang25/morphe-patches
 
-#### 在應用程式內調整 LINE 修補程式
+#### 在應用程式內調整修補程式
 
-套用「[General] Andrew's Patch Setting」修補程式後，LINE 的**設定**頁面中，**個人檔案**下方會多出
-**Andrew's Patch Setting** 一列。你可以在這裡開啟或關閉下列修補程式，不必重新修補：
+套用「[General] Andrew's Patch Setting」修補程式後，大部分修補程式都可以直接開啟或關閉，不必重新修補：
 
-- 保持聊天未讀，以及保留已收回的訊息
-- 用外部瀏覽器開啟連結，以及停用 VOOM
-- 隱藏 LINE TODAY、購物、VOOM 和錢包分頁。分頁的變更會在 LINE 重新啟動後生效。
-- 隱藏聊天中的按鈕和提示：AI 好友、社群、行事曆、活動、LINE 禮物、轉帳、+ 選單中的額外工具，
-  以及訊息下方的提示。其中部分變更會在 LINE 重新啟動後才生效。
+- **LINE：** 開啟**設定**，再點**個人檔案**下方的 **Andrew's Patch Setting**。
+- **Facebook：** 開啟**選單**（☰），再點最上方的 **Andrew's Patch Setting**。
 
-建置時沒有加入的修補程式不會出現開關。這一列也會顯示作者與授權條款。
+部分變更會在應用程式重新啟動後才生效，畫面上會出現重新啟動的按鈕。建置時沒有加入的修補程式不會出現開關。
 
-#### 在應用程式內調整 Facebook 修補程式
-
-套用「[General] Andrew's Patch Setting」修補程式後，Facebook 的**選單**（☰）最上方會多出
-**Andrew's Patch Setting** 一列。你可以在這裡開啟或關閉下列修補程式，不必重新修補：
-
-- 動態消息：隱藏贊助貼文、粉絲專頁建議和發文提示，以及阻止動態消息自動重新整理
-- Reels：隱藏贊助 Reels 和興趣提示、下載任何 Reels，以及子母畫面
-- 限時動態：隱藏贊助限時動態、下載任何限時動態、匿名觀看限時動態，以及停用自動播放下一則
-- 隱藏聯盟行銷商品連結，以及用外部瀏覽器開啟連結
-
-部分變更會在 Facebook 重新啟動後才生效，畫面中有 **Restart Facebook** 一列可以重新啟動。
-AMOLED 黑色主題沒有開關。建置時沒有加入的修補程式不會出現開關。
-
-### 🛠️ 建置
+## 🛠️ 建置
 
 建置 Andrew's Patches 的方法，請參考
 [Morphe 文件](https://github.com/MorpheApp/morphe-documentation)。

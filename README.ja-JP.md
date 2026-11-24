@@ -2,18 +2,18 @@
 
 [English](README.md) | [繁體中文](README.zh-TW.md) | 日本語
 
-LINE と、私が使うその他のアプリ向けの Morphe パッチです。
+LINE と Facebook 向けの Morphe パッチです。
 
 ## ❓ 概要
 
-これは [Morphe](https://github.com/MorpheApp) のパッチです。現在は
-[LINE](https://line.me)（`jp.naver.line.android`）が中心です。Morphe CLI または
+これは [LINE](https://line.me)（`jp.naver.line.android`）と Facebook（`com.facebook.katana`）向けの
+[Morphe](https://github.com/MorpheApp) パッチです。Morphe CLI または
 Morphe Manager でパッチを適用すると、改変した APK をビルドできます。
 
 > 💡 **自分でビルドしたくない場合は？**
 > [andrewliang25/patched-apps](https://github.com/andrewliang25/patched-apps/releases) からパッチ適用済みのアプリをダウンロードできます。
 
-> このプロジェクトは、Morphe オープンソースプロジェクト、LINE、LY Corporation とは関係ありません。
+> このプロジェクトは、Morphe オープンソースプロジェクト、LINE、LY Corporation、Facebook、Meta とは関係ありません。
 > これらの団体はこのプロジェクトを推奨しておらず、作成にも関わっていません。
 
 ## 🩹 パッチ一覧
@@ -119,34 +119,18 @@ Morphe Manager でパッチを適用すると、改変した APK をビルドで
 
 または、このリポジトリの URL を Morphe のパッチソースとして追加します：https://github.com/andrewliang25/morphe-patches
 
-#### アプリ内で LINE のパッチを変更する
+#### アプリ内でパッチを変更する
 
-「[General] Andrew's Patch Setting」パッチを適用すると、LINE の**設定**の**プロフィール**の下に
-**Andrew's Patch Setting** の行が追加されます。ここで次のパッチをオンまたはオフにでき、もう一度パッチを適用する必要はありません：
+「[General] Andrew's Patch Setting」パッチを適用すると、もう一度パッチを適用しなくても、ほとんどのパッチを
+オンまたはオフにできます：
 
-- トークを未読のままにする、送信取消されたメッセージを残す
-- リンクを外部ブラウザで開く、VOOM を無効にする
-- LINE TODAY、ショッピング、VOOM、ウォレットのタブを非表示にする。タブの変更は LINE の再起動後に反映されます。
-- トークのボタンとヒントを非表示にする：AI Friends、コミュニティ、カレンダー、イベント、LINE GIFT、送金、
-  ＋メニューの追加ツール、メッセージの下のヒント。一部の変更は LINE の再起動後に反映されます。
+- **LINE：** **設定**を開き、**プロフィール**の下の **Andrew's Patch Setting** を開きます。
+- **Facebook：** **メニュー**（☰）を開き、一番上の **Andrew's Patch Setting** を開きます。
 
-ビルドに含めなかったパッチにはスイッチがありません。この行には作者とライセンスも表示されます。
+一部の変更は、アプリの再起動後に反映されます。その場合、画面に再起動のボタンが表示されます。
+ビルドに含めなかったパッチにはスイッチがありません。
 
-#### アプリ内で Facebook のパッチを変更する
-
-「[General] Andrew's Patch Setting」パッチを適用すると、Facebook の**メニュー**（☰）の一番上に
-**Andrew's Patch Setting** の行が追加されます。ここで次のパッチをオンまたはオフにでき、もう一度パッチを適用する必要はありません：
-
-- フィード：広告投稿、ページのおすすめ、投稿の促しを非表示にする、フィードの自動更新を止める
-- リール：広告リールと興味のプロンプトを非表示にする、すべてのリールをダウンロードする、ピクチャー・イン・ピクチャー
-- ストーリーズ：広告ストーリーを非表示にする、すべてのストーリーをダウンロードする、ストーリーを匿名で見る、
-  自動で次に進む機能を無効にする
-- アフィリエイト商品リンクを非表示にする、リンクを外部ブラウザで開く
-
-一部の変更は Facebook の再起動後に反映されます。そのため、画面に **Restart Facebook** の行があります。
-AMOLED ブラックテーマにはスイッチがありません。ビルドに含めなかったパッチにはスイッチがありません。
-
-### 🛠️ ビルド
+## 🛠️ ビルド
 
 Andrew's Patches をビルドするには、
 [Morphe のドキュメント](https://github.com/MorpheApp/morphe-documentation)の手順に従ってください。
