@@ -121,10 +121,8 @@ Morphe Manager 套用，產生修改過的 APK。
 
 #### 在應用程式內調整修補程式
 
-套用「[General] Andrew's Patch Setting」修補程式後，大部分修補程式都可以直接開啟或關閉，不必重新修補：
-
-- **LINE：** 開啟**設定**，再點**個人檔案**下方的 **Andrew's Patch Setting**。
-- **Facebook：** 開啟**選單**（☰），再點最上方的 **Andrew's Patch Setting**。
+套用「[General] Andrew's Patch Setting」修補程式後，大部分修補程式都可以直接開啟或關閉，不必重新修補。在 LINE 中，開啟**設定**，再點**個人檔案**下方的
+**Andrew's Patch Setting**。在 Facebook 中，開啟**選單**（☰），再點最上方的 **Andrew's Patch Setting**。
 
 部分變更會在應用程式重新啟動後才生效，畫面上會出現重新啟動的按鈕。建置時沒有加入的修補程式不會出現開關。
 

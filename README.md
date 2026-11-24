@@ -120,10 +120,8 @@ Or add this repository URL as a patch source in Morphe: https://github.com/andre
 #### Change patches in the app
 
 With the "[General] Andrew's Patch Setting" patch, you can turn most patches on or off without
-patching again:
-
-- **LINE:** open **Settings**, then **Andrew's Patch Setting** below **Profile**.
-- **Facebook:** open the **Menu** (☰), then **Andrew's Patch Setting** at the top.
+patching again. In LINE, open **Settings**, then **Andrew's Patch Setting** below **Profile**. In
+Facebook, open the **Menu** (☰), then **Andrew's Patch Setting** at the top.
 
 Some changes show only after the app restarts. The screen then shows a button to restart it. A patch
 that you did not include in the build has no switch.
