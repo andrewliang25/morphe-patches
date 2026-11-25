@@ -7,6 +7,8 @@ import android.content.ContextWrapper;
 import android.content.DialogInterface;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.graphics.Color;
 import android.os.Handler;
 import android.os.Looper;
@@ -157,14 +159,50 @@ public final class GroupReaders {
     }
 
     /**
-     * A light or dark dialog, after LINE's own theme: LINE's {@code primaryBackground} color
-     * follows its light, dark and system theme setting, not only the phone.
+     * A light or dark dialog, after the chat under it. LINE's theme engine paints a theme such as
+     * Black over its views at run time, and resource colors follow only the dark-mode setting.
+     * So the input bar of the chat decides, and {@code primaryBackground} is the fallback.
      */
-    private static int dialogTheme(Context context) {
-        int id = context.getResources().getIdentifier("primaryBackground", "color", context.getPackageName());
-        boolean dark = id != 0 && Color.luminance(context.getColor(id)) < 0.5f;
-        return dark ? android.R.style.Theme_DeviceDefault_Dialog_Alert
+    private static int dialogTheme(Activity activity) {
+        float luminance;
+        try {
+            luminance = barLuminance(activity);
+        } catch (Throwable t) {
+            Log.w(TAG, "barLuminance", t);
+            luminance = -1;
+        }
+        if (luminance < 0) {
+            int id = activity.getResources().getIdentifier("primaryBackground", "color", activity.getPackageName());
+            luminance = id == 0 ? 1 : Color.luminance(activity.getColor(id));
+        }
+        return luminance < 0.5f ? android.R.style.Theme_DeviceDefault_Dialog_Alert
                 : android.R.style.Theme_DeviceDefault_Light_Dialog_Alert;
+    }
+
+    /** The mean luminance of the input bar of the chat as drawn, at a tenth of its size, or -1. */
+    private static float barLuminance(Activity activity) {
+        View bar = activity.findViewById(id(activity, "chat_ui_message"));
+        if (bar == null || bar.getWidth() == 0 || bar.getHeight() == 0) return -1;
+        int[] at = new int[2];
+        bar.getLocationInWindow(at);
+        Bitmap bitmap = Bitmap.createBitmap(Math.max(1, bar.getWidth() / 10), Math.max(1, bar.getHeight() / 10),
+                Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bitmap);
+        canvas.scale(0.1f, 0.1f);
+        canvas.translate(-at[0], -at[1]);
+        bar.getRootView().draw(canvas);
+        float sum = 0;
+        int count = 0;
+        for (int x = 0; x < bitmap.getWidth(); x++) {
+            for (int y = 0; y < bitmap.getHeight(); y++) {
+                int pixel = bitmap.getPixel(x, y);
+                if (Color.alpha(pixel) == 0) continue;
+                sum += Color.luminance(pixel);
+                count++;
+            }
+        }
+        bitmap.recycle();
+        return count == 0 ? -1 : sum / count;
     }
 
     /** The names of the members who read the message, but not the sender. Runs on a worker thread. */

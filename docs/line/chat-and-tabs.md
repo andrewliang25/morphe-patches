@@ -625,5 +625,12 @@ first empty cell of the last row. When the last row is full, it adds a new row o
 menu of a photo has 8 items, and this case is device-confirmed on 26.18.2. The list dialog has one
 row for each reader and the count in its title. A long list scrolls, and the OK button stays on the
 screen (device-confirmed with 500 test rows).
-It is light or dark after LINE's `primaryBackground` color. The list reads the databases read only,
-on a worker thread, after the sync.
+
+The dialog is dark when the input bar of the chat (`chat_ui_message`) is dark as drawn. LINE's
+theme engine paints a theme over its views at run time, and resource colors such as
+`primaryBackground` follow only the dark-mode setting (see "Colors come from the page under the
+dialog" in [settings-fonts-themes.md](settings-fonts-themes.md)). A build that used
+`primaryBackground` showed a light dialog with Black picked in light mode. Device-confirmed on
+26.18.2: dark under Black in light and dark mode, light under Original, Cony and Brown.
+
+The list reads the databases read only, on a worker thread, after the sync.
