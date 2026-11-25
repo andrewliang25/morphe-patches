@@ -1,3 +1,9 @@
+## [4.1.0-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v4.0.0...v4.1.0-dev.1) (2026-11-25)
+
+### ✨ New Features
+
+* **LINE - Andrew's Patch Setting:** show the screen in Thai and Indonesian ([7f6aafc](https://github.com/andrewliang25/morphe-patches/commit/7f6aafce7bd1a2eb4a4b7de27659f18db648a724))
+
 ## [4.0.0](https://github.com/andrewliang25/morphe-patches/compare/v3.12.0...v4.0.0) (2026-11-21)
 
 ### ⚠ BREAKING CHANGES
