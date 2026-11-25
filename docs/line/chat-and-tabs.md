@@ -566,3 +566,71 @@ The fingerprint does not use the obfuscated names. It matches `invokeSuspend` wi
 `instance-of`, then `String.valueOf(J)`, the `view_tree_lifecycle_owner` tag id (`0x7f0b29ab`) and
 `ComposeView.setContent`, in that order. This shape is unique in the 26.14.0 APK. The patch is
 device-confirmed on 26.14.0 (2026-09-25).
+
+## Group readers & the "[Chat] Show who read messages" patch
+
+LINE shows "Read N" under your own messages in a group. It does not show who read a message, and
+it shows nothing under the messages of other members. The patch adds "Read by" to the long-press
+menu of any message in a group or a multi-person chat. It lists the members who read the message.
+It does not list the members who did not, because a full group has 500 members.
+
+### Where the data is
+
+LINE keeps one read range for each member of a chat, in the `read_message_range` table of its
+`read_notification` database. Columns: `chat_id`, `member_id`, `from_msg_id`, `to_msg_id` and
+others. A member read message M when `from_msg_id < M AND to_msg_id >= M`. LINE counts the same
+rows for its own "Read N" label, so the list matches that number.
+
+| What | Database / table | Note |
+|---|---|---|
+| Read ranges | `read_notification` / `read_message_range` | Filled by `NOTIFIED_READ_MESSAGE` and by the read-range sync. |
+| Names | `contact` / `contacts` | `overridden_name` (the name you set), else `profile_name`. |
+
+A group chat id starts with `c`, a multi-person chat id with `r`. One-on-one chats and OpenChat are
+not covered.
+
+Measured on 26.18.2 with a probe (2026-11-25):
+
+- The table has no row for this account, so this account never shows as a reader.
+- Sending a message does not count as reading it: the sender's range stops before their own new
+  message. The list still leaves out the sender.
+- LINE's read-range sync for one chat returned no error in 165–244 ms.
+- In a 4-member group, the list on another member's message showed the third member who read it.
+  It did not show the fourth member (device-confirmed on 26.18.2, 2026-11-25). The list
+  runs LINE's read-range sync for the chat first. Nobody measured whether such a read reaches the
+  phone without the sync.
+
+### Anchors (26.18.2)
+
+| Role | 26.18.2 | How the patch finds it |
+|---|---|---|
+| Menu grid builder | `wl1.l.i(n.c, View, fe1.d, ge1.a, …)` | The three layouts `chat_ui_message_context_menu_content`, `…_row`, `…_item` |
+| Menu color call | `hk6.n.z(View, Set, f)Z` | The first interface call `(View, Set, *)Z` in the builder |
+| Menu dialog | `rn1.n1` (implements `DialogInterface`) | The first field read after the color call |
+| Menu params | `rn1.n1.e` (`ge1.a`) → `.b` (`ge1.b`) → `.b` (`qf1.c`) | The fields that `toString()` prints after `", messageViewData="` and `", chatMessageCommonViewData="` |
+| Message data | `qf1.c`: `a` chat id, `c` server id, `e` sender | The fields printed after `"…(chatId="`, `", serverMessageId="`, `", senderMid="` |
+| Service locator | `mc0.f.a(Context, mc0.a)` | The static `(Context, *)Object` call just before the color call |
+| Read-range sync | `j30.d.a` key, `d()` → `gr8.c` (`ReadCountManager`), `gr8.e.b(db, Set, gr8.c$a)` | The only `invokeSuspend` that calls `(SQLiteDatabase, Set, *)Lorg/apache/thrift/*` |
+
+The hook goes in just before the color call, after `getClass(grid)`, and passes the grid and the
+menu dialog. It does not pass the params argument (`p4`), because R8 reuses that register for an
+iterator before this point. A first build that passed `p4` crashed with
+`ClassCastException: ArrayList$Itr`. The dialog keeps the params in its only field of that type.
+The new cell is in the grid before LINE colors the grid, so it gets the same colors as LINE's cells. `kk1.n.s` (26.16.0) and `bl1.p.s` (26.17.1) have the
+same shape.
+
+The patch generates two methods in `GroupReaders`. `menuBuilt` reads the message fields and calls
+`addCell`. `syncReadRange` replaces a Java stub. The extension puts "Read by" in the
+first empty cell of the last row. When the last row is full, it adds a new row of empty cells. The
+menu of a photo has 8 items, and this case is device-confirmed on 26.18.2. The list dialog has one
+row for each reader and the count in its title. A long list scrolls, and the OK button stays on the
+screen (device-confirmed with 500 test rows).
+
+The dialog is dark when the input bar of the chat (`chat_ui_message`) is dark as drawn. LINE's
+theme engine paints a theme over its views at run time, and resource colors such as
+`primaryBackground` follow only the dark-mode setting (see "Colors come from the page under the
+dialog" in [settings-fonts-themes.md](settings-fonts-themes.md)). A build that used
+`primaryBackground` showed a light dialog with Black picked in light mode. Device-confirmed on
+26.18.2: dark under Black in light and dark mode, light under Original, Cony and Brown.
+
+The list reads the databases read only, on a worker thread, after the sync.
