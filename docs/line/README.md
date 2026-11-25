@@ -16,7 +16,7 @@ versions in [build-and-versions.md](build-and-versions.md) (see
 | File | What it covers |
 |---|---|
 | [build-and-versions.md](build-and-versions.md) | The supported LINE versions, the anchors that survive a version bump, and the offline build and apply recipe. |
-| [chat-and-tabs.md](chat-and-tabs.md) | The chat attach menu, Calendar and Events, the bottom tabs, the Home modules, unsend and message tips. |
+| [chat-and-tabs.md](chat-and-tabs.md) | The chat attach menu, Calendar and Events, the bottom tabs, the Home modules, unsend, message tips and group readers. |
 | [ads-ai-analytics.md](ads-ai-analytics.md) | Ads, AI entry points, analytics and traffic interception. |
 | [pay.md](pay.md) | How an external pay URL enters LINE, and the redirect patch. |
 | [resigning.md](resigning.md) | What breaks when LINE is signed with another certificate, and which patches fix or work around it. |

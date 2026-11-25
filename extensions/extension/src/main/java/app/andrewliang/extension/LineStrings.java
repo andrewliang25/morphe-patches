@@ -75,6 +75,16 @@ final class LineStrings {
                 "保留對方收回的訊息，並在時間旁顯示紅色的「Unsent」標籤。",
                 "เก็บข้อความที่อีกฝ่ายยกเลิกไว้ พร้อมป้าย \"Unsent\" สีแดงข้างเวลา",
                 "Menyimpan pesan yang diurung kirim oleh orang lain, dengan label merah \"Unsent\" di samping waktu.");
+        put("Show who read messages", "メッセージを読んだ人を表示", "顯示誰已讀訊息",
+                "แสดงผู้ที่อ่านข้อความ",
+                "Tampilkan siapa yang membaca pesan");
+        put("Adds \"Read by\" to the long-press menu of a message in groups.",
+                "グループのメッセージの長押しメニューに「既読」を追加します。",
+                "在群組訊息的長按選單中加入「已讀」。",
+                "เพิ่ม \"อ่านแล้ว\" ในเมนูที่แสดงเมื่อแตะค้างที่ข้อความในกลุ่ม",
+                "Menambahkan \"Dibaca oleh\" ke menu ketuk dan tahan pada pesan di grup.");
+        // The "Read by" menu cell and the title of its list (GroupReaders).
+        put("Read by", "既読", "已讀", "อ่านแล้ว", "Dibaca oleh");
 
         put("Chat buttons", "トークのボタン", "聊天按鈕",
                 "ปุ่มในแชท",
