@@ -120,7 +120,8 @@ final class LineSettingsScreen {
     }
 
     private static void addSwitches(Activity activity, LinearLayout content) {
-        boolean chats = LineSettings.keepChatsUnreadIncluded() || LineSettings.keepUnsentMessagesIncluded();
+        boolean chats = LineSettings.keepChatsUnreadIncluded() || LineSettings.keepUnsentMessagesIncluded()
+                || LineSettings.showReadersIncluded();
         boolean general = LineSettings.externalBrowserIncluded() || LineSettings.disableVoomIncluded()
                 || LineSettings.customFontIncluded() || LineSettings.blockAnalyticsIncluded();
         boolean tabs = LineSettings.hideTodayTabIncluded() || LineSettings.hideShoppingTabIncluded()
@@ -148,6 +149,10 @@ final class LineSettingsScreen {
             if (LineSettings.keepUnsentMessagesIncluded()) {
                 content.addView(toggle(activity, LineSettings.KEEP_UNSENT_MESSAGES, "Keep unsent messages",
                         "Keeps messages that others unsend, with a red \"Unsent\" label next to the time.", null));
+            }
+            if (LineSettings.showReadersIncluded()) {
+                content.addView(toggle(activity, LineSettings.SHOW_READERS, "Show who read messages",
+                        "Adds \"Read by\" to the long-press menu of a message in groups.", null));
             }
         }
 

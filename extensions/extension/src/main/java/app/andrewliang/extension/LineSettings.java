@@ -32,6 +32,7 @@ public final class LineSettings {
 
     static final String KEEP_CHATS_UNREAD = "keep_chats_unread";
     static final String KEEP_UNSENT_MESSAGES = "keep_unsent_messages";
+    static final String SHOW_READERS = "show_readers";
     static final String EXTERNAL_BROWSER = "external_browser";
     static final String DISABLE_VOOM = "disable_voom";
     static final String HIDE_TODAY_TAB = "hide_today_tab";
@@ -73,6 +74,10 @@ public final class LineSettings {
 
     public static boolean keepUnsentMessages() {
         return isOn(KEEP_UNSENT_MESSAGES);
+    }
+
+    public static boolean showReaders() {
+        return isOn(SHOW_READERS);
     }
 
     public static boolean externalBrowser() {
@@ -259,6 +264,10 @@ public final class LineSettings {
     }
 
     static boolean keepUnsentMessagesIncluded() {
+        return false;
+    }
+
+    static boolean showReadersIncluded() {
         return false;
     }
 
