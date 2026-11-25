@@ -1,14 +1,9 @@
 ## [4.1.0](https://github.com/andrewliang25/morphe-patches/compare/v4.0.0...v4.1.0) (2026-11-25)
 
-### 🐛 Bug Fixes
-
-* **LINE - Show who read messages:** follow LINE's theme in the reader list ([92bba02](https://github.com/andrewliang25/morphe-patches/commit/92bba026b4f5f9b6114b95ddbe81cd29a98e2b4c))
-
 ### ✨ New Features
 
 * **LINE - Andrew's Patch Setting:** show the screen in Thai and Indonesian ([7f6aafc](https://github.com/andrewliang25/morphe-patches/commit/7f6aafce7bd1a2eb4a4b7de27659f18db648a724))
-* **LINE - Show who read messages:** list only the readers, in a scrolling list ([535aec1](https://github.com/andrewliang25/morphe-patches/commit/535aec156df84cb52ec6c4de53fd07c30af453d8))
-* **LINE - Show who read messages:** list who read a message in groups ([4522b0a](https://github.com/andrewliang25/morphe-patches/commit/4522b0a7d40c4565e921caafdaebce24b10a7aaa))
+* **LINE - Show who read messages:** list who read a message in groups ([#267](https://github.com/andrewliang25/morphe-patches/pull/267))
 
 ## [4.1.0-dev.2](https://github.com/andrewliang25/morphe-patches/compare/v4.1.0-dev.1...v4.1.0-dev.2) (2026-11-25)
 
