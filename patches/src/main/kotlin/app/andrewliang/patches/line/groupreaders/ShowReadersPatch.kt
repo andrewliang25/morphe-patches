@@ -56,7 +56,7 @@ private val showReadersResourcePatch = resourcePatch {
 val showReadersPatch = bytecodePatch(
     name = "[Chat] Show who read messages",
     description = "Adds \"Read by\" to the long-press menu of a message in groups. It lists the members " +
-        "who read the message and the members who did not.",
+        "who read the message.",
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_LINE)
@@ -64,8 +64,8 @@ val showReadersPatch = bytecodePatch(
 
     // LINE keeps, for each group member, the range of messages that the member read. It counts that
     // range for its own "Read N" label. The extension reads the same table on a worker thread.
-    // This patch only gives the extension the message of the menu, the account id and LINE's own
-    // read-range sync for one chat.
+    // This patch only gives the extension the message of the menu and LINE's own read-range sync
+    // for one chat.
     execute {
         val extension = mutableClassDefBy(EXTENSION)
 
@@ -147,31 +147,6 @@ val showReadersPatch = bytecodePatch(
         build.addInstructions(
             colorCall - 1,
             "invoke-static { v$grid, v$menu }, $EXTENSION->menuBuilt($VIEW$OBJECT)V",
-        )
-
-        // The account id: locator(context, ProfileHolder.key).getProfile().mid
-        val profileType = ProfileToStringFingerprint.method.definingClass
-        val mid = printedField(ProfileToStringFingerprint.method, ", mid=", STRING)
-        val profileHolder = holderOf { it.name == "getProfile" && it.returnType == profileType }
-        extension.replaceStub(
-            "ownMid",
-            listOf(CONTEXT),
-            STRING,
-            registers = 2,
-            """
-                sget-object v0, ${profileHolder.key}
-                invoke-static { p0, v0 }, $locator
-                move-result-object v0
-                check-cast v0, ${profileHolder.type}
-                invoke-interface { v0 }, ${profileHolder.getter}
-                move-result-object v0
-                if-nez v0, :profile
-                const/4 v0, 0x0
-                return-object v0
-                :profile
-                iget-object v0, v0, $mid
-                return-object v0
-            """,
         )
 
         // LINE's read-range sync for one chat: the same call that its periodic sync makes for every

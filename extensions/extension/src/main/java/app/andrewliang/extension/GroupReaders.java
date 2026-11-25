@@ -14,6 +14,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -26,7 +27,7 @@ import java.util.Set;
 
 /**
  * "[Chat] Show who read messages": a "Read by" cell in the long-press menu of a message in a group,
- * and a list of the members who read the message and the members who did not.
+ * and a list of the members who read the message.
  *
  * <p>LINE keeps, for each member of a chat, the range of messages that the member read, in the
  * {@code read_message_range} table of its {@code read_notification} database. A member read message
@@ -43,12 +44,7 @@ public final class GroupReaders {
 
     private static final String TAG = "AndrewReaders";
 
-    // The patch replaces these two stubs with calls into LINE.
-
-    /** The account id (mid) of this phone, or null. */
-    static String ownMid(Context context) {
-        return null;
-    }
+    // The patch replaces this stub with a call into LINE.
 
     /** Runs LINE's read-range sync for one chat. Returns LINE's error, or null. Blocks: not on the main thread. */
     static Object syncReadRange(Context context, String chatId) {
@@ -126,17 +122,36 @@ public final class GroupReaders {
     private static void show(Context context, String chatId, long messageId, String sender) {
         Activity activity = activity(context);
         if (activity == null || activity.isFinishing()) return;
-        AlertDialog dialog = new AlertDialog.Builder(activity, dialogTheme(activity))
-                .setTitle(LineStrings.get(activity, "Read by"))
-                .setMessage("…")
+        AlertDialog.Builder builder = new AlertDialog.Builder(activity, dialogTheme(activity));
+        // A list, not a message: a group has up to 500 members, and a list view scrolls them
+        // and keeps the OK button on the screen.
+        ArrayAdapter<String> rows = new ArrayAdapter<String>(builder.getContext(),
+                android.R.layout.simple_list_item_1, new ArrayList<>(List.of("…"))) {
+            @Override
+            public boolean areAllItemsEnabled() {
+                return false;
+            }
+
+            @Override
+            public boolean isEnabled(int position) {
+                return false;
+            }
+        };
+        String title = LineStrings.get(activity, "Read by");
+        AlertDialog dialog = builder
+                .setTitle(title)
+                .setAdapter(rows, null)
                 .setPositiveButton(android.R.string.ok, null)
                 .show();
         Context app = activity.getApplicationContext();
         Handler main = new Handler(Looper.getMainLooper());
         new Thread(() -> {
-            String text = list(app, activity, chatId, messageId, sender);
+            List<String> names = readers(app, chatId, messageId, sender);
             main.post(() -> {
-                if (dialog.isShowing()) dialog.setMessage(text);
+                if (!dialog.isShowing()) return;
+                dialog.setTitle(title + " (" + names.size() + ")");
+                rows.clear();
+                rows.addAll(names);
             });
         }, "AndrewReaders").start();
     }
@@ -152,8 +167,8 @@ public final class GroupReaders {
                 : android.R.style.Theme_DeviceDefault_Light_Dialog_Alert;
     }
 
-    /** The text of the list. Runs on a worker thread. */
-    private static String list(Context app, Context ui, String chatId, long messageId, String sender) {
+    /** The names of the members who read the message, but not the sender. Runs on a worker thread. */
+    private static List<String> readers(Context app, String chatId, long messageId, String sender) {
         try {
             Object error = syncReadRange(app, chatId);
             if (error != null) Log.w(TAG, "sync: " + error);
@@ -164,29 +179,9 @@ public final class GroupReaders {
         Set<String> read = new LinkedHashSet<>(strings(app, "read_notification",
                 "SELECT DISTINCT member_id FROM read_message_range WHERE chat_id=? AND from_msg_id<? AND to_msg_id>=?",
                 chatId, id, id));
-        Set<String> members = new LinkedHashSet<>(strings(app, "naver_line", chatId.charAt(0) == 'c'
-                        ? "SELECT m_id FROM membership WHERE id=? AND is_accepted=1"
-                        : "SELECT mid FROM chat_member WHERE chat_id=?",
-                chatId));
-        String me = null;
-        try {
-            me = ownMid(app);
-        } catch (Throwable t) {
-            Log.w(TAG, "ownMid", t);
-        }
-        Set<String> notRead = new LinkedHashSet<>(members);
-        notRead.removeAll(read);
-        for (Set<String> set : List.of(read, notRead)) {
-            set.remove(me);
-            set.remove(sender);
-        }
-        return section(ui, "Read", names(app, read)) + "\n\n" + section(ui, "Not read", names(app, notRead));
-    }
-
-    private static String section(Context ui, String heading, List<String> names) {
-        StringBuilder text = new StringBuilder(LineStrings.get(ui, heading)).append(" (").append(names.size()).append(')');
-        for (String name : names) text.append('\n').append(name);
-        return text.toString();
+        // The table has no row for this account.
+        read.remove(sender);
+        return names(app, read);
     }
 
     /** The names that LINE shows for {@code mids}: the name the user set, else the profile name. */

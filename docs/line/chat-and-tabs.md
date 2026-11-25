@@ -571,8 +571,8 @@ device-confirmed on 26.14.0 (2026-09-25).
 
 LINE shows "Read N" under your own messages in a group. It does not show who read a message, and
 it shows nothing under the messages of other members. The patch adds "Read by" to the long-press
-menu of any message in a group or a multi-person chat. It lists the members who read the message
-and the members who did not.
+menu of any message in a group or a multi-person chat. It lists the members who read the message.
+It does not list the members who did not, because a full group has 500 members.
 
 ### Where the data is
 
@@ -584,8 +584,6 @@ rows for its own "Read N" label, so the list matches that number.
 | What | Database / table | Note |
 |---|---|---|
 | Read ranges | `read_notification` / `read_message_range` | Filled by `NOTIFIED_READ_MESSAGE` and by the read-range sync. |
-| Group members | `naver_line` / `membership` | `id` = chat id, `m_id`, `is_accepted = 1`. Includes this account. |
-| Multi-person chat members | `naver_line` / `chat_member` | `chat_id`, `mid`. |
 | Names | `contact` / `contacts` | `overridden_name` (the name you set), else `profile_name`. |
 
 A group chat id starts with `c`, a multi-person chat id with `r`. One-on-one chats and OpenChat are
@@ -596,11 +594,9 @@ Measured on 26.18.2 with a probe (2026-11-25):
 - The table has no row for this account, so this account never shows as a reader.
 - Sending a message does not count as reading it: the sender's range stops before their own new
   message. The list still leaves out the sender.
-- The sender id (`senderMid`) of your own message is empty, and `membership` includes this account.
-  So the extension reads the account id from LINE's profile to leave it out of "Not read".
 - LINE's read-range sync for one chat returned no error in 165–244 ms.
 - In a 4-member group, the list on another member's message showed the third member who read it.
-  It showed the fourth member under "Not read" (device-confirmed on 26.18.2, 2026-11-25). The list
+  It did not show the fourth member (device-confirmed on 26.18.2, 2026-11-25). The list
   runs LINE's read-range sync for the chat first. Nobody measured whether such a read reaches the
   phone without the sync.
 
@@ -614,7 +610,6 @@ Measured on 26.18.2 with a probe (2026-11-25):
 | Menu params | `rn1.n1.e` (`ge1.a`) → `.b` (`ge1.b`) → `.b` (`qf1.c`) | The fields that `toString()` prints after `", messageViewData="` and `", chatMessageCommonViewData="` |
 | Message data | `qf1.c`: `a` chat id, `c` server id, `e` sender | The fields printed after `"…(chatId="`, `", serverMessageId="`, `", senderMid="` |
 | Service locator | `mc0.f.a(Context, mc0.a)` | The static `(Context, *)Object` call just before the color call |
-| Profile | `hs3.b.n4` key, `getProfile()` → `ks3.a`, mid `b` | The interface with `getProfile()` of the type whose `toString()` prints `"Profile(authTokenV1="` |
 | Read-range sync | `j30.d.a` key, `d()` → `gr8.c` (`ReadCountManager`), `gr8.e.b(db, Set, gr8.c$a)` | The only `invokeSuspend` that calls `(SQLiteDatabase, Set, *)Lorg/apache/thrift/*` |
 
 The hook goes in just before the color call, after `getClass(grid)`, and passes the grid and the
@@ -624,9 +619,11 @@ iterator before this point. A first build that passed `p4` crashed with
 The new cell is in the grid before LINE colors the grid, so it gets the same colors as LINE's cells. `kk1.n.s` (26.16.0) and `bl1.p.s` (26.17.1) have the
 same shape.
 
-The patch generates three methods in `GroupReaders`. `menuBuilt` reads the message fields and calls
-`addCell`. `ownMid` and `syncReadRange` replace two Java stubs. The extension puts "Read by" in the
+The patch generates two methods in `GroupReaders`. `menuBuilt` reads the message fields and calls
+`addCell`. `syncReadRange` replaces a Java stub. The extension puts "Read by" in the
 first empty cell of the last row. When the last row is full, it adds a new row of empty cells. The
-menu of a photo has 8 items, and this case is device-confirmed on 26.18.2. The list dialog is light
-or dark after LINE's `primaryBackground` color. The list reads the databases read
-only, on a worker thread, after the sync.
+menu of a photo has 8 items, and this case is device-confirmed on 26.18.2. The list dialog has one
+row for each reader and the count in its title. A long list scrolls, and the OK button stays on the
+screen (device-confirmed with 500 test rows).
+It is light or dark after LINE's `primaryBackground` color. The list reads the databases read only,
+on a worker thread, after the sync.

@@ -32,15 +32,6 @@ internal object MessageCommonToStringFingerprint : Fingerprint(
 )
 
 /**
- * `Profile.toString()` of the account on this phone: it prints the account id (mid). The method
- * loads ", mid=" before "Profile(authTokenV1=", and filters match in program order.
- */
-internal object ProfileToStringFingerprint : Fingerprint(
-    name = "toString",
-    filters = listOf(string(", mid="), string("Profile(authTokenV1=")),
-)
-
-/**
  * The coroutine of `ReadCountManager.syncAllNonOpenChatReadCounts` (`gr8.d` in 26.18.2). It is the
  * only caller of the read-range sync `(SQLiteDatabase, Set<chatId>, reason)`.
  */
