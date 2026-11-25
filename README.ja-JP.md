@@ -21,7 +21,7 @@ Morphe Manager でパッチを適用すると、改変した APK をビルドで
 パッチの名前と説明は自動で生成されるため、英語で表示されます。
 
 <!-- PATCHES_START EXPANDED -->
-> **[v4.1.0-dev.1](https://github.com/andrewliang25/morphe-patches/releases/tag/v4.1.0-dev.1)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;61 patches total
+> **[v4.1.0-dev.2](https://github.com/andrewliang25/morphe-patches/releases/tag/v4.1.0-dev.2)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;62 patches total
 <details open>
 <summary>📦 Facebook&nbsp;&nbsp;•&nbsp;&nbsp;20 patches</summary>
 <br>
@@ -57,7 +57,7 @@ Morphe Manager でパッチを適用すると、改変した APK をビルドで
 </details>
 
 <details open>
-<summary>📦 LINE&nbsp;&nbsp;•&nbsp;&nbsp;41 patches</summary>
+<summary>📦 LINE&nbsp;&nbsp;•&nbsp;&nbsp;42 patches</summary>
 <br>
 
 **🎯 Supported versions:**
@@ -83,6 +83,7 @@ Morphe Manager でパッチを適用すると、改変した APK をビルドで
 | [[Chat] Hide tips under messages](#chat-hide-tips-under-messages) | Hides the "CHECK" tips under some messages, such as a received video. |  |
 | [[Chat] Keep chats unread](#chat-keep-chats-unread) | When you open a chat, LINE does not mark it read or send a read receipt. "Mark as read" still works. |  |
 | [[Chat] Keep unsent messages](#chat-keep-unsent-messages) | Keeps messages that others unsend in 1:1 and group chats, with a red "Unsent" label next to the time. OpenChat is not covered. |  |
+| [[Chat] Show who read messages](#chat-show-who-read-messages) | Adds "Read by" to the long-press menu of a message in groups. It lists the members who read the message. |  |
 | [[Fix] Restore Google login via MicroG-RE](#fix-restore-google-login-via-microg-re) | Makes "Continue with Google" work on a re-signed build, through MicroG-RE. Root Mount does not need it. |  |
 | [[Fix] Restore biometric login](#fix-restore-biometric-login) | Biometric login can be linked again on a re-signed build. A Root Mount install does not need this patch. |  |
 | [[Fix] Restore chat backup sign-in via MicroG-RE](#fix-restore-chat-backup-sign-in-via-microg-re) | Makes Google Drive chat backup and restore work on a re-signed build, through MicroG-RE. Root Mount does not need it. |  |
