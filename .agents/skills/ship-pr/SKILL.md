@@ -22,7 +22,7 @@ Steps 4 to 6 of the development procedure in `AGENTS.md`, run in order. The rule
    `failed 0` and `sweep: OK` for each pinned version.
 4. **Simple English.** Load the `simple-english` skill. Run its self-check on each new or changed
    comment, doc paragraph, patch `name` and `description` and Settings switch text, and later on the
-   commit message and the PR body. A LINE switch text also needs its ja and zh-TW entry in
+   commit message and the PR body. A LINE switch text also needs its ja, zh-TW, th and id entry in
    `LineStrings.java` (see "Translated text" in `AGENTS.md`). Run the check again after any later
    rename, split or merge of a patch. Done when each text passes.
 5. **Commit.** One commit for each app: `type(<App>): subject`, or `type(<App> - <Patch name>):`
