@@ -77,8 +77,8 @@ Two Gradle modules (`settings.gradle.kts`):
 
 ### Translated text
 
-- **LINE Settings screen:** `LineStrings.java` keys each ja and zh-TW text by its English text. When you add or change the English text of a switch, add or change its `put(...)` row too. If you do not, the screen silently shows English in those languages. Take the words from LINE's own `values-ja` and `values-zh-rTW` strings. The Facebook screen is English only.
-- **READMEs:** `README.md`, `README.zh-TW.md` and `README.ja-JP.md` share their hand-written sections (for example "Known limitations"). Change all three in one commit. The release regenerates the patch table in each.
+- **LINE Settings screen:** `LineStrings.java` keys each ja, zh-TW, th and id text by its English text. When you add or change the English text of a switch, add or change its `put(...)` row too. If you do not, the screen silently shows English in those languages. Take the words from LINE's own `values-ja`, `values-zh-rTW`, `values-th` and `values-in` strings. The Facebook screen is English only.
+- **READMEs:** `README.md`, `README.zh-TW.md`, `README.ja-JP.md`, `README.th-TH.md` and `README.id-ID.md` share their hand-written sections (for example "Known limitations"). Change all five in one commit. The release regenerates the patch table in each.
 
 ## Target app integrity (LINE)
 

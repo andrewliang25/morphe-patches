@@ -1,6 +1,6 @@
 # 🧩 Andrew's Patches
 
-[English](README.md) | 繁體中文 | [日本語](README.ja-JP.md)
+[English](README.md) | 繁體中文 | [日本語](README.ja-JP.md) | [ไทย](README.th-TH.md) | [Bahasa Indonesia](README.id-ID.md)
 
 適用於 LINE 和 Facebook 的 Morphe 修補程式。
 
