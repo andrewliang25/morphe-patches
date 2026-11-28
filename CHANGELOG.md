@@ -1,3 +1,9 @@
+## [4.2.0-dev.1](https://github.com/andrewliang25/morphe-patches/compare/v4.1.0...v4.2.0-dev.1) (2026-11-28)
+
+### ✨ New Features
+
+* **LINE - Show who read messages:** show profile pictures in the "Read by" list ([453f767](https://github.com/andrewliang25/morphe-patches/commit/453f767cfd280b8388c1121674a4d1d125c4f71b))
+
 ## [4.1.0](https://github.com/andrewliang25/morphe-patches/compare/v4.0.0...v4.1.0) (2026-11-25)
 
 ### ✨ New Features
