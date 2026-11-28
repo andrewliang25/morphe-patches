@@ -18,7 +18,7 @@ Morphe Manager でパッチを適用すると、改変した APK をビルドで
 
 ## 🩹 パッチ一覧
 
-パッチの名前と説明は自動で生成されるため、英語で表示されます。
+パッチの説明は自動で生成され、翻訳されます。パッチの名前は英語のままです。
 
 <!-- PATCHES_START EXPANDED -->
 > **[v4.2.0-dev.2](https://github.com/andrewliang25/morphe-patches/releases/tag/v4.2.0-dev.2)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;62 patches total

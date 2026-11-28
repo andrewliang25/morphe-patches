@@ -7,7 +7,11 @@ Spoilers are expanded (open by default) if:
   1. Total patch count <= AUTO_EXPAND_THRESHOLD.
   2. The README marker explicitly says: <!-- PATCHES_START EXPANDED -->
 
-python3 generate_patches_readme.py <owner/repo> <branch> [patches-list.json] [README.md]
+Optional 5th argument: a language code (for example zh-TW). Descriptions and option titles
+are then looked up in patch-i18n.json, keyed by the exact English text. Text with no
+translation stays English, and a warning names it. Patch names always stay English.
+
+python3 generate_patches_readme.py <owner/repo> <branch> [patches-list.json] [README.md] [lang]
 """
 
 import json
@@ -25,6 +29,27 @@ repo_full   = sys.argv[1]
 branch      = sys.argv[2]
 json_path   = Path(sys.argv[3]) if len(sys.argv) > 3 else Path("patches-list.json")
 readme_path = Path(sys.argv[4]) if len(sys.argv) > 4 else Path("README.md")
+lang        = sys.argv[5] if len(sys.argv) > 5 else None
+
+_i18n = json.loads((Path(__file__).parent / "patch-i18n.json").read_text(encoding="utf-8")) if lang else {}
+_texts = _i18n.get(lang, {})
+_ui = _i18n.get("_ui", {}).get(lang, {})
+_missing = []
+
+
+def ui(s):
+    """Translate a fixed UI word. English when the language has none."""
+    return _ui.get(s, s)
+
+
+def tr(s):
+    """Translate English text, keyed by the exact English string."""
+    if not lang or not s:
+        return s
+    if s not in _texts:
+        _missing.append(s)
+        return s
+    return _texts[s]
 
 
 if "/" not in repo_full:
@@ -93,7 +118,7 @@ def anchor(name):
 def patches_table(patches):
     """Render a sorted markdown table of patches with name, description, and options."""
     rows = [
-        "| 💊&nbsp;Patch | 📜&nbsp;Description | ⚙️&nbsp;Options |",
+        f"| 💊&nbsp;{ui('Patch')} | 📜&nbsp;{ui('Description')} | ⚙️&nbsp;{ui('Options')} |",
         "|----------|----------------|-----------|",
     ]
     for p in sorted(patches, key=lambda x: x["name"]):
@@ -101,11 +126,11 @@ def patches_table(patches):
         options = p.get("options") or []
         if options:
             # Show only option titles as a bullet list
-            parts = [opt.get("title") or opt.get("key") or "" for opt in options]
+            parts = [tr(opt.get("title")) or opt.get("key") or "" for opt in options]
             opts_cell = "<br>".join(f"• {t}" for t in parts)
         else:
             opts_cell = ""
-        desc = (p.get("description") or "").replace("\n", "<br>")
+        desc = tr(p.get("description") or "").replace("\n", "<br>")
         rows.append(f"| [{p['name']}](#{a}) | {desc} | {opts_cell} |")
     return "\n".join(rows)
 
@@ -145,9 +170,9 @@ def spoiler(label, count, targets, tbl, expanded=False):
     """Wrap a patches table in a <details> spoiler with a versions sub-table.
     If expanded=True, the spoiler is open by default (for repos with few patches).
     """
-    noun = "patch" if count == 1 else "patches"
+    noun = ui("patch" if count == 1 else "patches")
     vtbl = versions_table(targets)
-    versions_section = f"**🎯 Supported versions:**\n\n{vtbl}\n\n" if vtbl else ""
+    versions_section = f"**🎯 {ui('Supported versions')}:**\n\n{vtbl}\n\n" if vtbl else ""
     tag = "<details open>" if expanded else "<details>"
     return f"""{tag}
 <summary>{label}&nbsp;&nbsp;•&nbsp;&nbsp;{count} {noun}</summary>
@@ -158,12 +183,16 @@ def spoiler(label, count, targets, tbl, expanded=False):
 </details>"""
 
 
+def ui_total():
+    return _ui.get("total", "{n} patches total").format(n=total)
+
+
 def build_content(expanded=False):
     """Build the full generated patches section."""
     lines = [
         f"> **[v{ver}](https://github.com/{owner}/{repo}/releases/tag/v{ver})**"
         f"&nbsp;&nbsp;•&nbsp;&nbsp;`{branch}`&nbsp;&nbsp;•&nbsp;&nbsp;"
-        f"{total} patches total"
+        + ui_total()
     ]
 
     # One spoiler per app, in the order they appear in the JSON
@@ -176,7 +205,7 @@ def build_content(expanded=False):
     # Universal patches (no specific app)
     if universal:
         uni_patches = list(universal.values())
-        noun = "patch" if len(uni_patches) == 1 else "patches"
+        noun = ui("patch" if len(uni_patches) == 1 else "patches")
         tag  = "<details open>" if expanded else "<details>"
         lines.append(f"""{tag}
 <summary>🌐 Universal&nbsp;&nbsp;•&nbsp;&nbsp;{len(uni_patches)} {noun}</summary>
@@ -240,4 +269,6 @@ new_readme = re.sub(
     flags=re.DOTALL,
 )
 readme_path.write_text(new_readme, encoding="utf-8")
+for m in dict.fromkeys(_missing):
+    sys.stderr.write(f"⚠️  No {lang} translation, left in English: {m[:70]}\n")
 print(f"✅ Injected patches section into {readme_path} (v{ver}, branch={branch}, {total} patches, expanded={expanded})")

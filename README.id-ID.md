@@ -18,6 +18,8 @@ Morphe Manager untuk membuat APK yang dimodifikasi.
 
 ## 🩹 Daftar patch
 
+Deskripsi patch dibuat dan diterjemahkan secara otomatis. Nama patch tetap dalam bahasa Inggris.
+
 <!-- PATCHES_START EXPANDED -->
 > **[v4.2.0-dev.2](https://github.com/andrewliang25/morphe-patches/releases/tag/v4.2.0-dev.2)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;62 patches total
 <details open>
