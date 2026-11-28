@@ -169,7 +169,7 @@ signature. A patched build is re-signed. The same conflict occurs in [patched-ap
 ## 🙏 Special thanks
 
 - [@f870103](https://github.com/f870103) — lent a LINE account for tests, and found the redirect URL of the LINE Pay app.
-- [@uta-a](https://github.com/uta-a) — the Google login fix and some Agent i entries of "Hide Agent i buttons" take their idea from [linimal](https://github.com/uta-a/linimal).
+- [@uta-a](https://github.com/uta-a) — the Google login fix, some Agent i entries of "Hide Agent i buttons" and "Show who read messages" take their idea from [linimal](https://github.com/uta-a/linimal).
 - [@SapitoSucio](https://github.com/SapitoSucio) — some features and implementations here take their idea from [FroggoMorphePatches](https://github.com/SapitoSucio/FroggoMorphePatches).
 - [@SysAdminDoc](https://github.com/SysAdminDoc) — found in [Hushfacebook](https://github.com/SysAdminDoc/Hushfacebook) that some story and reel downloads saved with no sound.
 

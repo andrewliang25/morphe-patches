@@ -170,7 +170,7 @@ MicroG-RE でも解決しません。
 ## 🙏 謝辞
 
 - [@f870103](https://github.com/f870103) — テスト用の LINE アカウントを貸してくれ、LINE Pay アプリのリダイレクト URL を見つけてくれました。
-- [@uta-a](https://github.com/uta-a) — Google ログインの修正と、「Hide Agent i buttons」の一部の Agent i 項目は [linimal](https://github.com/uta-a/linimal) のアイデアに基づいています。
+- [@uta-a](https://github.com/uta-a) — Google ログインの修正、「Hide Agent i buttons」の一部の Agent i 項目、および「Show who read messages」は [linimal](https://github.com/uta-a/linimal) のアイデアに基づいています。
 - [@SapitoSucio](https://github.com/SapitoSucio) — ここにある一部の機能と実装は [FroggoMorphePatches](https://github.com/SapitoSucio/FroggoMorphePatches) のアイデアに基づいています。
 - [@SysAdminDoc](https://github.com/SysAdminDoc) — [Hushfacebook](https://github.com/SysAdminDoc/Hushfacebook) で、一部のストーリーとリールのダウンロードに音声がないことを見つけてくれました。
 

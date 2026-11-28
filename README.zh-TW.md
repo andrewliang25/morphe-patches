@@ -165,7 +165,7 @@ Morphe Manager 套用，產生修改過的 APK。
 ## 🙏 特別感謝
 
 - [@f870103](https://github.com/f870103) — 借出 LINE 帳號供測試，並找到 LINE Pay 應用程式的轉址網址。
-- [@uta-a](https://github.com/uta-a) — Google 登入修正，以及「Hide Agent i buttons」中部分 Agent i 項目的構想來自 [linimal](https://github.com/uta-a/linimal)。
+- [@uta-a](https://github.com/uta-a) — Google 登入修正、「Hide Agent i buttons」中部分 Agent i 項目，以及「Show who read messages」的構想來自 [linimal](https://github.com/uta-a/linimal)。
 - [@SapitoSucio](https://github.com/SapitoSucio) — 這裡的部分功能與實作構想來自 [FroggoMorphePatches](https://github.com/SapitoSucio/FroggoMorphePatches)。
 - [@SysAdminDoc](https://github.com/SysAdminDoc) — 在 [Hushfacebook](https://github.com/SysAdminDoc/Hushfacebook) 中發現部分限時動態和 Reels 下載後沒有聲音。
 
