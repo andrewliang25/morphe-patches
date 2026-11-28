@@ -51,7 +51,6 @@ internal fun premiumFlagCallIndex(method: Method): Int =
 internal object PremiumEligibilityFingerprint : Fingerprint(
     returnType = "Ljava/lang/Object;",
     filters = listOf(
-        fieldAccess(name = "UNAVAILABLE"),
         fieldAccess(name = "NOT_SUBSCRIBED"),
     ),
     custom = { method, classDef ->

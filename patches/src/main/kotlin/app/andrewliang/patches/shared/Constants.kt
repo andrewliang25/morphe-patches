@@ -43,7 +43,21 @@ object Constants {
                 versionCode = 261820153,
                 minSdk = 32,
             ),
+            AppTarget(
+                version = "26.19.0",
+                versionCode = 261900178,
+                minSdk = 30,
+            ),
         ),
+    )
+
+    /** VOOM exists up to 26.18.2: 26.19.0 removed its tab and activities. */
+    val COMPATIBILITY_LINE_VOOM = Compatibility(
+        name = COMPATIBILITY_LINE.name!!,
+        packageName = COMPATIBILITY_LINE.packageName!!,
+        apkFileType = COMPATIBILITY_LINE.apkFileType,
+        appIconColor = COMPATIBILITY_LINE.appIconColor,
+        targets = COMPATIBILITY_LINE.targets.filter { it.version != "26.19.0" },
     )
 
     /**
