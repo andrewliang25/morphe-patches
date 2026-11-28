@@ -18,7 +18,7 @@ Morphe Manager 套用，產生修改過的 APK。
 
 ## 🩹 修補程式清單
 
-修補程式的名稱與說明由程式自動產生，因此以英文顯示。
+修補程式的說明由程式自動產生並翻譯。修補程式的名稱維持英文。
 
 <!-- PATCHES_START EXPANDED -->
 > **[v4.2.0-dev.2](https://github.com/andrewliang25/morphe-patches/releases/tag/v4.2.0-dev.2)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;62 patches total
