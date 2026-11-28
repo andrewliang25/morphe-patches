@@ -169,7 +169,7 @@ QR code
 ## 🙏 ขอขอบคุณ
 
 - [@f870103](https://github.com/f870103) — ให้ยืมบัญชี LINE สำหรับทดสอบ และค้นพบ URL สำหรับเปลี่ยนเส้นทางไปยังแอป LINE Pay
-- [@uta-a](https://github.com/uta-a) — การแก้ไขการเข้าสู่ระบบด้วย Google และรายการ Agent i บางส่วนของ "Hide Agent i buttons" ได้แนวคิดมาจาก [linimal](https://github.com/uta-a/linimal)
+- [@uta-a](https://github.com/uta-a) — การแก้ไขการเข้าสู่ระบบด้วย Google, รายการ Agent i บางส่วนของ "Hide Agent i buttons" และ "Show who read messages" ได้แนวคิดมาจาก [linimal](https://github.com/uta-a/linimal)
 - [@SapitoSucio](https://github.com/SapitoSucio) — ฟีเจอร์และวิธีทำบางส่วนในที่นี้ได้แนวคิดมาจาก [FroggoMorphePatches](https://github.com/SapitoSucio/FroggoMorphePatches)
 - [@SysAdminDoc](https://github.com/SysAdminDoc) — พบใน [Hushfacebook](https://github.com/SysAdminDoc/Hushfacebook) ว่าสตอรี่และรีลบางรายการที่ดาวน์โหลดไม่มีเสียง
 

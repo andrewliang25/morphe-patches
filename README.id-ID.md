@@ -171,7 +171,7 @@ terjadi di [patched-apps](https://github.com/andrewliang25/patched-apps#meta-app
 ## 🙏 Terima kasih
 
 - [@f870103](https://github.com/f870103) — meminjamkan akun LINE untuk pengujian, dan menemukan URL pengalihan aplikasi LINE Pay.
-- [@uta-a](https://github.com/uta-a) — perbaikan login Google dan beberapa entri Agent i di "Hide Agent i buttons" mengambil ide dari [linimal](https://github.com/uta-a/linimal).
+- [@uta-a](https://github.com/uta-a) — perbaikan login Google, beberapa entri Agent i di "Hide Agent i buttons", dan "Show who read messages" mengambil ide dari [linimal](https://github.com/uta-a/linimal).
 - [@SapitoSucio](https://github.com/SapitoSucio) — beberapa fitur dan implementasi di sini mengambil ide dari [FroggoMorphePatches](https://github.com/SapitoSucio/FroggoMorphePatches).
 - [@SysAdminDoc](https://github.com/SysAdminDoc) — menemukan di [Hushfacebook](https://github.com/SysAdminDoc/Hushfacebook) bahwa beberapa unduhan story dan reel tersimpan tanpa suara.
 
