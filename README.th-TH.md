@@ -21,94 +21,94 @@ Morphe Manager เพื่อใส่แพตช์และสร้าง A
 คำอธิบายแพตช์สร้างและแปลโดยอัตโนมัติ ชื่อแพตช์ยังเป็นภาษาอังกฤษ
 
 <!-- PATCHES_START EXPANDED -->
-> **[v4.2.0-dev.2](https://github.com/andrewliang25/morphe-patches/releases/tag/v4.2.0-dev.2)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;62 patches total
+> **[v4.2.0](https://github.com/andrewliang25/morphe-patches/releases/tag/v4.2.0)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;รวม 62 แพตช์
 <details open>
-<summary>📦 Facebook&nbsp;&nbsp;•&nbsp;&nbsp;20 patches</summary>
+<summary>📦 Facebook&nbsp;&nbsp;•&nbsp;&nbsp;20 แพตช์</summary>
 <br>
 
-**🎯 Supported versions:**
+**🎯 เวอร์ชันที่รองรับ:**
 
 | 577.0.0.50.72 |
 | :---: |
 
-| 💊&nbsp;Patch | 📜&nbsp;Description | ⚙️&nbsp;Options |
+| 💊&nbsp;แพตช์ | 📜&nbsp;คำอธิบาย | ⚙️&nbsp;ตัวเลือก |
 |----------|----------------|-----------|
-| [[Ad] Block ad telemetry](#ad-block-ad-telemetry) | Stops Facebook watching for screenshots of ads and reporting which apps you install for ad attribution. |  |
-| [[Ad] Block background ad prefetch](#ad-block-background-ad-prefetch) | Stops Facebook downloading ads and its ad model in the background, which saves data, battery and storage. |  |
-| [[Ad] Disable Audience Network](#ad-disable-audience-network) | Stops Facebook serving ads to other apps. Those apps then show their own ads or none, and rewarded ads can fail. |  |
-| [[Feed] Block feed auto refresh](#feed-block-feed-auto-refresh) | Keeps your place in the news feed when you come back to Facebook. Pull down to refresh the feed. |  |
-| [[Feed] Hide page suggestions and promo cards](#feed-hide-page-suggestions-and-promo-cards) | Removes the items that Facebook adds to the feed, such as "Pages you may like", promo cards and surveys. "Suggested for you" posts stay. |  |
-| [[Feed] Hide post prompts](#feed-hide-post-prompts) | Removes the prompts Facebook adds inside a post, such as "Are you interested in this post?". |  |
-| [[Feed] Hide sponsored posts](#feed-hide-sponsored-posts) | Removes sponsored posts from the news feed, with no gap left behind. |  |
-| [[Fix] Restore screens on re-signed builds](#fix-restore-screens-on-re-signed-builds) | Makes profiles and some Settings pages open again on a re-signed build. A Root Mount install does not need this patch. |  |
-| [[General] AMOLED black theme](#general-amoled-black-theme) | Makes Facebook's dark mode black instead of dark grey. Turn on dark mode in Facebook first. You can turn it off in Andrew's Patch Setting. |  |
-| [[General] Andrew's Patch Setting](#general-andrew-s-patch-setting) | Adds "Andrew's Patch Setting" to the top of the Facebook menu. There you can turn some patches on or off without patching again, and see the credits and licenses. |  |
-| [[General] Hide affiliate product links](#general-hide-affiliate-product-links) | Removes the product cards of affiliate shop links from Reels, feed posts and comments. The "Commission eligible" label stays. |  |
-| [[General] Open links in external browser](#general-open-links-in-external-browser) | Opens web links in your default browser instead of Facebook's in-app browser. Facebook pages still open in the app. |  |
-| [[Reels] Download any reel](#reels-download-any-reel) | Adds a Download button beside every reel. Videos save at the best quality the player streams. | • Save as H.264 |
-| [[Reels] Hide interest prompts](#reels-hide-interest-prompts) | Removes the "Are you interested in this reel?" prompt from Reels. |  |
-| [[Reels] Hide sponsored reels](#reels-hide-sponsored-reels) | Removes ads from Reels and Watch, including product banners over a reel and ads inside a video. |  |
-| [[Reels] Picture-in-picture](#reels-picture-in-picture) | Keeps a reel playing in a small window when you leave Facebook from the Reels tab. Only vertical reels get a window. Needs Android 12 or later. |  |
-| [[Stories] Disable auto advance](#stories-disable-auto-advance) | Keeps each story on the screen until you tap or swipe to the next one. |  |
-| [[Stories] Download any story](#stories-download-any-story) | Adds Save to the menu of any story, including stories with music. Videos save at the best quality the player streams. | • Save as H.264 |
-| [[Stories] Hide sponsored stories](#stories-hide-sponsored-stories) | Removes ad cards from the story viewer, so swiping through stories only shows stories people posted. |  |
-| [[Stories] View stories anonymously](#stories-view-stories-anonymously) | Stops Facebook telling the server which stories you saw, so you are not in the viewer list. Stories that you saw still show as seen on this device. |  |
+| [[Ad] Block ad telemetry](#ad-block-ad-telemetry) | หยุด Facebook ไม่ให้ตรวจจับภาพหน้าจอของโฆษณา และไม่ให้รายงานว่าคุณติดตั้งแอปอะไรบ้างเพื่อใช้อ้างอิงโฆษณา |  |
+| [[Ad] Block background ad prefetch](#ad-block-background-ad-prefetch) | หยุด Facebook ไม่ให้ดาวน์โหลดโฆษณาและโมเดลโฆษณาในเบื้องหลัง ช่วยประหยัดข้อมูล แบตเตอรี่ และพื้นที่จัดเก็บ |  |
+| [[Ad] Disable Audience Network](#ad-disable-audience-network) | หยุด Facebook ไม่ให้แสดงโฆษณาในแอปอื่น แอปเหล่านั้นจะแสดงโฆษณาของตนเองหรือไม่แสดงเลย และโฆษณาแบบให้รางวัลอาจล้มเหลว |  |
+| [[Feed] Block feed auto refresh](#feed-block-feed-auto-refresh) | คงตำแหน่งของคุณในฟีดข่าวเมื่อคุณกลับมาที่ Facebook ดึงลงเพื่อรีเฟรชฟีด |  |
+| [[Feed] Hide page suggestions and promo cards](#feed-hide-page-suggestions-and-promo-cards) | ลบรายการที่ Facebook เพิ่มในฟีด เช่น "เพจที่คุณอาจชอบ" การ์ดโปรโมชัน และแบบสำรวจ โพสต์ "แนะนำสำหรับคุณ" ยังอยู่ |  |
+| [[Feed] Hide post prompts](#feed-hide-post-prompts) | ลบข้อความถามที่ Facebook เพิ่มในโพสต์ เช่น "คุณสนใจโพสต์นี้หรือไม่" |  |
+| [[Feed] Hide sponsored posts](#feed-hide-sponsored-posts) | ลบโพสต์ที่ได้รับการสนับสนุนออกจากฟีดข่าว โดยไม่ทิ้งช่องว่าง |  |
+| [[Fix] Restore screens on re-signed builds](#fix-restore-screens-on-re-signed-builds) | ทำให้โปรไฟล์และบางหน้าในการตั้งค่าเปิดได้อีกครั้งบนบิลด์ที่เซ็นชื่อใหม่ การติดตั้งแบบ Root Mount ไม่ต้องใช้แพตช์นี้ |  |
+| [[General] AMOLED black theme](#general-amoled-black-theme) | ทำให้โหมดมืดของ Facebook เป็นสีดำแทนสีเทาเข้ม โปรดเปิดโหมดมืดใน Facebook ก่อน ปิดได้ใน Andrew's Patch Setting |  |
+| [[General] Andrew's Patch Setting](#general-andrew-s-patch-setting) | เพิ่ม "Andrew's Patch Setting" ที่ด้านบนของเมนู Facebook ที่นี่คุณเปิดหรือปิดบางแพตช์ได้โดยไม่ต้องแพตช์ใหม่ และดูเครดิตกับสัญญาอนุญาต |  |
+| [[General] Hide affiliate product links](#general-hide-affiliate-product-links) | ลบการ์ดสินค้าของลิงก์ร้านค้าพันธมิตรออกจาก Reels โพสต์ในฟีด และความคิดเห็น ป้าย "มีสิทธิ์รับค่าคอมมิชชัน" ยังอยู่ |  |
+| [[General] Open links in external browser](#general-open-links-in-external-browser) | เปิดลิงก์เว็บในเบราว์เซอร์เริ่มต้นของคุณ แทนเบราว์เซอร์ในแอปของ Facebook หน้า Facebook ยังเปิดในแอป |  |
+| [[Reels] Download any reel](#reels-download-any-reel) | เพิ่มปุ่มดาวน์โหลดข้างทุก Reel วิดีโอบันทึกด้วยคุณภาพสูงสุดที่ตัวเล่นสตรีม | • บันทึกเป็น H.264 |
+| [[Reels] Hide interest prompts](#reels-hide-interest-prompts) | ลบข้อความถาม "คุณสนใจ Reel นี้หรือไม่" ออกจาก Reels |  |
+| [[Reels] Hide sponsored reels](#reels-hide-sponsored-reels) | ลบโฆษณาออกจาก Reels และ Watch รวมถึงแบนเนอร์สินค้าบน Reel และโฆษณาในวิดีโอ |  |
+| [[Reels] Picture-in-picture](#reels-picture-in-picture) | เล่น Reel ต่อในหน้าต่างเล็กเมื่อคุณออกจาก Facebook จากแท็บ Reels เฉพาะ Reels แนวตั้งที่มีหน้าต่าง ต้องใช้ Android 12 ขึ้นไป |  |
+| [[Stories] Disable auto advance](#stories-disable-auto-advance) | คงสตอรี่แต่ละรายการบนหน้าจอจนกว่าคุณจะแตะหรือปัดไปรายการถัดไป |  |
+| [[Stories] Download any story](#stories-download-any-story) | เพิ่ม บันทึก ในเมนูของสตอรี่ทุกรายการ รวมถึงสตอรี่ที่มีเพลง วิดีโอบันทึกด้วยคุณภาพสูงสุดที่ตัวเล่นสตรีม | • บันทึกเป็น H.264 |
+| [[Stories] Hide sponsored stories](#stories-hide-sponsored-stories) | ลบการ์ดโฆษณาออกจากตัวดูสตอรี่ การปัดดูสตอรี่จึงเห็นเฉพาะสตอรี่ที่ผู้คนโพสต์ |  |
+| [[Stories] View stories anonymously](#stories-view-stories-anonymously) | หยุด Facebook ไม่ให้บอกเซิร์ฟเวอร์ว่าคุณดูสตอรี่ใด คุณจึงไม่อยู่ในรายชื่อผู้ดู สตอรี่ที่คุณดูแล้วยังแสดงว่าดูแล้วบนอุปกรณ์นี้ |  |
 
 </details>
 
 <details open>
-<summary>📦 LINE&nbsp;&nbsp;•&nbsp;&nbsp;42 patches</summary>
+<summary>📦 LINE&nbsp;&nbsp;•&nbsp;&nbsp;42 แพตช์</summary>
 <br>
 
-**🎯 Supported versions:**
+**🎯 เวอร์ชันที่รองรับ:**
 
 | 26.16.0 | 26.17.1 | 26.18.2 | 26.19.0 |
 | :---: | :---: | :---: | :---: |
 
-| 💊&nbsp;Patch | 📜&nbsp;Description | ⚙️&nbsp;Options |
+| 💊&nbsp;แพตช์ | 📜&nbsp;คำอธิบาย | ⚙️&nbsp;ตัวเลือก |
 |----------|----------------|-----------|
-| [[Ad] Hide ad views](#ad-hide-ad-views) | Hides LINE display ads: the LINE Ads banners, the Smart Channel banner in the chat list and Google AdManager ads. |  |
-| [[Ad] Remove banner ads](#ad-remove-banner-ads) | Stops LINE from loading the Smart Channel banner ads. |  |
-| [[Call] Auto-record calls](#call-auto-record-calls) | Starts recording a 1-to-1 call as soon as it connects. Turn on call recording in Settings > LINE Labs first. Recording without consent is illegal in some places. |  |
-| [[Call] Record calls without notifying](#call-record-calls-without-notifying) | The other person in a 1-to-1 call sees no recording banner and hears no announcement. Recording without consent is illegal in some places. |  |
-| [[Call] Remove recording time limit](#call-remove-recording-time-limit) | Records a call until it ends. LINE stops voice recordings after 60 minutes and video recordings after 20 or 50 minutes. |  |
-| [[Call] Save recordings to device](#call-save-recordings-to-device) | Saves each call recording to the Movies/LINE folder on your phone instead of sharing it to Keep Memo, which refuses files over 1 GB. |  |
-| [[Chat] Hide AI Friends button](#chat-hide-ai-friends-button) | Removes the AI Friends button from the Chats tab header. The Album button shows in its place. |  |
-| [[Chat] Hide Events button](#chat-hide-events-button) | Removes the "Events" row from the menu in a chat room. |  |
-| [[Chat] Hide LINE GIFT button](#chat-hide-line-gift-button) | Removes the LINE GIFT tile from the + attach menu in a chat room. |  |
-| [[Chat] Hide Transfer button](#chat-hide-transfer-button) | Removes the Transfer (LINE Pay) tile from the + attach menu in a chat room. |  |
-| [[Chat] Hide attach menu extra tools](#chat-hide-attach-menu-extra-tools) | Removes the server-provided tools (Poll, Schedule and more) from the + menu in a chat. Built-in tiles stay. |  |
-| [[Chat] Hide calendar buttons](#chat-hide-calendar-buttons) | Removes every LINE Calendar button: in the Chats tab, the chat toolbar and menus, and the Home tab. |  |
-| [[Chat] Hide community button](#chat-hide-community-button) | Removes the community (OpenChat) button from the top of the Chats tab header. |  |
-| [[Chat] Hide tips under messages](#chat-hide-tips-under-messages) | Hides the "CHECK" tips under some messages, such as a received video. |  |
-| [[Chat] Keep chats unread](#chat-keep-chats-unread) | When you open a chat, LINE does not mark it read or send a read receipt. "Mark as read" still works. |  |
-| [[Chat] Keep unsent messages](#chat-keep-unsent-messages) | Keeps messages that others unsend in 1:1 and group chats, with a red "Unsent" label next to the time. OpenChat is not covered. |  |
-| [[Chat] Show who read messages](#chat-show-who-read-messages) | Adds "Read by" to the long-press menu of a message in groups. It lists the members who read the message. |  |
-| [[Fix] Restore Google login via MicroG-RE](#fix-restore-google-login-via-microg-re) | Makes "Continue with Google" work on a re-signed build, through MicroG-RE. Root Mount does not need it. |  |
-| [[Fix] Restore biometric login](#fix-restore-biometric-login) | Biometric login can be linked again on a re-signed build. A Root Mount install does not need this patch. |  |
-| [[Fix] Restore chat backup sign-in via MicroG-RE](#fix-restore-chat-backup-sign-in-via-microg-re) | Makes Google Drive chat backup and restore work on a re-signed build, through MicroG-RE. Root Mount does not need it. |  |
-| [[Fix] Restore location maps via MicroG-RE](#fix-restore-location-maps-via-microg-re) | Shows maps again on a re-signed build, with OpenFreeMap tiles. It needs MicroG-RE 7.0.0 or later. Root Mount does not need it. |  |
-| [[Fix] Restore push notifications](#fix-restore-push-notifications) | When LINE is fully closed, push notifications work again on a re-signed build. LINE also gets its Firebase Remote Config again. A Root Mount install does not need this patch. |  |
-| [[General] Andrew's Patch Setting](#general-andrew-s-patch-setting) | Adds "Andrew's Patch Setting" to LINE Settings, below "Profile". There you can turn some patches on or off without patching again, and see the credits and licenses. |  |
-| [[General] Block analytics](#general-block-analytics) | Stops LINE from sending usage events to its analytics service, such as the screens you open and the buttons you tap. Crash reports are not changed. |  |
-| [[General] Custom font](#general-custom-font) | Adds a button to LINE's Font page to use a font file from your device. The page then no longer loads LINE's font list from the server. |  |
-| [[General] Disable VOOM](#general-disable-voom) | VOOM deep links, shares, and notifications do nothing. If you open the standalone VOOM feed, it closes. Messaging and the other tabs do not change. |  |
-| [[General] Enable themes on sub devices](#general-enable-themes-on-sub-devices) | Lets a sub device (a tablet or second phone logged in to the same account) use themes and the Black theme in dark mode. Hides the Theme Shop button there, because LINE does not open the shop on a sub device. |  |
-| [[General] Hide Agent i buttons](#general-hide-agent-i-buttons) | Removes Agent i from the Home header, the search bar, the Wallet tab header and Settings, and hides Agent i in chats permanently, with its "Show Agent i in chat" switch in the + menu. |  |
-| [[General] Hide LINE AI image editing](#general-hide-line-ai-image-editing) | Removes the LINE AI image editing buttons: "AI Edit" in the message long-press menu, the button next to an image message, and the button in the chat, album, Note and profile photo viewers. The normal photo editor stays. |  |
-| [[General] Hide new item badges](#general-hide-new-item-badges) | Hides the green dots and N badges that mark new items, on header buttons, tabs, menus, lists and settings rows. Unread message counts do not change. |  |
-| [[General] Open links in external browser](#general-open-links-in-external-browser) | Opens web links in your default browser instead of LINE's in-app browser. LIFF mini-apps and LINE links stay in LINE. |  |
-| [[General] Redirect LINE Pay](#general-redirect-line-pay) | Opens LINE Pay in the standalone LINE Pay app, so the integrity check that fails on a re-signed build never runs. |  |
-| [[General] Trust user-installed CAs](#general-trust-user-installed-cas) | Makes LINE trust certificate authorities you install, so your own HTTPS proxy can read LIFF and mini-app web traffic. Bank and LINE Pay stay pinned. For debugging. Off by default. |  |
-| [[Home] Hide Home content feed](#home-hide-home-content-feed) | Removes the content feed below the friends list on the Home tab: LINE NEWS, official account posts and rankings. |  |
-| [[Home] Hide Home modules](#home-hide-home-modules) | Hides the recommended content, hot-topics and ad modules on the Home tab. |  |
-| [[Premium] Disable LINE Premium](#premium-disable-line-premium) | Hides all LINE Premium upsells, badges and pages. It unlocks nothing, because the server enforces Premium. |  |
-| [[Premium] Hide premium unsend upsells](#premium-hide-premium-unsend-upsells) | Removes the Premium unsend upsells that "Disable LINE Premium" leaves. Ordinary unsend still works. |  |
-| [[Premium] Unlock app icons](#premium-unlock-app-icons) | Lets you use every app icon, including Premium and old collaboration icons. The App icon page stays in Settings even with "Disable LINE Premium" on. |  |
-| [[Tab] Hide LINE TODAY tab](#tab-hide-line-today-tab) | Removes the LINE TODAY (News) tab from the bottom bar. |  |
-| [[Tab] Hide Shopping tab](#tab-hide-shopping-tab) | Removes the Shopping tab from the bottom bar, including Discover (逛逛) in Taiwan. |  |
-| [[Tab] Hide VOOM tab](#tab-hide-voom-tab) | Removes the VOOM (formerly Timeline) tab from the main bottom navigation. |  |
-| [[Tab] Hide Wallet tab](#tab-hide-wallet-tab) | Removes the Wallet (LINE Pay) tab from the bottom bar. |  |
+| [[Ad] Hide ad views](#ad-hide-ad-views) | ซ่อนโฆษณาแบบแสดงผลของ LINE ได้แก่ แบนเนอร์ LINE Ads แบนเนอร์ Smart Channel ในรายการแชท และโฆษณา Google AdManager |  |
+| [[Ad] Remove banner ads](#ad-remove-banner-ads) | หยุด LINE ไม่ให้โหลดแบนเนอร์โฆษณา Smart Channel |  |
+| [[Call] Auto-record calls](#call-auto-record-calls) | เริ่มบันทึกสายแบบ 1 ต่อ 1 ทันทีที่สายเชื่อมต่อ โปรดเปิดการบันทึกสายใน การตั้งค่า > LINE Labs ก่อน การบันทึกโดยไม่ได้รับความยินยอมผิดกฎหมายในบางพื้นที่ |  |
+| [[Call] Record calls without notifying](#call-record-calls-without-notifying) | อีกฝ่ายในสายแบบ 1 ต่อ 1 จะไม่เห็นแบนเนอร์การบันทึกและไม่ได้ยินเสียงประกาศ การบันทึกโดยไม่ได้รับความยินยอมผิดกฎหมายในบางพื้นที่ |  |
+| [[Call] Remove recording time limit](#call-remove-recording-time-limit) | บันทึกสายจนกว่าสายจะจบ LINE หยุดการบันทึกเสียงเมื่อครบ 60 นาที และหยุดการบันทึกวิดีโอเมื่อครบ 20 หรือ 50 นาที |  |
+| [[Call] Save recordings to device](#call-save-recordings-to-device) | บันทึกไฟล์เสียงสายแต่ละสายลงในโฟลเดอร์ Movies/LINE บนโทรศัพท์ แทนการแชร์ไปยัง Keep Memo ซึ่งไม่รับไฟล์ที่เกิน 1 GB |  |
+| [[Chat] Hide AI Friends button](#chat-hide-ai-friends-button) | ลบปุ่ม AI Friends ออกจากส่วนหัวของแท็บแชท แล้วแสดงปุ่มอัลบั้มแทน |  |
+| [[Chat] Hide Events button](#chat-hide-events-button) | ลบแถว "กิจกรรม" ออกจากเมนูในห้องแชท |  |
+| [[Chat] Hide LINE GIFT button](#chat-hide-line-gift-button) | ลบไทล์ LINE GIFT ออกจากเมนูแนบไฟล์ + ในห้องแชท |  |
+| [[Chat] Hide Transfer button](#chat-hide-transfer-button) | ลบไทล์โอนเงิน (LINE Pay) ออกจากเมนูแนบไฟล์ + ในห้องแชท |  |
+| [[Chat] Hide attach menu extra tools](#chat-hide-attach-menu-extra-tools) | ลบเครื่องมือที่เซิร์ฟเวอร์ให้มา (โพล กำหนดการ และอื่น ๆ) ออกจากเมนู + ในแชท ไทล์ที่มีในตัวยังอยู่ |  |
+| [[Chat] Hide calendar buttons](#chat-hide-calendar-buttons) | ลบปุ่มปฏิทิน LINE ทั้งหมด ได้แก่ ในแท็บแชท แถบเครื่องมือและเมนูของแชท และแท็บโฮม |  |
+| [[Chat] Hide community button](#chat-hide-community-button) | ลบปุ่มคอมมูนิตี้ (OpenChat) ออกจากด้านบนของส่วนหัวแท็บแชท |  |
+| [[Chat] Hide tips under messages](#chat-hide-tips-under-messages) | ซ่อนทิปส์ "CHECK" ใต้ข้อความบางรายการ เช่น วิดีโอที่ได้รับ |  |
+| [[Chat] Keep chats unread](#chat-keep-chats-unread) | เมื่อคุณเปิดแชท LINE จะไม่ทำเครื่องหมายว่าอ่านแล้วและไม่ส่งการแจ้งว่าอ่านแล้ว "ทำเครื่องหมายว่าอ่านแล้ว" ยังใช้ได้ |  |
+| [[Chat] Keep unsent messages](#chat-keep-unsent-messages) | เก็บข้อความที่คนอื่นยกเลิกการส่งในแชท 1:1 และแชทกลุ่ม พร้อมป้ายสีแดง "ยกเลิกการส่ง" ข้างเวลา ไม่รวม OpenChat |  |
+| [[Chat] Show who read messages](#chat-show-who-read-messages) | เพิ่ม "อ่านโดย" ในเมนูกดค้างของข้อความในกลุ่ม แสดงรายชื่อสมาชิกที่อ่านข้อความนั้น |  |
+| [[Fix] Restore Google login via MicroG-RE](#fix-restore-google-login-via-microg-re) | ทำให้ "ดำเนินการต่อด้วย Google" ใช้ได้บนบิลด์ที่เซ็นชื่อใหม่ ผ่าน MicroG-RE ไม่จำเป็นสำหรับ Root Mount |  |
+| [[Fix] Restore biometric login](#fix-restore-biometric-login) | เชื่อมการเข้าสู่ระบบด้วยไบโอเมตริกซ์ได้อีกครั้งบนบิลด์ที่เซ็นชื่อใหม่ การติดตั้งแบบ Root Mount ไม่ต้องใช้แพตช์นี้ |  |
+| [[Fix] Restore chat backup sign-in via MicroG-RE](#fix-restore-chat-backup-sign-in-via-microg-re) | ทำให้การสำรองและกู้คืนแชทบน Google Drive ใช้ได้บนบิลด์ที่เซ็นชื่อใหม่ ผ่าน MicroG-RE ไม่จำเป็นสำหรับ Root Mount |  |
+| [[Fix] Restore location maps via MicroG-RE](#fix-restore-location-maps-via-microg-re) | แสดงแผนที่อีกครั้งบนบิลด์ที่เซ็นชื่อใหม่ ด้วยแผนที่ OpenFreeMap ต้องใช้ MicroG-RE 7.0.0 ขึ้นไป ไม่จำเป็นสำหรับ Root Mount |  |
+| [[Fix] Restore push notifications](#fix-restore-push-notifications) | เมื่อปิด LINE สนิท การแจ้งเตือนแบบพุชจะกลับมาทำงานบนบิลด์ที่เซ็นชื่อใหม่ และ LINE จะได้รับ Firebase Remote Config อีกครั้ง การติดตั้งแบบ Root Mount ไม่ต้องใช้แพตช์นี้ |  |
+| [[General] Andrew's Patch Setting](#general-andrew-s-patch-setting) | เพิ่ม "Andrew's Patch Setting" ในการตั้งค่า LINE ใต้ "โปรไฟล์" ที่นี่คุณเปิดหรือปิดบางแพตช์ได้โดยไม่ต้องแพตช์ใหม่ และดูเครดิตกับสัญญาอนุญาต |  |
+| [[General] Block analytics](#general-block-analytics) | หยุด LINE ไม่ให้ส่งเหตุการณ์การใช้งาน เช่น หน้าจอที่คุณเปิดและปุ่มที่คุณแตะ ไปยังบริการวิเคราะห์ รายงานข้อขัดข้องไม่เปลี่ยนแปลง |  |
+| [[General] Custom font](#general-custom-font) | เพิ่มปุ่มในหน้าฟอนต์ของ LINE เพื่อใช้ไฟล์ฟอนต์จากอุปกรณ์ของคุณ จากนั้นหน้านี้จะไม่โหลดรายการฟอนต์ของ LINE จากเซิร์ฟเวอร์อีก |  |
+| [[General] Disable VOOM](#general-disable-voom) | ลิงก์ลึก การแชร์ และการแจ้งเตือนของ VOOM จะไม่ทำงาน หากเปิดฟีด VOOM แบบแยกต่างหาก ฟีดจะปิด การส่งข้อความและแท็บอื่นไม่เปลี่ยนแปลง |  |
+| [[General] Enable themes on sub devices](#general-enable-themes-on-sub-devices) | ให้อุปกรณ์รอง (แท็บเล็ตหรือโทรศัพท์เครื่องที่สองที่ล็อกอินบัญชีเดียวกัน) ใช้ธีมและธีมสีดำในโหมดมืดได้ ซ่อนปุ่มร้านค้าธีมที่นั่น เพราะ LINE ไม่เปิดร้านค้าบนอุปกรณ์รอง |  |
+| [[General] Hide Agent i buttons](#general-hide-agent-i-buttons) | ลบ Agent i ออกจากส่วนหัวโฮม แถบค้นหา ส่วนหัวแท็บกระเป๋าเงิน และการตั้งค่า และซ่อน Agent i ในแชทถาวร พร้อมสวิตช์ "แสดง Agent i ในแชท" ในเมนู + |  |
+| [[General] Hide LINE AI image editing](#general-hide-line-ai-image-editing) | ลบปุ่มแก้ไขรูปด้วย AI ของ LINE ได้แก่ "AI Edit" ในเมนูกดค้างของข้อความ ปุ่มข้างข้อความรูปภาพ และปุ่มในตัวดูรูปของแชท อัลบั้ม โน้ต และรูปโปรไฟล์ ตัวแก้ไขรูปปกติยังอยู่ |  |
+| [[General] Hide new item badges](#general-hide-new-item-badges) | ซ่อนจุดสีเขียวและป้าย N ที่ระบุรายการใหม่ บนปุ่มส่วนหัว แท็บ เมนู รายการ และแถวการตั้งค่า จำนวนข้อความที่ยังไม่ได้อ่านไม่เปลี่ยนแปลง |  |
+| [[General] Open links in external browser](#general-open-links-in-external-browser) | เปิดลิงก์เว็บในเบราว์เซอร์เริ่มต้นของคุณ แทนเบราว์เซอร์ในแอปของ LINE มินิแอป LIFF และลิงก์ LINE ยังอยู่ใน LINE |  |
+| [[General] Redirect LINE Pay](#general-redirect-line-pay) | เปิด LINE Pay ในแอป LINE Pay แบบแยก เพื่อไม่ให้การตรวจสอบความสมบูรณ์ที่ล้มเหลวบนบิลด์ที่เซ็นชื่อใหม่ทำงาน |  |
+| [[General] Trust user-installed CAs](#general-trust-user-installed-cas) | ให้ LINE เชื่อถือผู้ออกใบรับรองที่คุณติดตั้ง เพื่อให้พร็อกซี HTTPS ของคุณอ่านทราฟฟิกเว็บของ LIFF และมินิแอปได้ ธนาคารและ LINE Pay ยังคงตรึงใบรับรอง สำหรับการดีบัก ปิดไว้เป็นค่าเริ่มต้น |  |
+| [[Home] Hide Home content feed](#home-hide-home-content-feed) | ลบฟีดเนื้อหาใต้รายชื่อเพื่อนในแท็บโฮม ได้แก่ LINE NEWS โพสต์ของบัญชีทางการ และอันดับ |  |
+| [[Home] Hide Home modules](#home-hide-home-modules) | ซ่อนโมดูลเนื้อหาแนะนำ หัวข้อฮอต และโฆษณาในแท็บโฮม |  |
+| [[Premium] Disable LINE Premium](#premium-disable-line-premium) | ซ่อนข้อเสนอ ป้าย และหน้าของ LINE Premium ทั้งหมด ไม่ปลดล็อกอะไร เพราะเซิร์ฟเวอร์เป็นผู้บังคับใช้ Premium |  |
+| [[Premium] Hide premium unsend upsells](#premium-hide-premium-unsend-upsells) | ลบข้อเสนอ Premium สำหรับการยกเลิกการส่งที่ "Disable LINE Premium" ทิ้งไว้ การยกเลิกการส่งแบบปกติยังใช้ได้ |  |
+| [[Premium] Unlock app icons](#premium-unlock-app-icons) | ให้คุณใช้ไอคอนแอปได้ทุกแบบ รวมถึงไอคอน Premium และไอคอนคอลแลบเก่า หน้าไอคอนแอปยังอยู่ในการตั้งค่าแม้เปิด "Disable LINE Premium" |  |
+| [[Tab] Hide LINE TODAY tab](#tab-hide-line-today-tab) | ลบแท็บ LINE TODAY (ข่าว) ออกจากแถบด้านล่าง |  |
+| [[Tab] Hide Shopping tab](#tab-hide-shopping-tab) | ลบแท็บช้อปปิ้งออกจากแถบด้านล่าง รวมถึง Discover (逛逛) ในไต้หวัน |  |
+| [[Tab] Hide VOOM tab](#tab-hide-voom-tab) | ลบแท็บ VOOM (เดิมคือไทม์ไลน์) ออกจากแถบนำทางหลักด้านล่าง |  |
+| [[Tab] Hide Wallet tab](#tab-hide-wallet-tab) | ลบแท็บกระเป๋าเงิน (LINE Pay) ออกจากแถบด้านล่าง |  |
 
 </details>
 

@@ -21,94 +21,94 @@ Morphe Manager 套用，產生修改過的 APK。
 修補程式的說明由程式自動產生並翻譯。修補程式的名稱維持英文。
 
 <!-- PATCHES_START EXPANDED -->
-> **[v4.2.0-dev.2](https://github.com/andrewliang25/morphe-patches/releases/tag/v4.2.0-dev.2)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;62 patches total
+> **[v4.2.0](https://github.com/andrewliang25/morphe-patches/releases/tag/v4.2.0)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;共 62 個修補
 <details open>
-<summary>📦 Facebook&nbsp;&nbsp;•&nbsp;&nbsp;20 patches</summary>
+<summary>📦 Facebook&nbsp;&nbsp;•&nbsp;&nbsp;20 個修補</summary>
 <br>
 
-**🎯 Supported versions:**
+**🎯 支援版本:**
 
 | 577.0.0.50.72 |
 | :---: |
 
-| 💊&nbsp;Patch | 📜&nbsp;Description | ⚙️&nbsp;Options |
+| 💊&nbsp;修補 | 📜&nbsp;說明 | ⚙️&nbsp;選項 |
 |----------|----------------|-----------|
-| [[Ad] Block ad telemetry](#ad-block-ad-telemetry) | Stops Facebook watching for screenshots of ads and reporting which apps you install for ad attribution. |  |
-| [[Ad] Block background ad prefetch](#ad-block-background-ad-prefetch) | Stops Facebook downloading ads and its ad model in the background, which saves data, battery and storage. |  |
-| [[Ad] Disable Audience Network](#ad-disable-audience-network) | Stops Facebook serving ads to other apps. Those apps then show their own ads or none, and rewarded ads can fail. |  |
-| [[Feed] Block feed auto refresh](#feed-block-feed-auto-refresh) | Keeps your place in the news feed when you come back to Facebook. Pull down to refresh the feed. |  |
-| [[Feed] Hide page suggestions and promo cards](#feed-hide-page-suggestions-and-promo-cards) | Removes the items that Facebook adds to the feed, such as "Pages you may like", promo cards and surveys. "Suggested for you" posts stay. |  |
-| [[Feed] Hide post prompts](#feed-hide-post-prompts) | Removes the prompts Facebook adds inside a post, such as "Are you interested in this post?". |  |
-| [[Feed] Hide sponsored posts](#feed-hide-sponsored-posts) | Removes sponsored posts from the news feed, with no gap left behind. |  |
-| [[Fix] Restore screens on re-signed builds](#fix-restore-screens-on-re-signed-builds) | Makes profiles and some Settings pages open again on a re-signed build. A Root Mount install does not need this patch. |  |
-| [[General] AMOLED black theme](#general-amoled-black-theme) | Makes Facebook's dark mode black instead of dark grey. Turn on dark mode in Facebook first. You can turn it off in Andrew's Patch Setting. |  |
-| [[General] Andrew's Patch Setting](#general-andrew-s-patch-setting) | Adds "Andrew's Patch Setting" to the top of the Facebook menu. There you can turn some patches on or off without patching again, and see the credits and licenses. |  |
-| [[General] Hide affiliate product links](#general-hide-affiliate-product-links) | Removes the product cards of affiliate shop links from Reels, feed posts and comments. The "Commission eligible" label stays. |  |
-| [[General] Open links in external browser](#general-open-links-in-external-browser) | Opens web links in your default browser instead of Facebook's in-app browser. Facebook pages still open in the app. |  |
-| [[Reels] Download any reel](#reels-download-any-reel) | Adds a Download button beside every reel. Videos save at the best quality the player streams. | • Save as H.264 |
-| [[Reels] Hide interest prompts](#reels-hide-interest-prompts) | Removes the "Are you interested in this reel?" prompt from Reels. |  |
-| [[Reels] Hide sponsored reels](#reels-hide-sponsored-reels) | Removes ads from Reels and Watch, including product banners over a reel and ads inside a video. |  |
-| [[Reels] Picture-in-picture](#reels-picture-in-picture) | Keeps a reel playing in a small window when you leave Facebook from the Reels tab. Only vertical reels get a window. Needs Android 12 or later. |  |
-| [[Stories] Disable auto advance](#stories-disable-auto-advance) | Keeps each story on the screen until you tap or swipe to the next one. |  |
-| [[Stories] Download any story](#stories-download-any-story) | Adds Save to the menu of any story, including stories with music. Videos save at the best quality the player streams. | • Save as H.264 |
-| [[Stories] Hide sponsored stories](#stories-hide-sponsored-stories) | Removes ad cards from the story viewer, so swiping through stories only shows stories people posted. |  |
-| [[Stories] View stories anonymously](#stories-view-stories-anonymously) | Stops Facebook telling the server which stories you saw, so you are not in the viewer list. Stories that you saw still show as seen on this device. |  |
+| [[Ad] Block ad telemetry](#ad-block-ad-telemetry) | 停止 Facebook 偵測廣告截圖，以及為了廣告歸因而回報你安裝了哪些應用程式。 |  |
+| [[Ad] Block background ad prefetch](#ad-block-background-ad-prefetch) | 停止 Facebook 在背景下載廣告及其廣告模型，可節省流量、電量與儲存空間。 |  |
+| [[Ad] Disable Audience Network](#ad-disable-audience-network) | 停止 Facebook 向其他應用程式投放廣告。那些應用程式會改為顯示自己的廣告或不顯示廣告，獎勵廣告可能失敗。 |  |
+| [[Feed] Block feed auto refresh](#feed-block-feed-auto-refresh) | 回到 Facebook 時保留你在動態消息中的位置。下拉即可重新整理動態。 |  |
+| [[Feed] Hide page suggestions and promo cards](#feed-hide-page-suggestions-and-promo-cards) | 移除 Facebook 加入動態的項目，例如「你可能會喜歡的粉絲專頁」、推廣卡片與問卷。「為你推薦」貼文會保留。 |  |
+| [[Feed] Hide post prompts](#feed-hide-post-prompts) | 移除 Facebook 在貼文內加入的提示，例如「你對這則貼文感興趣嗎？」。 |  |
+| [[Feed] Hide sponsored posts](#feed-hide-sponsored-posts) | 移除動態消息中的贊助貼文，且不留空白。 |  |
+| [[Fix] Restore screens on re-signed builds](#fix-restore-screens-on-re-signed-builds) | 在重新簽署的版本上，讓個人檔案與部分「設定」頁面可再次開啟。Root Mount 安裝不需要此修補。 |  |
+| [[General] AMOLED black theme](#general-amoled-black-theme) | 讓 Facebook 的深色模式變成純黑而非深灰。請先在 Facebook 開啟深色模式。可在「Andrew's Patch Setting」中關閉。 |  |
+| [[General] Andrew's Patch Setting](#general-andrew-s-patch-setting) | 在 Facebook 選單頂部新增「Andrew's Patch Setting」。你可以在此開關部分修補，無需重新修補，也能查看感謝名單與授權。 |  |
+| [[General] Hide affiliate product links](#general-hide-affiliate-product-links) | 移除 Reels、動態貼文與留言中的聯盟行銷商品卡片。「符合佣金資格」標籤會保留。 |  |
+| [[General] Open links in external browser](#general-open-links-in-external-browser) | 用預設瀏覽器開啟網頁連結，而不是 Facebook 內建瀏覽器。Facebook 頁面仍在應用程式內開啟。 |  |
+| [[Reels] Download any reel](#reels-download-any-reel) | 在每則 Reel 旁新增下載按鈕。影片以播放器串流的最高畫質儲存。 | • 儲存為 H.264 |
+| [[Reels] Hide interest prompts](#reels-hide-interest-prompts) | 移除 Reels 中的「你對這則 Reel 感興趣嗎？」提示。 |  |
+| [[Reels] Hide sponsored reels](#reels-hide-sponsored-reels) | 移除 Reels 與 Watch 中的廣告，包括 Reel 上的商品橫幅與影片內的廣告。 |  |
+| [[Reels] Picture-in-picture](#reels-picture-in-picture) | 從 Reels 分頁離開 Facebook 時，讓 Reel 繼續在小視窗播放。只有直式 Reels 會有小視窗。需要 Android 12 或更新版本。 |  |
+| [[Stories] Disable auto advance](#stories-disable-auto-advance) | 讓每則限時動態停留在畫面上，直到你點擊或滑動到下一則。 |  |
+| [[Stories] Download any story](#stories-download-any-story) | 在任何限時動態的選單中新增「儲存」，包括含音樂的限時動態。影片以播放器串流的最高畫質儲存。 | • 儲存為 H.264 |
+| [[Stories] Hide sponsored stories](#stories-hide-sponsored-stories) | 移除限時動態檢視器中的廣告卡片，滑動時只會看到他人發布的限時動態。 |  |
+| [[Stories] View stories anonymously](#stories-view-stories-anonymously) | 阻止 Facebook 告知伺服器你看過哪些限時動態，因此你不會出現在觀看者名單中。你看過的限時動態在此裝置上仍顯示為已看過。 |  |
 
 </details>
 
 <details open>
-<summary>📦 LINE&nbsp;&nbsp;•&nbsp;&nbsp;42 patches</summary>
+<summary>📦 LINE&nbsp;&nbsp;•&nbsp;&nbsp;42 個修補</summary>
 <br>
 
-**🎯 Supported versions:**
+**🎯 支援版本:**
 
 | 26.16.0 | 26.17.1 | 26.18.2 | 26.19.0 |
 | :---: | :---: | :---: | :---: |
 
-| 💊&nbsp;Patch | 📜&nbsp;Description | ⚙️&nbsp;Options |
+| 💊&nbsp;修補 | 📜&nbsp;說明 | ⚙️&nbsp;選項 |
 |----------|----------------|-----------|
-| [[Ad] Hide ad views](#ad-hide-ad-views) | Hides LINE display ads: the LINE Ads banners, the Smart Channel banner in the chat list and Google AdManager ads. |  |
-| [[Ad] Remove banner ads](#ad-remove-banner-ads) | Stops LINE from loading the Smart Channel banner ads. |  |
-| [[Call] Auto-record calls](#call-auto-record-calls) | Starts recording a 1-to-1 call as soon as it connects. Turn on call recording in Settings > LINE Labs first. Recording without consent is illegal in some places. |  |
-| [[Call] Record calls without notifying](#call-record-calls-without-notifying) | The other person in a 1-to-1 call sees no recording banner and hears no announcement. Recording without consent is illegal in some places. |  |
-| [[Call] Remove recording time limit](#call-remove-recording-time-limit) | Records a call until it ends. LINE stops voice recordings after 60 minutes and video recordings after 20 or 50 minutes. |  |
-| [[Call] Save recordings to device](#call-save-recordings-to-device) | Saves each call recording to the Movies/LINE folder on your phone instead of sharing it to Keep Memo, which refuses files over 1 GB. |  |
-| [[Chat] Hide AI Friends button](#chat-hide-ai-friends-button) | Removes the AI Friends button from the Chats tab header. The Album button shows in its place. |  |
-| [[Chat] Hide Events button](#chat-hide-events-button) | Removes the "Events" row from the menu in a chat room. |  |
-| [[Chat] Hide LINE GIFT button](#chat-hide-line-gift-button) | Removes the LINE GIFT tile from the + attach menu in a chat room. |  |
-| [[Chat] Hide Transfer button](#chat-hide-transfer-button) | Removes the Transfer (LINE Pay) tile from the + attach menu in a chat room. |  |
-| [[Chat] Hide attach menu extra tools](#chat-hide-attach-menu-extra-tools) | Removes the server-provided tools (Poll, Schedule and more) from the + menu in a chat. Built-in tiles stay. |  |
-| [[Chat] Hide calendar buttons](#chat-hide-calendar-buttons) | Removes every LINE Calendar button: in the Chats tab, the chat toolbar and menus, and the Home tab. |  |
-| [[Chat] Hide community button](#chat-hide-community-button) | Removes the community (OpenChat) button from the top of the Chats tab header. |  |
-| [[Chat] Hide tips under messages](#chat-hide-tips-under-messages) | Hides the "CHECK" tips under some messages, such as a received video. |  |
-| [[Chat] Keep chats unread](#chat-keep-chats-unread) | When you open a chat, LINE does not mark it read or send a read receipt. "Mark as read" still works. |  |
-| [[Chat] Keep unsent messages](#chat-keep-unsent-messages) | Keeps messages that others unsend in 1:1 and group chats, with a red "Unsent" label next to the time. OpenChat is not covered. |  |
-| [[Chat] Show who read messages](#chat-show-who-read-messages) | Adds "Read by" to the long-press menu of a message in groups. It lists the members who read the message. |  |
-| [[Fix] Restore Google login via MicroG-RE](#fix-restore-google-login-via-microg-re) | Makes "Continue with Google" work on a re-signed build, through MicroG-RE. Root Mount does not need it. |  |
-| [[Fix] Restore biometric login](#fix-restore-biometric-login) | Biometric login can be linked again on a re-signed build. A Root Mount install does not need this patch. |  |
-| [[Fix] Restore chat backup sign-in via MicroG-RE](#fix-restore-chat-backup-sign-in-via-microg-re) | Makes Google Drive chat backup and restore work on a re-signed build, through MicroG-RE. Root Mount does not need it. |  |
-| [[Fix] Restore location maps via MicroG-RE](#fix-restore-location-maps-via-microg-re) | Shows maps again on a re-signed build, with OpenFreeMap tiles. It needs MicroG-RE 7.0.0 or later. Root Mount does not need it. |  |
-| [[Fix] Restore push notifications](#fix-restore-push-notifications) | When LINE is fully closed, push notifications work again on a re-signed build. LINE also gets its Firebase Remote Config again. A Root Mount install does not need this patch. |  |
-| [[General] Andrew's Patch Setting](#general-andrew-s-patch-setting) | Adds "Andrew's Patch Setting" to LINE Settings, below "Profile". There you can turn some patches on or off without patching again, and see the credits and licenses. |  |
-| [[General] Block analytics](#general-block-analytics) | Stops LINE from sending usage events to its analytics service, such as the screens you open and the buttons you tap. Crash reports are not changed. |  |
-| [[General] Custom font](#general-custom-font) | Adds a button to LINE's Font page to use a font file from your device. The page then no longer loads LINE's font list from the server. |  |
-| [[General] Disable VOOM](#general-disable-voom) | VOOM deep links, shares, and notifications do nothing. If you open the standalone VOOM feed, it closes. Messaging and the other tabs do not change. |  |
-| [[General] Enable themes on sub devices](#general-enable-themes-on-sub-devices) | Lets a sub device (a tablet or second phone logged in to the same account) use themes and the Black theme in dark mode. Hides the Theme Shop button there, because LINE does not open the shop on a sub device. |  |
-| [[General] Hide Agent i buttons](#general-hide-agent-i-buttons) | Removes Agent i from the Home header, the search bar, the Wallet tab header and Settings, and hides Agent i in chats permanently, with its "Show Agent i in chat" switch in the + menu. |  |
-| [[General] Hide LINE AI image editing](#general-hide-line-ai-image-editing) | Removes the LINE AI image editing buttons: "AI Edit" in the message long-press menu, the button next to an image message, and the button in the chat, album, Note and profile photo viewers. The normal photo editor stays. |  |
-| [[General] Hide new item badges](#general-hide-new-item-badges) | Hides the green dots and N badges that mark new items, on header buttons, tabs, menus, lists and settings rows. Unread message counts do not change. |  |
-| [[General] Open links in external browser](#general-open-links-in-external-browser) | Opens web links in your default browser instead of LINE's in-app browser. LIFF mini-apps and LINE links stay in LINE. |  |
-| [[General] Redirect LINE Pay](#general-redirect-line-pay) | Opens LINE Pay in the standalone LINE Pay app, so the integrity check that fails on a re-signed build never runs. |  |
-| [[General] Trust user-installed CAs](#general-trust-user-installed-cas) | Makes LINE trust certificate authorities you install, so your own HTTPS proxy can read LIFF and mini-app web traffic. Bank and LINE Pay stay pinned. For debugging. Off by default. |  |
-| [[Home] Hide Home content feed](#home-hide-home-content-feed) | Removes the content feed below the friends list on the Home tab: LINE NEWS, official account posts and rankings. |  |
-| [[Home] Hide Home modules](#home-hide-home-modules) | Hides the recommended content, hot-topics and ad modules on the Home tab. |  |
-| [[Premium] Disable LINE Premium](#premium-disable-line-premium) | Hides all LINE Premium upsells, badges and pages. It unlocks nothing, because the server enforces Premium. |  |
-| [[Premium] Hide premium unsend upsells](#premium-hide-premium-unsend-upsells) | Removes the Premium unsend upsells that "Disable LINE Premium" leaves. Ordinary unsend still works. |  |
-| [[Premium] Unlock app icons](#premium-unlock-app-icons) | Lets you use every app icon, including Premium and old collaboration icons. The App icon page stays in Settings even with "Disable LINE Premium" on. |  |
-| [[Tab] Hide LINE TODAY tab](#tab-hide-line-today-tab) | Removes the LINE TODAY (News) tab from the bottom bar. |  |
-| [[Tab] Hide Shopping tab](#tab-hide-shopping-tab) | Removes the Shopping tab from the bottom bar, including Discover (逛逛) in Taiwan. |  |
-| [[Tab] Hide VOOM tab](#tab-hide-voom-tab) | Removes the VOOM (formerly Timeline) tab from the main bottom navigation. |  |
-| [[Tab] Hide Wallet tab](#tab-hide-wallet-tab) | Removes the Wallet (LINE Pay) tab from the bottom bar. |  |
+| [[Ad] Hide ad views](#ad-hide-ad-views) | 隱藏 LINE 的展示廣告：LINE Ads 橫幅、聊天列表中的 Smart Channel 橫幅，以及 Google AdManager 廣告。 |  |
+| [[Ad] Remove banner ads](#ad-remove-banner-ads) | 阻止 LINE 載入 Smart Channel 橫幅廣告。 |  |
+| [[Call] Auto-record calls](#call-auto-record-calls) | 1對1通話接通後立即開始錄音。請先在「設定」>「LINE Labs」開啟通話錄音。在某些地區，未經同意錄音是違法的。 |  |
+| [[Call] Record calls without notifying](#call-record-calls-without-notifying) | 1對1通話中，對方不會看到錄音橫幅，也不會聽到語音提示。在某些地區，未經同意錄音是違法的。 |  |
+| [[Call] Remove recording time limit](#call-remove-recording-time-limit) | 錄音直到通話結束。LINE 會在 60 分鐘後停止語音錄音，並在 20 或 50 分鐘後停止視訊錄音。 |  |
+| [[Call] Save recordings to device](#call-save-recordings-to-device) | 將每段通話錄音儲存到手機的 Movies/LINE 資料夾，而不是分享到 Keep 記事本（Keep 不接受超過 1 GB 的檔案）。 |  |
+| [[Chat] Hide AI Friends button](#chat-hide-ai-friends-button) | 移除聊天分頁頂部的 AI 好友按鈕，改為顯示相簿按鈕。 |  |
+| [[Chat] Hide Events button](#chat-hide-events-button) | 移除聊天室選單中的「活動」項目。 |  |
+| [[Chat] Hide LINE GIFT button](#chat-hide-line-gift-button) | 移除聊天室「+」附件選單中的 LINE GIFT 圖示。 |  |
+| [[Chat] Hide Transfer button](#chat-hide-transfer-button) | 移除聊天室「+」附件選單中的轉帳（LINE Pay）圖示。 |  |
+| [[Chat] Hide attach menu extra tools](#chat-hide-attach-menu-extra-tools) | 移除聊天室「+」選單中由伺服器提供的工具（投票、行程等）。內建圖示會保留。 |  |
+| [[Chat] Hide calendar buttons](#chat-hide-calendar-buttons) | 移除所有 LINE 行事曆按鈕：聊天分頁、聊天室工具列與選單，以及主頁分頁。 |  |
+| [[Chat] Hide community button](#chat-hide-community-button) | 移除聊天分頁頂部的社群（OpenChat）按鈕。 |  |
+| [[Chat] Hide tips under messages](#chat-hide-tips-under-messages) | 隱藏部分訊息（例如收到的影片）下方的「CHECK」提示。 |  |
+| [[Chat] Keep chats unread](#chat-keep-chats-unread) | 開啟聊天室時，LINE 不會將其標示為已讀，也不會傳送已讀回條。「標示為已讀」仍可使用。 |  |
+| [[Chat] Keep unsent messages](#chat-keep-unsent-messages) | 保留他人在 1對1 與群組聊天中收回的訊息，並在時間旁顯示紅色「已收回」標籤。不含 OpenChat。 |  |
+| [[Chat] Show who read messages](#chat-show-who-read-messages) | 在群組訊息的長按選單中新增「已讀者」，列出已讀該訊息的成員。 |  |
+| [[Fix] Restore Google login via MicroG-RE](#fix-restore-google-login-via-microg-re) | 在重新簽署的版本上，透過 MicroG-RE 讓「使用 Google 繼續」可用。Root Mount 不需要此修補。 |  |
+| [[Fix] Restore biometric login](#fix-restore-biometric-login) | 在重新簽署的版本上，可再次綁定生物辨識登入。Root Mount 安裝不需要此修補。 |  |
+| [[Fix] Restore chat backup sign-in via MicroG-RE](#fix-restore-chat-backup-sign-in-via-microg-re) | 在重新簽署的版本上，透過 MicroG-RE 讓 Google 雲端硬碟聊天備份與還原可用。Root Mount 不需要此修補。 |  |
+| [[Fix] Restore location maps via MicroG-RE](#fix-restore-location-maps-via-microg-re) | 在重新簽署的版本上，以 OpenFreeMap 圖磚重新顯示地圖。需要 MicroG-RE 7.0.0 或更新版本。Root Mount 不需要此修補。 |  |
+| [[Fix] Restore push notifications](#fix-restore-push-notifications) | LINE 完全關閉時，在重新簽署的版本上推播通知會再次運作，LINE 也能重新取得 Firebase Remote Config。Root Mount 安裝不需要此修補。 |  |
+| [[General] Andrew's Patch Setting](#general-andrew-s-patch-setting) | 在 LINE「設定」中、「個人檔案」下方新增「Andrew's Patch Setting」。你可以在此開關部分修補，無需重新修補，也能查看感謝名單與授權。 |  |
+| [[General] Block analytics](#general-block-analytics) | 阻止 LINE 向分析服務傳送使用事件，例如你開啟的畫面與點擊的按鈕。當機報告不變。 |  |
+| [[General] Custom font](#general-custom-font) | 在 LINE 的字型頁面新增按鈕，可使用裝置上的字型檔。此頁面之後不再從伺服器載入 LINE 的字型清單。 |  |
+| [[General] Disable VOOM](#general-disable-voom) | VOOM 的深層連結、分享與通知都不會有作用。若開啟獨立的 VOOM 動態，它會關閉。訊息與其他分頁不受影響。 |  |
+| [[General] Enable themes on sub devices](#general-enable-themes-on-sub-devices) | 讓子裝置（登入同一帳號的平板或第二支手機）可使用佈景主題，以及深色模式下的黑色主題。並隱藏該處的佈景主題商店按鈕，因為 LINE 不會在子裝置上開啟商店。 |  |
+| [[General] Hide Agent i buttons](#general-hide-agent-i-buttons) | 移除主頁標題列、搜尋列、錢包分頁標題列與「設定」中的 Agent i，並永久隱藏聊天中的 Agent i（連同「+」選單中的「在聊天中顯示 Agent i」開關）。 |  |
+| [[General] Hide LINE AI image editing](#general-hide-line-ai-image-editing) | 移除 LINE AI 圖片編輯按鈕：訊息長按選單中的「AI 編輯」、圖片訊息旁的按鈕，以及聊天、相簿、記事與大頭貼檢視器中的按鈕。一般相片編輯器會保留。 |  |
+| [[General] Hide new item badges](#general-hide-new-item-badges) | 隱藏標示新項目的綠點與 N 標記，包括標題列按鈕、分頁、選單、清單與設定列。未讀訊息數不變。 |  |
+| [[General] Open links in external browser](#general-open-links-in-external-browser) | 用預設瀏覽器開啟網頁連結，而不是 LINE 內建瀏覽器。LIFF 迷你應用程式與 LINE 連結仍在 LINE 內開啟。 |  |
+| [[General] Redirect LINE Pay](#general-redirect-line-pay) | 以獨立的 LINE Pay 應用程式開啟 LINE Pay，因此在重新簽署版本上會失敗的完整性檢查不會執行。 |  |
+| [[General] Trust user-installed CAs](#general-trust-user-installed-cas) | 讓 LINE 信任你安裝的憑證授權單位，使你自己的 HTTPS 代理伺服器可讀取 LIFF 與迷你應用程式的網頁流量。銀行與 LINE Pay 仍固定憑證。供除錯使用。預設關閉。 |  |
+| [[Home] Hide Home content feed](#home-hide-home-content-feed) | 移除主頁分頁好友列表下方的內容動態：LINE NEWS、官方帳號貼文與排行榜。 |  |
+| [[Home] Hide Home modules](#home-hide-home-modules) | 隱藏主頁分頁上的推薦內容、熱門話題與廣告模組。 |  |
+| [[Premium] Disable LINE Premium](#premium-disable-line-premium) | 隱藏所有 LINE Premium 的推銷、徽章與頁面。它不會解鎖任何功能，因為 Premium 由伺服器控管。 |  |
+| [[Premium] Hide premium unsend upsells](#premium-hide-premium-unsend-upsells) | 移除「停用 LINE Premium」所遺留的 Premium 收回訊息推銷。一般收回訊息仍可使用。 |  |
+| [[Premium] Unlock app icons](#premium-unlock-app-icons) | 讓你使用所有應用程式圖示，包括 Premium 與舊的合作圖示。即使開啟「停用 LINE Premium」，「設定」中仍會保留應用程式圖示頁面。 |  |
+| [[Tab] Hide LINE TODAY tab](#tab-hide-line-today-tab) | 移除底部列的 LINE TODAY（新聞）分頁。 |  |
+| [[Tab] Hide Shopping tab](#tab-hide-shopping-tab) | 移除底部列的購物分頁，包括台灣的逛逛。 |  |
+| [[Tab] Hide VOOM tab](#tab-hide-voom-tab) | 移除主底部導覽列的 VOOM（前身為貼文串）分頁。 |  |
+| [[Tab] Hide Wallet tab](#tab-hide-wallet-tab) | 移除底部列的錢包（LINE Pay）分頁。 |  |
 
 </details>
 
