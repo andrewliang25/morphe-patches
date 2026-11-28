@@ -245,7 +245,7 @@ The patch has three levers, and all read the switch `unlock_app_icons` (default 
 | Lever | 26.17.1 / 26.16.0 | Change |
 |---|---|---|
 | App icon gate | `hf5.t.c()` / `ce5.s.c()` | The result of the first `()Z` interface call (the Premium market flag `z()`) becomes `z() \|\| switch`. The server flag and the region check stay. |
-| Eligibility check | `bg3.m.A(sg3.c, Continuation)` / `be3.k.j(se3.b, Continuation)` | At entry, for `APP_ICON` only, it returns the `Eligible` object (`sg3.i$b.a`). Other features keep LINE's answer. |
+| Eligibility check | `bg3.m.A(sg3.c, Continuation)` / `be3.k.j(se3.b, Continuation)` (26.19.0: `gl3.o.e(wl3.c, Continuation)`) | At entry, for `APP_ICON` only, it returns the `Eligible` object (`sg3.i$b.a`). Other features keep LINE's answer. |
 | List parse | `pf5.i.invoke` / `ke5.i.invoke` | After `check-cast p1, String`, `AppIcons.addBundledIcons` adds one `collaboration` item for each launcher alias named `collaboration_*` that no section lists. Its `iconUrl` is `android.resource://<package>/<icon id of the alias>`, which Coil (`jl.g$a`) draws. |
 
 The gate also decides the startup rollback (`hf5.t$b`): while it returns false, LINE puts the

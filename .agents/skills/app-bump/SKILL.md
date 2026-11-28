@@ -101,6 +101,7 @@ notes for your app at the end of this file before step 1.
   Member letters do not always survive (`hg1.r`→`yi1.p`, `hg1.k`→`yi1.j`). Also, `\b` does not match
   between `L` and the prefix of a JVM descriptor, so `\bfg1/` skips every `Lfg1/…;`. Map each
   `(prefix, member)` pair in a single pass through a lookup table.
+- **R8 reorders two reads in one method.** Two `fieldAccess` filters match in program order, so a swap breaks the fingerprint while both fields still exist (26.19.0, `UNAVAILABLE` and `NOT_SUBSCRIBED`). Keep the one filter that is unique, and drop the other.
 - **A `methodOrNull` site that drifts** applies with no error. Only the method diff of step 5 shows
   it.
 - **Injected smali must not name an obfuscated class.** The patch applies, and the call points at a
