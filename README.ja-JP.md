@@ -18,10 +18,10 @@ Morphe Manager でパッチを適用すると、改変した APK をビルドで
 
 ## 🩹 パッチ一覧
 
-パッチの名前と説明は自動で生成されるため、英語で表示されます。
+パッチの説明は自動で生成され、翻訳されます。パッチの名前は英語のままです。
 
 <!-- PATCHES_START EXPANDED -->
-> **[v4.1.0](https://github.com/andrewliang25/morphe-patches/releases/tag/v4.1.0)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;62 patches total
+> **[v4.2.0-dev.2](https://github.com/andrewliang25/morphe-patches/releases/tag/v4.2.0-dev.2)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;62 patches total
 <details open>
 <summary>📦 Facebook&nbsp;&nbsp;•&nbsp;&nbsp;20 patches</summary>
 <br>
@@ -62,8 +62,8 @@ Morphe Manager でパッチを適用すると、改変した APK をビルドで
 
 **🎯 Supported versions:**
 
-| 26.16.0 | 26.17.1 | 26.18.2 |
-| :---: | :---: | :---: |
+| 26.16.0 | 26.17.1 | 26.18.2 | 26.19.0 |
+| :---: | :---: | :---: | :---: |
 
 | 💊&nbsp;Patch | 📜&nbsp;Description | ⚙️&nbsp;Options |
 |----------|----------------|-----------|
@@ -170,7 +170,7 @@ MicroG-RE でも解決しません。
 ## 🙏 謝辞
 
 - [@f870103](https://github.com/f870103) — テスト用の LINE アカウントを貸してくれ、LINE Pay アプリのリダイレクト URL を見つけてくれました。
-- [@uta-a](https://github.com/uta-a) — Google ログインの修正と、「Hide Agent i buttons」の一部の Agent i 項目は [linimal](https://github.com/uta-a/linimal) のアイデアに基づいています。
+- [@uta-a](https://github.com/uta-a) — Google ログインの修正、「Hide Agent i buttons」の一部の Agent i 項目、および「Show who read messages」は [linimal](https://github.com/uta-a/linimal) のアイデアに基づいています。
 - [@SapitoSucio](https://github.com/SapitoSucio) — ここにある一部の機能と実装は [FroggoMorphePatches](https://github.com/SapitoSucio/FroggoMorphePatches) のアイデアに基づいています。
 - [@SysAdminDoc](https://github.com/SysAdminDoc) — [Hushfacebook](https://github.com/SysAdminDoc/Hushfacebook) で、一部のストーリーとリールのダウンロードに音声がないことを見つけてくれました。
 

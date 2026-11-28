@@ -18,8 +18,10 @@ Morphe Manager untuk membuat APK yang dimodifikasi.
 
 ## 🩹 Daftar patch
 
+Deskripsi patch dibuat dan diterjemahkan secara otomatis. Nama patch tetap dalam bahasa Inggris.
+
 <!-- PATCHES_START EXPANDED -->
-> **[v4.1.0](https://github.com/andrewliang25/morphe-patches/releases/tag/v4.1.0)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;62 patches total
+> **[v4.2.0-dev.2](https://github.com/andrewliang25/morphe-patches/releases/tag/v4.2.0-dev.2)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;62 patches total
 <details open>
 <summary>📦 Facebook&nbsp;&nbsp;•&nbsp;&nbsp;20 patches</summary>
 <br>
@@ -60,8 +62,8 @@ Morphe Manager untuk membuat APK yang dimodifikasi.
 
 **🎯 Supported versions:**
 
-| 26.16.0 | 26.17.1 | 26.18.2 |
-| :---: | :---: | :---: |
+| 26.16.0 | 26.17.1 | 26.18.2 | 26.19.0 |
+| :---: | :---: | :---: | :---: |
 
 | 💊&nbsp;Patch | 📜&nbsp;Description | ⚙️&nbsp;Options |
 |----------|----------------|-----------|
@@ -171,7 +173,7 @@ terjadi di [patched-apps](https://github.com/andrewliang25/patched-apps#meta-app
 ## 🙏 Terima kasih
 
 - [@f870103](https://github.com/f870103) — meminjamkan akun LINE untuk pengujian, dan menemukan URL pengalihan aplikasi LINE Pay.
-- [@uta-a](https://github.com/uta-a) — perbaikan login Google dan beberapa entri Agent i di "Hide Agent i buttons" mengambil ide dari [linimal](https://github.com/uta-a/linimal).
+- [@uta-a](https://github.com/uta-a) — perbaikan login Google, beberapa entri Agent i di "Hide Agent i buttons", dan "Show who read messages" mengambil ide dari [linimal](https://github.com/uta-a/linimal).
 - [@SapitoSucio](https://github.com/SapitoSucio) — beberapa fitur dan implementasi di sini mengambil ide dari [FroggoMorphePatches](https://github.com/SapitoSucio/FroggoMorphePatches).
 - [@SysAdminDoc](https://github.com/SysAdminDoc) — menemukan di [Hushfacebook](https://github.com/SysAdminDoc/Hushfacebook) bahwa beberapa unduhan story dan reel tersimpan tanpa suara.
 

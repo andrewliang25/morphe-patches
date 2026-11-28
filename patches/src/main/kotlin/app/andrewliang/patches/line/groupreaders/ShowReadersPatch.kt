@@ -185,6 +185,33 @@ val showReadersPatch = bytecodePatch(
             """,
         )
 
+        // LINE's own profile image load, so that the list uses LINE's image cache and placeholder.
+        val load = ThumbImageLoadFingerprint.method
+        val thumbType = load.parameterTypes[2].toString()
+        extension.replaceStub(
+            "newAvatar",
+            listOf(CONTEXT),
+            VIEW,
+            registers = 2,
+            """
+                new-instance v0, $THUMB_IMAGE_VIEW
+                invoke-direct { v0, p0 }, $THUMB_IMAGE_VIEW-><init>($CONTEXT)V
+                return-object v0
+            """,
+        )
+        extension.replaceStub(
+            "setAvatar",
+            listOf(VIEW, STRING, STRING),
+            "V",
+            registers = 4,
+            """
+                check-cast p0, $THUMB_IMAGE_VIEW
+                sget-object v0, $thumbType->FRIEND_LIST:$thumbType
+                invoke-virtual { p0, p1, p2, v0 }, $THUMB_IMAGE_VIEW->${load.name}($STRING$STRING$thumbType)V
+                return-void
+            """,
+        )
+
         markLineSettingIncluded("showReaders")
     }
 }

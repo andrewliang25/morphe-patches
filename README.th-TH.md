@@ -18,8 +18,10 @@ Morphe Manager เพื่อใส่แพตช์และสร้าง A
 
 ## 🩹 รายการแพตช์
 
+คำอธิบายแพตช์สร้างและแปลโดยอัตโนมัติ ชื่อแพตช์ยังเป็นภาษาอังกฤษ
+
 <!-- PATCHES_START EXPANDED -->
-> **[v4.1.0](https://github.com/andrewliang25/morphe-patches/releases/tag/v4.1.0)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;62 patches total
+> **[v4.2.0-dev.2](https://github.com/andrewliang25/morphe-patches/releases/tag/v4.2.0-dev.2)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;62 patches total
 <details open>
 <summary>📦 Facebook&nbsp;&nbsp;•&nbsp;&nbsp;20 patches</summary>
 <br>
@@ -60,8 +62,8 @@ Morphe Manager เพื่อใส่แพตช์และสร้าง A
 
 **🎯 Supported versions:**
 
-| 26.16.0 | 26.17.1 | 26.18.2 |
-| :---: | :---: | :---: |
+| 26.16.0 | 26.17.1 | 26.18.2 | 26.19.0 |
+| :---: | :---: | :---: | :---: |
 
 | 💊&nbsp;Patch | 📜&nbsp;Description | ⚙️&nbsp;Options |
 |----------|----------------|-----------|
@@ -169,7 +171,7 @@ QR code
 ## 🙏 ขอขอบคุณ
 
 - [@f870103](https://github.com/f870103) — ให้ยืมบัญชี LINE สำหรับทดสอบ และค้นพบ URL สำหรับเปลี่ยนเส้นทางไปยังแอป LINE Pay
-- [@uta-a](https://github.com/uta-a) — การแก้ไขการเข้าสู่ระบบด้วย Google และรายการ Agent i บางส่วนของ "Hide Agent i buttons" ได้แนวคิดมาจาก [linimal](https://github.com/uta-a/linimal)
+- [@uta-a](https://github.com/uta-a) — การแก้ไขการเข้าสู่ระบบด้วย Google, รายการ Agent i บางส่วนของ "Hide Agent i buttons" และ "Show who read messages" ได้แนวคิดมาจาก [linimal](https://github.com/uta-a/linimal)
 - [@SapitoSucio](https://github.com/SapitoSucio) — ฟีเจอร์และวิธีทำบางส่วนในที่นี้ได้แนวคิดมาจาก [FroggoMorphePatches](https://github.com/SapitoSucio/FroggoMorphePatches)
 - [@SysAdminDoc](https://github.com/SysAdminDoc) — พบใน [Hushfacebook](https://github.com/SysAdminDoc/Hushfacebook) ว่าสตอรี่และรีลบางรายการที่ดาวน์โหลดไม่มีเสียง
 

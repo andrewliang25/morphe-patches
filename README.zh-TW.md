@@ -18,10 +18,10 @@ Morphe Manager 套用，產生修改過的 APK。
 
 ## 🩹 修補程式清單
 
-修補程式的名稱與說明由程式自動產生，因此以英文顯示。
+修補程式的說明由程式自動產生並翻譯。修補程式的名稱維持英文。
 
 <!-- PATCHES_START EXPANDED -->
-> **[v4.1.0](https://github.com/andrewliang25/morphe-patches/releases/tag/v4.1.0)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;62 patches total
+> **[v4.2.0-dev.2](https://github.com/andrewliang25/morphe-patches/releases/tag/v4.2.0-dev.2)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;62 patches total
 <details open>
 <summary>📦 Facebook&nbsp;&nbsp;•&nbsp;&nbsp;20 patches</summary>
 <br>
@@ -62,8 +62,8 @@ Morphe Manager 套用，產生修改過的 APK。
 
 **🎯 Supported versions:**
 
-| 26.16.0 | 26.17.1 | 26.18.2 |
-| :---: | :---: | :---: |
+| 26.16.0 | 26.17.1 | 26.18.2 | 26.19.0 |
+| :---: | :---: | :---: | :---: |
 
 | 💊&nbsp;Patch | 📜&nbsp;Description | ⚙️&nbsp;Options |
 |----------|----------------|-----------|
@@ -165,7 +165,7 @@ Morphe Manager 套用，產生修改過的 APK。
 ## 🙏 特別感謝
 
 - [@f870103](https://github.com/f870103) — 借出 LINE 帳號供測試，並找到 LINE Pay 應用程式的轉址網址。
-- [@uta-a](https://github.com/uta-a) — Google 登入修正，以及「Hide Agent i buttons」中部分 Agent i 項目的構想來自 [linimal](https://github.com/uta-a/linimal)。
+- [@uta-a](https://github.com/uta-a) — Google 登入修正、「Hide Agent i buttons」中部分 Agent i 項目，以及「Show who read messages」的構想來自 [linimal](https://github.com/uta-a/linimal)。
 - [@SapitoSucio](https://github.com/SapitoSucio) — 這裡的部分功能與實作構想來自 [FroggoMorphePatches](https://github.com/SapitoSucio/FroggoMorphePatches)。
 - [@SysAdminDoc](https://github.com/SysAdminDoc) — 在 [Hushfacebook](https://github.com/SysAdminDoc/Hushfacebook) 中發現部分限時動態和 Reels 下載後沒有聲音。
 

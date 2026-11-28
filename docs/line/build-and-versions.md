@@ -2,7 +2,7 @@
 
 The supported LINE versions, the anchors that survive a version bump, and the offline build and apply recipe. See [README.md](README.md) for the other LINE docs.
 
-## Supported versions (26.16.0, 26.17.1 and 26.18.2)
+## Supported versions (26.16.0, 26.17.1, 26.18.2 and 26.19.0)
 
 26.16.0 needs Android 11 (API 30), so it is the version for Android 11 and 12. 26.17.1 needs
 Android 12L (API 32), and so does 26.18.2. The versions cover the same phones that 26.14.0, 26.15.1 and 26.16.0
@@ -16,6 +16,7 @@ and its `minSdk`. All splits of a LINE bundle share one `versionCode`, so the si
 | 26.16.0 | 261600106 | 30 |
 | 26.17.1 | 261710173 | 32 |
 | 26.18.2 | 261820153 | 32 |
+| 26.19.0 | 261900178 | 30 |
 
 Each fingerprint must match every version, so no patch has a table of names per version. Each
 anchor is a name that R8 keeps:
@@ -51,6 +52,13 @@ dex with the original dex method by method:
 3. On the old version, compare the list with the list of the released bundle. It must be the same.
 4. Run `BranchSweep` on each patched dex.
 5. Read each site that reuses a register on the new version. The register must be dead there.
+
+26.19.0 needs Android 11 (API 30) again, like 26.16.0. It removed VOOM (the `TIMELINE` main tab and
+`LineVoomActivity` are gone), so *Disable VOOM* and *Hide VOOM tab* use `COMPATIBILITY_LINE_VOOM`
+(the targets up to 26.18.2) and keep a `methodOrNull` guard for a forced build. On the 26.19.0 bump,
+26.19.0 changed 105 LINE methods, 26.16.0 changed 107, and 26.17.1 and 26.18.2 changed 106. On
+26.18.2 the changed methods were the same as those of the released v4.2.0-dev.1 bundle. The one
+26.19.0 method above the expected 104 was not traced.
 
 On the 26.18.2 bump, 26.17.1 and 26.18.2 each changed 105 LINE methods, and 26.16.0 changed 106. On
 26.16.0 and 26.17.1 the changed methods and their edits were the same as those of the released

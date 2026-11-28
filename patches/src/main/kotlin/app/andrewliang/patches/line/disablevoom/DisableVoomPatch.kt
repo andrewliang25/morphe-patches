@@ -3,7 +3,7 @@ package app.andrewliang.patches.line.disablevoom
 import app.andrewliang.patches.line.shared.lineSettingsExtensionPatch
 import app.andrewliang.patches.line.shared.markLineSettingIncluded
 import app.andrewliang.patches.line.shared.readLineSetting
-import app.andrewliang.patches.shared.Constants.COMPATIBILITY_LINE
+import app.andrewliang.patches.shared.Constants.COMPATIBILITY_LINE_VOOM
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.patch.bytecodePatch
@@ -16,7 +16,7 @@ val disableVoomPatch = bytecodePatch(
         "standalone VOOM feed, it closes. Messaging and the other tabs do not change.",
     default = true,
 ) {
-    compatibleWith(COMPATIBILITY_LINE)
+    compatibleWith(COMPATIBILITY_LINE_VOOM)
 
     dependsOn(lineSettingsExtensionPatch)
 
@@ -41,18 +41,20 @@ val disableVoomPatch = bytecodePatch(
         // 2. Standalone VOOM feed (notification center bypasses the router): finish after
         //    super.onCreate so it never renders. v0 is dead there: the original code writes it
         //    before it reads it.
-        val onCreate = LineVoomActivityOnCreateFingerprint.method
-        val afterSuperIndex = LineVoomActivityOnCreateFingerprint.instructionMatches.first().index + 1
-        onCreate.addInstructionsWithLabels(
-            afterSuperIndex,
-            readLineSetting("disableVoom", "v0") +
-                """
-                    if-eqz v0, :stock
-                    invoke-virtual {p0}, Landroid/app/Activity;->finish()V
-                    return-void
-                """,
-            ExternalLabel("stock", onCreate.getInstruction(afterSuperIndex)),
-        )
+        // 26.19.0 removed the activity: skip this site there (a forced build still applies).
+        LineVoomActivityOnCreateFingerprint.methodOrNull?.let { onCreate ->
+            val afterSuperIndex = LineVoomActivityOnCreateFingerprint.instructionMatches.first().index + 1
+            onCreate.addInstructionsWithLabels(
+                afterSuperIndex,
+                readLineSetting("disableVoom", "v0") +
+                    """
+                        if-eqz v0, :stock
+                        invoke-virtual {p0}, Landroid/app/Activity;->finish()V
+                        return-void
+                    """,
+                ExternalLabel("stock", onCreate.getInstruction(afterSuperIndex)),
+            )
+        }
         markLineSettingIncluded("disableVoom")
     }
 }
