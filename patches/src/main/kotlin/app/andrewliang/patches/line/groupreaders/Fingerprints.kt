@@ -50,3 +50,15 @@ internal fun readRangeSyncCall(method: Method): MethodReference? =
                 it.parameterTypes[1] == "Ljava/util/Set;"
         }
     }
+
+/**
+ * `ThumbImageView.load(mid, picturePath, type)`: LINE's own round profile image, through its Glide
+ * cache. R8 renames the method in each version (`p`, `e`, `m`).
+ */
+internal object ThumbImageLoadFingerprint : Fingerprint(
+    definingClass = THUMB_IMAGE_VIEW,
+    returnType = "V",
+    parameters = listOf("Ljava/lang/String;", "Ljava/lang/String;", "L"),
+)
+
+internal const val THUMB_IMAGE_VIEW = "Ljp/naver/line/android/customview/thumbnail/ThumbImageView;"

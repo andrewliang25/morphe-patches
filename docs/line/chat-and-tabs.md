@@ -585,6 +585,7 @@ rows for its own "Read N" label, so the list matches that number.
 |---|---|---|
 | Read ranges | `read_notification` / `read_message_range` | Filled by `NOTIFIED_READ_MESSAGE` and by the read-range sync. |
 | Names | `contact` / `contacts` | `overridden_name` (the name you set), else `profile_name`. |
+| Profile images | `contact` / `contacts` | `picture_path`, passed with `mid` to LINE's own image view. |
 
 A group chat id starts with `c`, a multi-person chat id with `r`. One-on-one chats and OpenChat are
 not covered.
@@ -611,6 +612,7 @@ Measured on 26.18.2 with a probe (2026-11-25):
 | Message data | `qf1.c`: `a` chat id, `c` server id, `e` sender | The fields printed after `"…(chatId="`, `", serverMessageId="`, `", senderMid="` |
 | Service locator | `mc0.f.a(Context, mc0.a)` | The static `(Context, *)Object` call just before the color call |
 | Read-range sync | `j30.d.a` key, `d()` → `gr8.c` (`ReadCountManager`), `gr8.e.b(db, Set, gr8.c$a)` | The only `invokeSuspend` that calls `(SQLiteDatabase, Set, *)Lorg/apache/thrift/*` |
+| Profile image view | `ThumbImageView.m(mid, picturePath, a$a)V` (`p` in 26.16.0, `e` in 26.17.1) | The class name, which R8 keeps for layouts, and `(String, String, *)V` |
 
 The hook goes in just before the color call, after `getClass(grid)`, and passes the grid and the
 menu dialog. It does not pass the params argument (`p4`), because R8 reuses that register for an
@@ -634,3 +636,11 @@ dialog" in [settings-fonts-themes.md](settings-fonts-themes.md)). A build that u
 26.18.2: dark under Black in light and dark mode, light under Original, Cony and Brown.
 
 The list reads the databases read only, on a worker thread, after the sync.
+
+Each row has the round profile image that LINE shows in its member lists. The patch replaces two
+more stubs: `newAvatar` makes a `ThumbImageView`, and `setAvatar` calls its load method with
+`a$a.FRIEND_LIST`. That method loads LINE's own Glide request
+(`GlideUserProfileImageRequest(mid, picturePath, …)`), so the list uses LINE's memory and disk
+cache, its circle crop and its default image. Device-confirmed on 26.18.2 (2026-11-28): after a
+force stop and with airplane mode on, the list still showed both readers' images. The default
+image for a member with no picture was not observed: every reader in the test group has one.

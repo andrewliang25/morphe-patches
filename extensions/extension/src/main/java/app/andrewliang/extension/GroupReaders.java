@@ -18,6 +18,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import java.text.Collator;
@@ -52,6 +53,14 @@ public final class GroupReaders {
     static Object syncReadRange(Context context, String chatId) {
         return null;
     }
+
+    /** Makes LINE's own round profile image view. */
+    static View newAvatar(Context context) {
+        return null;
+    }
+
+    /** Loads the profile image of {@code mid} into {@code view} through LINE's image cache. */
+    static void setAvatar(View view, String mid, String picturePath) {}
 
     /**
      * Called by the patch after LINE builds the menu grid and before it colors it. Puts "Read by"
@@ -127,8 +136,19 @@ public final class GroupReaders {
         AlertDialog.Builder builder = new AlertDialog.Builder(activity, dialogTheme(activity));
         // A list, not a message: a group has up to 500 members, and a list view scrolls them
         // and keeps the OK button on the screen.
-        ArrayAdapter<String> rows = new ArrayAdapter<String>(builder.getContext(),
-                android.R.layout.simple_list_item_1, new ArrayList<>(List.of("…"))) {
+        ArrayAdapter<Reader> rows = new ArrayAdapter<Reader>(builder.getContext(), 0,
+                new ArrayList<>(List.of(new Reader(null, "…", null)))) {
+            @Override
+            public View getView(int position, View row, ViewGroup parent) {
+                if (row == null) row = newRow(getContext(), parent);
+                Reader reader = getItem(position);
+                ((TextView) row.findViewById(android.R.id.text1)).setText(reader.name);
+                View avatar = ((ViewGroup) row).getChildAt(0);
+                avatar.setVisibility(reader.mid == null ? View.GONE : View.VISIBLE);
+                if (reader.mid != null) setAvatar(avatar, reader.mid, reader.picture);
+                return row;
+            }
+
             @Override
             public boolean areAllItemsEnabled() {
                 return false;
@@ -148,7 +168,7 @@ public final class GroupReaders {
         Context app = activity.getApplicationContext();
         Handler main = new Handler(Looper.getMainLooper());
         new Thread(() -> {
-            List<String> names = readers(app, chatId, messageId, sender);
+            List<Reader> names = readers(app, chatId, messageId, sender);
             main.post(() -> {
                 if (!dialog.isShowing()) return;
                 dialog.setTitle(title + " (" + names.size() + ")");
@@ -156,6 +176,34 @@ public final class GroupReaders {
                 rows.addAll(names);
             });
         }, "AndrewReaders").start();
+    }
+
+    /** A row: LINE's profile image, then the name in the dialog's own list text style. */
+    private static View newRow(Context context, ViewGroup parent) {
+        float dp = context.getResources().getDisplayMetrics().density;
+        LinearLayout row = new LinearLayout(context);
+        row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams size = new LinearLayout.LayoutParams((int) (36 * dp), (int) (36 * dp));
+        size.setMarginStart((int) (24 * dp));
+        row.addView(newAvatar(context), size);
+        View name = LayoutInflater.from(context).inflate(android.R.layout.simple_list_item_1, row, false);
+        // The gap of LINE's own member list.
+        name.setPaddingRelative((int) (16 * dp), name.getPaddingTop(), name.getPaddingEnd(), name.getPaddingBottom());
+        row.addView(name, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        return row;
+    }
+
+    /** A member who read the message. A null {@code mid} is the row that shows while the list loads. */
+    private static final class Reader {
+        final String mid;
+        final String name;
+        final String picture;
+
+        Reader(String mid, String name, String picture) {
+            this.mid = mid;
+            this.name = name;
+            this.picture = picture;
+        }
     }
 
     /**
@@ -205,8 +253,8 @@ public final class GroupReaders {
         return count == 0 ? -1 : sum / count;
     }
 
-    /** The names of the members who read the message, but not the sender. Runs on a worker thread. */
-    private static List<String> readers(Context app, String chatId, long messageId, String sender) {
+    /** The members who read the message, but not the sender. Runs on a worker thread. */
+    private static List<Reader> readers(Context app, String chatId, long messageId, String sender) {
         try {
             Object error = syncReadRange(app, chatId);
             if (error != null) Log.w(TAG, "sync: " + error);
@@ -214,40 +262,54 @@ public final class GroupReaders {
             Log.w(TAG, "sync", t);
         }
         String id = Long.toString(messageId);
-        Set<String> read = new LinkedHashSet<>(strings(app, "read_notification",
+        Set<String> read = new LinkedHashSet<>();
+        for (String[] row : rows(app, "read_notification",
                 "SELECT DISTINCT member_id FROM read_message_range WHERE chat_id=? AND from_msg_id<? AND to_msg_id>=?",
-                chatId, id, id));
+                chatId, id, id)) {
+            read.add(row[0]);
+        }
         // The table has no row for this account.
         read.remove(sender);
-        return names(app, read);
+        return named(app, read);
     }
 
-    /** The names that LINE shows for {@code mids}: the name the user set, else the profile name. */
-    private static List<String> names(Context app, Set<String> mids) {
-        List<String> names = new ArrayList<>();
-        if (mids.isEmpty()) return names;
+    /**
+     * {@code mids} with the name that LINE shows (the name the user set, else the profile name) and
+     * the profile image path, sorted by name.
+     */
+    private static List<Reader> named(Context app, Set<String> mids) {
+        List<Reader> readers = new ArrayList<>();
+        if (mids.isEmpty()) return readers;
         // A group has at most 500 members, below SQLite's limit of 999 arguments.
         String marks = String.join(",", Collections.nCopies(mids.size(), "?"));
-        names.addAll(strings(app, "contact",
-                "SELECT COALESCE(NULLIF(overridden_name, ''), profile_name) FROM contacts WHERE mid IN (" + marks + ")",
-                mids.toArray(new String[0])));
+        Set<String> left = new LinkedHashSet<>(mids);
+        for (String[] row : rows(app, "contact",
+                "SELECT mid, COALESCE(NULLIF(overridden_name, ''), profile_name), picture_path FROM contacts"
+                        + " WHERE mid IN (" + marks + ")",
+                mids.toArray(new String[0]))) {
+            if (!left.remove(row[0])) continue;
+            readers.add(new Reader(row[0], row[1] == null ? "?" : row[1], row[2]));
+        }
         // A member with no contact row has no name on this phone.
-        for (int i = names.size(); i < mids.size(); i++) names.add("?");
-        Collections.sort(names, Collator.getInstance());
-        return names;
+        for (String mid : left) readers.add(new Reader(mid, "?", null));
+        Collator collator = Collator.getInstance();
+        readers.sort((a, b) -> collator.compare(a.name, b.name));
+        return readers;
     }
 
-    /** The first column of {@code sql} in LINE's database {@code name}, read only. Empty on any error. */
-    private static List<String> strings(Context app, String name, String sql, String... args) {
-        List<String> out = new ArrayList<>();
+    /** The rows of {@code sql} in LINE's database {@code name}, read only. Empty on any error. */
+    private static List<String[]> rows(Context app, String name, String sql, String... args) {
+        List<String[]> out = new ArrayList<>();
         SQLiteDatabase db = null;
         try {
             db = SQLiteDatabase.openDatabase(app.getDatabasePath(name).getPath(), null,
                     SQLiteDatabase.OPEN_READONLY | SQLiteDatabase.NO_LOCALIZED_COLLATORS);
             try (Cursor cursor = db.rawQuery(sql, args)) {
                 while (cursor.moveToNext()) {
-                    String value = cursor.getString(0);
-                    if (value != null) out.add(value);
+                    if (cursor.isNull(0)) continue;
+                    String[] row = new String[cursor.getColumnCount()];
+                    for (int i = 0; i < row.length; i++) row[i] = cursor.getString(i);
+                    out.add(row);
                 }
             }
         } catch (Throwable t) {
